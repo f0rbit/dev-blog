@@ -24,10 +24,7 @@
 	--item-red-border: color-mix(in srgb, var(--item-red) 90%, var(--text-primary) 10%);
 	--item-green-border: color-mix(in srgb, var(--item-green) 90%, var(--text-primary) 10%);
 
-	/* Status colors for blog posts */
-	--status-draft: oklch(70% 0.1 60);
-	--status-scheduled: oklch(70% 0.15 250);
-	--status-published: oklch(70% 0.15 150);
+	--color-danger: oklch(65% 0.2 25);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -533,8 +530,8 @@ button.icon-btn:disabled {
 
 .btn-danger {
 	background: none;
-	color: var(--status-draft);
-	border: 1px solid var(--status-draft);
+	color: var(--color-danger);
+	border: 1px solid var(--color-danger);
 	border-radius: 4px;
 	padding: 8px 16px;
 	cursor: pointer;
@@ -633,42 +630,6 @@ footer {
 	justify-content: left;
 	align-items: center;
 	gap: 10px;
-}
-
-/* ==========================================================================
-   STATUS BADGES (Blog-specific)
-   ========================================================================== */
-
-.status-badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	font-size: 0.75rem;
-	padding: 2px 8px;
-	border-radius: 12px;
-	background: var(--input-background);
-	border: 1px solid var(--input-border);
-	white-space: nowrap;
-	line-height: 1;
-	vertical-align: middle;
-}
-
-.status-badge--draft {
-	background: none;
-	color: var(--status-draft);
-	border-color: var(--status-draft);
-}
-
-.status-badge--scheduled {
-	background: none;
-	color: var(--status-scheduled);
-	border-color: var(--status-scheduled);
-}
-
-.status-badge--published {
-	background: none;
-	color: var(--status-published);
-	border-color: var(--status-published);
 }
 
 /* ==========================================================================
@@ -807,20 +768,11 @@ footer {
 	text-decoration: none;
 }
 
-.post-card__header {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: 12px;
-}
-
 .post-card__title {
 	font-size: 1rem;
 	font-weight: 500;
 	color: var(--text-primary);
 	line-height: 1.4;
-	flex: 1;
-	min-width: 0;
 	display: -webkit-box;
 	-webkit-line-clamp: 2;
 	-webkit-box-orient: vertical;
@@ -955,39 +907,109 @@ footer {
 .category-tree {
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
+	gap: 0;
 }
 
-.category-item {
+.tree-node {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 6px 8px;
+	gap: 6px;
 	border-radius: 4px;
-	cursor: pointer;
-	transition: background 0.15s;
 }
 
-.category-item:hover {
+.tree-node:hover {
 	background: var(--input-background);
 }
 
-.category-item.selected {
+.tree-node:hover .tree-node__actions {
+	opacity: 1;
+}
+
+.tree-node__guides {
+	display: flex;
+	align-items: stretch;
+	height: 24px;
+}
+
+.tree-guide {
+	width: 20px;
+	position: relative;
+	flex-shrink: 0;
+}
+
+.tree-guide--line::before {
+	content: "";
+	position: absolute;
+	left: 9px;
+	top: 0;
+	bottom: 0;
+	width: 1px;
 	background: var(--input-border);
 }
 
-.category-item__indent {
-	width: 16px;
+.tree-guide--corner::before,
+.tree-guide--tee::before {
+	content: "";
+	position: absolute;
+	left: 9px;
+	top: 0;
+	height: 50%;
+	width: 1px;
+	background: var(--input-border);
 }
 
-.category-item__name {
+.tree-guide--corner::after,
+.tree-guide--tee::after {
+	content: "";
+	position: absolute;
+	left: 9px;
+	top: 50%;
+	width: 10px;
+	height: 1px;
+	background: var(--input-border);
+}
+
+.tree-guide--tee::before {
+	height: 100%;
+}
+
+.tree-node__name {
 	flex: 1;
-	font-size: 0.875rem;
+	color: var(--text-secondary);
 }
 
-.category-item__count {
-	font-size: 0.75rem;
+.tree-node__actions {
+	display: flex;
+	gap: 2px;
+	padding-right: 4px;
+	opacity: 0;
+	transition: opacity 0.15s;
+}
+
+.tree-action {
+	background: none;
+	border: none;
+	padding: 1px;
+	cursor: pointer;
 	color: var(--text-muted);
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: color 0.1s, background 0.1s;
+}
+
+.tree-action:hover {
+	background: var(--input-border);
+	filter: none;
+}
+
+.tree-action--add:hover {
+	color: var(--text-link);
+}
+
+.tree-action--delete:hover {
+	color: var(--color-danger);
 }
 
 /* ==========================================================================

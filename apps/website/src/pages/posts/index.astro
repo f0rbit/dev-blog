@@ -35,12 +35,6 @@ import AppLayout from "@/layouts/app-layout.astro";
     updated_at: string;
   };
 
-  const deriveStatus = (publishAt: string | null): "draft" | "scheduled" | "published" => {
-    if (!publishAt) return "draft";
-    const publishDate = new Date(publishAt);
-    return publishDate <= new Date() ? "published" : "scheduled";
-  };
-
   const relativeTime = (dateStr: string): string => {
     const date = new Date(dateStr);
     const now = new Date();
@@ -82,15 +76,11 @@ import AppLayout from "@/layouts/app-layout.astro";
 
     gridEl.innerHTML = posts
       .map(post => {
-        const status = deriveStatus(post.publish_at);
         const description = post.description ? escapeHtml(post.description) : "";
         const dateStr = post.publish_at ?? post.updated_at;
         return `
           <a href="/posts/${post.slug}" class="post-card">
-            <div class="post-card__header">
-              <span class="post-card__title">${escapeHtml(post.title)}</span>
-              <span class="status-badge status-badge--${status}">${status}</span>
-            </div>
+            <span class="post-card__title">${escapeHtml(post.title)}</span>
             ${description ? `<p class="post-card__description">${description}</p>` : ""}
             <div class="post-card__footer">
               <span class="post-card__category">${escapeHtml(post.category)}</span>

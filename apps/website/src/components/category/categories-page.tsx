@@ -22,13 +22,14 @@ const fetchCategories = async (): Promise<Category[]> => {
 	const res = await fetch(`${API_BASE}/categories`);
 	if (!res.ok) throw new Error("Failed to fetch categories");
 	const data = await res.json();
-	// API returns tree structure { categories: [...] }, flatten it
 	return flattenTree(data.categories ?? []);
 };
 
 const CategoriesPage: Component = () => {
 	const [categories, { refetch }] = createResource(fetchCategories);
 	const [error, setError] = createSignal<string | null>(null);
+	const [modalOpen, setModalOpen] = createSignal(false);
+	const [defaultParent, setDefaultParent] = createSignal("root");
 
 	const handleDelete = async (name: string) => {
 		setError(null);
@@ -60,6 +61,11 @@ const CategoriesPage: Component = () => {
 		refetch();
 	};
 
+	const openAddModal = (parentName: string) => {
+		setDefaultParent(parentName);
+		setModalOpen(true);
+	};
+
 	return (
 		<div class="flex-col" style={{ gap: "24px" }}>
 			<Show when={error()}>
@@ -82,14 +88,13 @@ const CategoriesPage: Component = () => {
 				{cats => (
 					<>
 						<section>
-							<h2 class="text-sm muted">Category Hierarchy</h2>
-							<CategoryTree categories={cats} onDelete={handleDelete} />
+							<h2 class="text-sm muted" style={{ "margin-bottom": "8px" }}>
+								Category Hierarchy
+							</h2>
+							<CategoryTree categories={cats} onDelete={handleDelete} onAddChild={openAddModal} />
 						</section>
 
-						<section>
-							<h2 class="text-sm muted">Add New Category</h2>
-							<CategoryForm categories={cats} onSubmit={handleCreate} />
-						</section>
+						<CategoryForm categories={cats} onSubmit={handleCreate} isOpen={modalOpen()} onClose={() => setModalOpen(false)} defaultParent={defaultParent()} />
 					</>
 				)}
 			</Show>

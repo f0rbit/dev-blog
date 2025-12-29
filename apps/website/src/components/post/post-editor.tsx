@@ -99,7 +99,7 @@ const PostEditor: Component<PostEditorProps> = props => {
 
 	const handleSave = async () => {
 		if (!props.onSave) return;
-		
+
 		setError(null);
 		if (!title().trim()) {
 			setError("Title is required");
