@@ -16,6 +16,7 @@ import {
 	format_error,
 	ok,
 	pipe,
+	postProjects,
 	posts,
 	tags,
 	try_catch_async,
@@ -84,7 +85,26 @@ const syncTags = async (db: DrizzleDB, postId: number, tagNames: string[]): Prom
 	await db.insert(tags).values(tagInserts);
 };
 
-const assemblePost = (row: PostRow, content: PostContent, tagList: string[]): Post => ({
+const fetchProjectIdsForPosts = async (db: DrizzleDB, postIds: number[]): Promise<Map<number, string[]>> => {
+	if (postIds.length === 0) return new Map();
+
+	const rows = await db.select().from(postProjects).where(inArray(postProjects.post_id, postIds));
+
+	return rows.reduce((acc, row) => {
+		const existing = acc.get(row.post_id) ?? [];
+		acc.set(row.post_id, [...existing, row.project_id]);
+		return acc;
+	}, new Map<number, string[]>());
+};
+
+const syncProjects = async (db: DrizzleDB, postId: number, projectIds: string[]): Promise<void> => {
+	await db.delete(postProjects).where(eq(postProjects.post_id, postId));
+	if (projectIds.length === 0) return;
+	const inserts = projectIds.map(project_id => ({ post_id: postId, project_id }));
+	await db.insert(postProjects).values(inserts);
+};
+
+const assemblePost = (row: PostRow, content: PostContent, tagList: string[], projectIds: string[]): Post => ({
 	id: row.id,
 	uuid: row.uuid,
 	author_id: row.author_id,
@@ -99,7 +119,7 @@ const assemblePost = (row: PostRow, content: PostContent, tagList: string[]): Po
 	publish_at: row.publish_at,
 	created_at: row.created_at,
 	updated_at: row.updated_at,
-	project_id: row.project_id,
+	project_ids: projectIds,
 	corpus_version: row.corpus_version,
 });
 
@@ -156,7 +176,6 @@ export const createPostService = ({ db, corpus }: Deps) => {
 								publish_at: publishAt,
 								created_at: now,
 								updated_at: now,
-								project_id: input.project_id ?? null,
 							})
 							.returning();
 
@@ -164,7 +183,8 @@ export const createPostService = ({ db, corpus }: Deps) => {
 						if (!row) throw new Error("Insert returned no rows");
 
 						await syncTags(db, row.id, input.tags ?? []);
-						return assemblePost(row, content, input.tags ?? []);
+						await syncProjects(db, row.id, input.project_ids ?? []);
+						return assemblePost(row, content, input.tags ?? [], input.project_ids ?? []);
 					}, toDbError)
 				).result()
 			)
@@ -235,7 +255,6 @@ export const createPostService = ({ db, corpus }: Deps) => {
 					archived: boolean;
 					publish_at: Date | null;
 					updated_at: Date;
-					project_id: string | null;
 				}>;
 
 				const updates: PostUpdateFields = { updated_at: now };
@@ -244,7 +263,6 @@ export const createPostService = ({ db, corpus }: Deps) => {
 				if (input.category !== undefined) updates.category = input.category;
 				if (input.archived !== undefined) updates.archived = input.archived;
 				if (input.publish_at !== undefined) updates.publish_at = input.publish_at;
-				if (input.project_id !== undefined) updates.project_id = input.project_id;
 				if (newVersion !== currentVersion) updates.corpus_version = newVersion;
 
 				const updated = await db.update(posts).set(updates).where(eq(posts.id, row.id)).returning();
@@ -256,9 +274,14 @@ export const createPostService = ({ db, corpus }: Deps) => {
 					await syncTags(db, updatedRow.id, input.tags);
 				}
 
-				const finalTags = input.tags ?? (await fetchTagsForPosts(db, [updatedRow.id])).get(updatedRow.id) ?? [];
+				if (input.project_ids !== undefined) {
+					await syncProjects(db, updatedRow.id, input.project_ids);
+				}
 
-				return assemblePost(updatedRow, finalContent, finalTags);
+				const finalTags = input.tags ?? (await fetchTagsForPosts(db, [updatedRow.id])).get(updatedRow.id) ?? [];
+				const finalProjectIds = input.project_ids ?? (await fetchProjectIdsForPosts(db, [updatedRow.id])).get(updatedRow.id) ?? [];
+
+				return assemblePost(updatedRow, finalContent, finalTags, finalProjectIds);
 			}, toDbError)
 		).result();
 	};
@@ -274,8 +297,10 @@ export const createPostService = ({ db, corpus }: Deps) => {
 			.map_err(toCorpusError)
 			.map_async(async content => {
 				const tagsMap = await fetchTagsForPosts(db, [row.id]);
+				const projectsMap = await fetchProjectIdsForPosts(db, [row.id]);
 				const tagList = tagsMap.get(row.id) ?? [];
-				return assemblePost(row, content, tagList);
+				const projectIds = projectsMap.get(row.id) ?? [];
+				return assemblePost(row, content, tagList, projectIds);
 			})
 			.result();
 	};
@@ -315,7 +340,16 @@ export const createPostService = ({ db, corpus }: Deps) => {
 		}
 
 		if (params.project) {
-			conditions.push(eq(posts.project_id, params.project));
+			const projectPostIds = await db
+				.select({ post_id: postProjects.post_id })
+				.from(postProjects)
+				.where(eq(postProjects.project_id, params.project));
+
+			if (projectPostIds.length === 0) {
+				return ok({ posts: [], total_posts: 0, total_pages: 0, per_page: params.limit, current_page: 1 });
+			}
+
+			conditions.push(inArray(posts.id, projectPostIds.map(p => p.post_id)));
 		}
 
 		if (!params.archived) {
@@ -363,6 +397,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 	const assemblePostsResponse = async (userId: number, rows: PostRow[], totalPosts: number, params: PostListParams): Promise<Result<PostsResponse, PostServiceError>> => {
 		const postIds = rows.map(r => r.id);
 		const tagsMap = await fetchTagsForPosts(db, postIds);
+		const projectsMap = await fetchProjectIdsForPosts(db, postIds);
 
 		const postsWithContent: Post[] = [];
 
@@ -375,7 +410,8 @@ export const createPostService = ({ db, corpus }: Deps) => {
 			if (!contentResult.ok) continue;
 
 			const tagList = tagsMap.get(row.id) ?? [];
-			postsWithContent.push(assemblePost(row, contentResult.value, tagList));
+			const projectIds = projectsMap.get(row.id) ?? [];
+			postsWithContent.push(assemblePost(row, contentResult.value, tagList, projectIds));
 		}
 
 		const totalPages = Math.ceil(totalPosts / params.limit);
@@ -485,9 +521,11 @@ export const createPostService = ({ db, corpus }: Deps) => {
 								if (!updatedRow) throw new Error("Update returned no rows");
 
 								const tagsMap = await fetchTagsForPosts(db, [updatedRow.id]);
+								const projectsMap = await fetchProjectIdsForPosts(db, [updatedRow.id]);
 								const tagList = tagsMap.get(updatedRow.id) ?? [];
+								const projectIds = projectsMap.get(updatedRow.id) ?? [];
 
-								return assemblePost(updatedRow, restoredContent, tagList);
+								return assemblePost(updatedRow, restoredContent, tagList, projectIds);
 							}, toDbError)
 						).result()
 					)

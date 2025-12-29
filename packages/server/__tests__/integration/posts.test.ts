@@ -53,6 +53,13 @@ const SCHEMA_SQL = `
     tag TEXT NOT NULL,
     PRIMARY KEY (post_id, tag)
   );
+
+  CREATE TABLE IF NOT EXISTS post_projects (
+    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    project_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    PRIMARY KEY (post_id, project_id)
+  );
 `;
 
 const createTestContext = () => {
@@ -71,6 +78,7 @@ const createTestContext = () => {
 		db,
 		corpus,
 		reset: () => {
+			sqliteDb.exec("DELETE FROM post_projects");
 			sqliteDb.exec("DELETE FROM tags");
 			sqliteDb.exec("DELETE FROM posts");
 			sqliteDb.exec("DELETE FROM categories");
@@ -271,20 +279,20 @@ describe("PostService", () => {
 			expect(result.value.category).toBe("tutorials");
 		});
 
-		it("creates with project_id", async () => {
+		it("creates with project_ids", async () => {
 			const input: PostCreate = {
 				slug: "project-post",
 				title: "Project Post",
 				content: "Content",
 				format: "md",
-				project_id: "proj-123",
+				project_ids: ["proj-123"],
 			};
 
 			const result = await service.create(userId, input);
 			expect(result.ok).toBe(true);
 			if (!result.ok) return;
 
-			expect(result.value.project_id).toBe("proj-123");
+			expect(result.value.project_ids).toEqual(["proj-123"]);
 		});
 
 		it("creates with adoc format", async () => {
@@ -833,7 +841,7 @@ describe("PostService", () => {
 				format: "md",
 				category: "root",
 				tags: ["general"],
-				project_id: "proj-a",
+				project_ids: ["proj-a"],
 			});
 
 			await service.create(userId, {
@@ -843,7 +851,7 @@ describe("PostService", () => {
 				format: "md",
 				category: "tech",
 				tags: ["coding"],
-				project_id: "proj-a",
+				project_ids: ["proj-a"],
 			});
 
 			await service.create(userId, {
@@ -853,7 +861,7 @@ describe("PostService", () => {
 				format: "md",
 				category: "frontend",
 				tags: ["react", "coding"],
-				project_id: "proj-b",
+				project_ids: ["proj-b"],
 			});
 
 			await service.create(userId, {
@@ -863,7 +871,7 @@ describe("PostService", () => {
 				format: "md",
 				category: "backend",
 				tags: ["nodejs", "coding"],
-				project_id: "proj-b",
+				project_ids: ["proj-b"],
 			});
 
 			await service.create(userId, {
@@ -941,7 +949,7 @@ describe("PostService", () => {
 
 			expect(result.value.posts.length).toBe(2);
 			for (const post of result.value.posts) {
-				expect(post.project_id).toBe("proj-b");
+				expect(post.project_ids).toContain("proj-b");
 			}
 		});
 
@@ -1167,6 +1175,155 @@ describe("PostService", () => {
 			if (result.ok) return;
 
 			expect(result.error.type).toBe("not_found");
+		});
+	});
+
+	describe("project associations", () => {
+		it("creates post with multiple project_ids", async () => {
+			const result = await service.create(userId, {
+				slug: "multi-project",
+				title: "Multi Project Post",
+				content: "Content",
+				format: "md",
+				project_ids: ["proj-a", "proj-b", "proj-c"],
+			});
+
+			expect(result.ok).toBe(true);
+			if (!result.ok) return;
+			expect(result.value.project_ids).toEqual(["proj-a", "proj-b", "proj-c"]);
+		});
+
+		it("creates post with no projects", async () => {
+			const result = await service.create(userId, {
+				slug: "no-project",
+				title: "No Project Post",
+				content: "Content",
+				format: "md",
+			});
+
+			expect(result.ok).toBe(true);
+			if (!result.ok) return;
+			expect(result.value.project_ids).toEqual([]);
+		});
+
+		it("updates project associations", async () => {
+			const createResult = await service.create(userId, {
+				slug: "update-projects",
+				title: "Post",
+				content: "Content",
+				format: "md",
+				project_ids: ["proj-a"],
+			});
+			expect(createResult.ok).toBe(true);
+			if (!createResult.ok) return;
+
+			const updateResult = await service.update(userId, createResult.value.uuid, {
+				project_ids: ["proj-b", "proj-c"],
+			});
+			expect(updateResult.ok).toBe(true);
+			if (!updateResult.ok) return;
+			expect(updateResult.value.project_ids).toEqual(["proj-b", "proj-c"]);
+		});
+
+		it("clears all project associations", async () => {
+			const createResult = await service.create(userId, {
+				slug: "clear-projects",
+				title: "Post",
+				content: "Content",
+				format: "md",
+				project_ids: ["proj-a", "proj-b"],
+			});
+			expect(createResult.ok).toBe(true);
+			if (!createResult.ok) return;
+
+			const updateResult = await service.update(userId, createResult.value.uuid, {
+				project_ids: [],
+			});
+			expect(updateResult.ok).toBe(true);
+			if (!updateResult.ok) return;
+			expect(updateResult.value.project_ids).toEqual([]);
+		});
+
+		it("filters posts by project", async () => {
+			await service.create(userId, {
+				slug: "proj-a-only",
+				title: "A Only",
+				content: "Content",
+				format: "md",
+				project_ids: ["proj-a"],
+			});
+			await service.create(userId, {
+				slug: "proj-a-and-b",
+				title: "A and B",
+				content: "Content",
+				format: "md",
+				project_ids: ["proj-a", "proj-b"],
+			});
+			await service.create(userId, {
+				slug: "proj-b-only",
+				title: "B Only",
+				content: "Content",
+				format: "md",
+				project_ids: ["proj-b"],
+			});
+
+			const resultA = await service.list(userId, {
+				project: "proj-a",
+				limit: 100,
+				offset: 0,
+				sort: "updated",
+				archived: false,
+				status: "all",
+			});
+			expect(resultA.ok).toBe(true);
+			if (!resultA.ok) return;
+			expect(resultA.value.posts.length).toBe(2);
+
+			const resultB = await service.list(userId, {
+				project: "proj-b",
+				limit: 100,
+				offset: 0,
+				sort: "updated",
+				archived: false,
+				status: "all",
+			});
+			expect(resultB.ok).toBe(true);
+			if (!resultB.ok) return;
+			expect(resultB.value.posts.length).toBe(2);
+		});
+
+		it("preserves project_ids when fetching by uuid", async () => {
+			const createResult = await service.create(userId, {
+				slug: "fetch-projects",
+				title: "Post",
+				content: "Content",
+				format: "md",
+				project_ids: ["proj-x", "proj-y"],
+			});
+			expect(createResult.ok).toBe(true);
+			if (!createResult.ok) return;
+
+			const fetchResult = await service.getByUuid(userId, createResult.value.uuid);
+			expect(fetchResult.ok).toBe(true);
+			if (!fetchResult.ok) return;
+			expect(fetchResult.value.project_ids).toEqual(["proj-x", "proj-y"]);
+		});
+
+		it("preserves project_ids when fetching by slug", async () => {
+			const createResult = await service.create(userId, {
+				slug: "fetch-projects-slug",
+				title: "Post",
+				content: "Content",
+				format: "md",
+				project_ids: ["proj-m", "proj-n"],
+			});
+			expect(createResult.ok).toBe(true);
+			if (!createResult.ok) return;
+
+			const fetchResult = await service.getBySlug(userId, "fetch-projects-slug");
+			expect(fetchResult.ok).toBe(true);
+			if (!fetchResult.ok) return;
+			expect(fetchResult.value.project_ids).toEqual(["proj-m", "proj-n"]);
 		});
 	});
 });
