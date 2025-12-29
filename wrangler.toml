@@ -5,6 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT = "production"
+DEVPAD_API = "https://devpad.io/api"
 
 [[d1_databases]]
 binding = "DB"
@@ -12,13 +13,14 @@ database_name = "blog-devpad-db"
 database_id = "placeholder-update-after-creation"
 
 [[r2_buckets]]
-binding = "STORAGE"
-bucket_name = "blog-devpad-assets"
+binding = "CORPUS_BUCKET"
+bucket_name = "blog-devpad-corpus"
 
 [env.staging]
 name = "blog-devpad-staging"
 [env.staging.vars]
 ENVIRONMENT = "staging"
+DEVPAD_API = "https://staging.devpad.io/api"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -26,8 +28,8 @@ database_name = "blog-devpad-db-staging"
 database_id = "placeholder-update-after-creation"
 
 [[env.staging.r2_buckets]]
-binding = "STORAGE"
-bucket_name = "blog-devpad-assets-staging"
+binding = "CORPUS_BUCKET"
+bucket_name = "blog-devpad-corpus-staging"
 
 [dev]
 port = 8787

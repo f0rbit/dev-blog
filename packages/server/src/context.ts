@@ -10,7 +10,7 @@ import { drizzle } from "drizzle-orm/d1";
 
 export const createContextFromBindings = (env: Bindings): AppContext => {
 	const backend = create_cloudflare_backend({
-		d1: env.CORPUS_DB,
+		d1: env.DB,
 		r2: env.CORPUS_BUCKET as unknown as Parameters<typeof create_cloudflare_backend>[0]["r2"],
 	});
 

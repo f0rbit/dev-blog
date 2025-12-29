@@ -1,6 +1,7 @@
 import type { Component } from "solid-js";
 import { For, Show, createSignal } from "solid-js";
 import TagEditor from "./tag-editor";
+import { PostPreview } from "./post-preview";
 
 type Post = {
 	id: number;
@@ -88,6 +89,7 @@ const PostEditor: Component<PostEditorProps> = props => {
 
 	const [saving, setSaving] = createSignal(false);
 	const [error, setError] = createSignal<string | null>(null);
+	const [activeTab, setActiveTab] = createSignal<"write" | "preview">("write");
 
 	const isEditing = () => !!props.post;
 
@@ -216,8 +218,31 @@ const PostEditor: Component<PostEditorProps> = props => {
 				</Show>
 			</div>
 
-			{/* Content editor - full width, no border */}
-			<textarea class="post-editor__content" placeholder="Write your content..." prop:value={content()} onInput={e => setContent(e.currentTarget.value)} />
+			{/* Content editor with tabs */}
+			<div class="editor-tabs">
+				<button
+					type="button"
+					class={`tab ${activeTab() === "write" ? "active" : ""}`}
+					onClick={() => setActiveTab("write")}
+				>
+					Write
+				</button>
+				<button
+					type="button"
+					class={`tab ${activeTab() === "preview" ? "active" : ""}`}
+					onClick={() => setActiveTab("preview")}
+				>
+					Preview
+				</button>
+			</div>
+
+			<Show when={activeTab() === "write"}>
+				<textarea class="post-editor__content" placeholder="Write your content..." prop:value={content()} onInput={e => setContent(e.currentTarget.value)} />
+			</Show>
+
+			<Show when={activeTab() === "preview"}>
+				<PostPreview content={content()} format={format()} />
+			</Show>
 		</div>
 	);
 };

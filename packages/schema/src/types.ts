@@ -215,7 +215,6 @@ import type { DrizzleDB } from "./database";
 
 export type Bindings = {
 	DB: D1Database;
-	CORPUS_DB: D1Database;
 	CORPUS_BUCKET: R2Bucket;
 	DEVPAD_API: string;
 	ENVIRONMENT: string;

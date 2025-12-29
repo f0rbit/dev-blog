@@ -116,6 +116,7 @@ export {
 	create_memory_backend,
 	create_file_backend,
 	create_cloudflare_backend,
+	CORPUS_MIGRATION_SQL,
 } from "@f0rbit/corpus";
 
 export type {
