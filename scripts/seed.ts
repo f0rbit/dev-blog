@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import type { PostContent } from "../packages/schema/src/corpus";
 import * as schema from "../packages/schema/src/database";
@@ -175,8 +176,20 @@ The ownership system is unique to Rust...
 
 const seedPosts = async (db: ReturnType<typeof drizzle>, userId: number): Promise<void> => {
 	const now = new Date();
+	let seededCount = 0;
 
 	for (const seed of postSeeds) {
+		// Check if post with this slug already exists for this user
+		const existing = await db
+			.select({ id: schema.posts.id })
+			.from(schema.posts)
+			.where(and(eq(schema.posts.author_id, userId), eq(schema.posts.slug, seed.slug)))
+			.limit(1);
+
+		if (existing.length > 0) {
+			continue; // Skip already existing posts
+		}
+
 		const uuid = crypto.randomUUID();
 		const hash = await writeCorpusVersion(userId, uuid, seed.content);
 
@@ -204,9 +217,11 @@ const seedPosts = async (db: ReturnType<typeof drizzle>, userId: number): Promis
 				})
 				.onConflictDoNothing();
 		}
+
+		seededCount++;
 	}
 
-	console.log(`✓ Posts seeded: ${postSeeds.length} posts`);
+	console.log(`✓ Posts seeded: ${seededCount} new posts (${postSeeds.length - seededCount} already existed)`);
 };
 
 const seedAccessKey = async (db: ReturnType<typeof drizzle>, userId: number): Promise<void> => {
