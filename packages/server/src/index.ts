@@ -11,6 +11,7 @@ import { healthRouter } from "./routes/health";
 import { postsRouter } from "./routes/posts";
 import { tagsRouter } from "./routes/tags";
 import { tokensRouter } from "./routes/tokens";
+import { projectsRouter } from "./routes/projects";
 
 type Variables = {
 	user: User;
@@ -48,6 +49,8 @@ app.route("/api/category", categoriesRouter);
 app.route("/api/tokens", tokensRouter);
 app.route("/api/token", tokensRouter);
 app.route("/api/assets", assetsRouter);
+app.route("/api/projects", projectsRouter);
+app.route("/api/project", projectsRouter);
 
 app.notFound(c => c.json({ code: "NOT_FOUND", message: "Resource not found" }, 404));
 
