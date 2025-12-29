@@ -1,3 +1,315 @@
 ---
-return Astro.redirect("/posts");
+import BaseLayout from "@/layouts/base-layout.astro";
 ---
+
+<BaseLayout title="Blog - DevPad">
+  <div class="landing">
+    <!-- Navigation -->
+    <nav class="landing-nav">
+      <a href="/" class="landing-logo">blog</a>
+      <a href="/auth/login" class="btn-primary">Login with DevPad</a>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="landing-hero">
+      <h1 class="landing-title">
+        Blog Management<br />
+        <span class="landing-title-accent">for DevPad</span>
+      </h1>
+      <p class="landing-tagline">
+        Write in Markdown. Version everything. Publish when ready.
+      </p>
+      <a href="/auth/login" class="btn-primary btn-large">Get Started</a>
+    </section>
+
+    <!-- Features Section -->
+    <section class="landing-features">
+      <div class="feature-grid">
+        <div class="feature-card">
+          <span class="feature-icon">&#9672;</span>
+          <h3>Markdown & AsciiDoc</h3>
+          <p>Write naturally in your preferred format with live preview</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">&#9719;</span>
+          <h3>Version History</h3>
+          <p>Every save creates a version. Restore any previous state</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">&#8862;</span>
+          <h3>Categories & Tags</h3>
+          <p>Organize content with nested categories and flexible tags</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">&#9889;</span>
+          <h3>Scheduled Publishing</h3>
+          <p>Set posts to go live at a specific date and time</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">&#11041;</span>
+          <h3>DevPad Integration</h3>
+          <p>Link blog posts to your DevPad projects seamlessly</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">&#128065;</span>
+          <h3>Live Preview</h3>
+          <p>See rendered output as you type with syntax highlighting</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="landing-steps">
+      <h2 class="section-title">How It Works</h2>
+      <div class="steps-grid">
+        <div class="step">
+          <span class="step-number">1</span>
+          <h3>Connect</h3>
+          <p>Sign in with your DevPad account</p>
+        </div>
+        <div class="step-divider"></div>
+        <div class="step">
+          <span class="step-number">2</span>
+          <h3>Write</h3>
+          <p>Create and edit posts in Markdown</p>
+        </div>
+        <div class="step-divider"></div>
+        <div class="step">
+          <span class="step-number">3</span>
+          <h3>Publish</h3>
+          <p>Go live instantly or schedule for later</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom CTA -->
+    <section class="landing-cta">
+      <h2>Ready to start writing?</h2>
+      <a href="/auth/login" class="btn-primary btn-large">Login with DevPad</a>
+    </section>
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+      <span>blog.devpad.tools</span>
+      <span class="footer-divider">&middot;</span>
+      <a href="https://devpad.tools">devpad.tools</a>
+      <span class="footer-divider">&middot;</span>
+      <a href="https://github.com/f0rbit/dev-blog">GitHub</a>
+    </footer>
+  </div>
+</BaseLayout>
+
+<style>
+  .landing {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Navigation */
+  .landing-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .landing-logo {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+  }
+
+  /* Hero */
+  .landing-hero {
+    text-align: center;
+    padding: 6rem 2rem 4rem;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .landing-title {
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+  }
+
+  .landing-title-accent {
+    color: var(--text-muted);
+  }
+
+  .landing-tagline {
+    font-size: clamp(1.125rem, 2.5vw, 1.375rem);
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+    line-height: 1.6;
+  }
+
+  .btn-large {
+    padding: 0.875rem 2rem;
+    font-size: 1.125rem;
+  }
+
+  /* Features */
+  .landing-features {
+    padding: 4rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .feature-card {
+    padding: 2rem;
+    background: var(--input-background);
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+  }
+
+  .feature-icon {
+    font-size: 1.5rem;
+    display: block;
+    margin-bottom: 1rem;
+  }
+
+  .feature-card h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+  }
+
+  .feature-card p {
+    font-size: 0.9375rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* Steps */
+  .landing-steps {
+    padding: 4rem 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .section-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 3rem;
+    color: var(--text-primary);
+  }
+
+  .steps-grid {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .step {
+    flex: 1;
+    min-width: 150px;
+    max-width: 200px;
+  }
+
+  .step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: var(--input-background);
+    border: 2px solid var(--input-border);
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+  }
+
+  .step h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+  }
+
+  .step p {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+
+  .step-divider {
+    width: 3rem;
+    height: 2px;
+    background: var(--input-border);
+    margin-top: 1.25rem;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 640px) {
+    .step-divider {
+      display: none;
+    }
+    .steps-grid {
+      flex-direction: column;
+      align-items: center;
+    }
+    .step {
+      max-width: 300px;
+    }
+  }
+
+  /* Bottom CTA */
+  .landing-cta {
+    text-align: center;
+    padding: 5rem 2rem;
+    background: var(--input-background);
+    border-top: 1px solid var(--input-border);
+    border-bottom: 1px solid var(--input-border);
+    margin-top: 2rem;
+  }
+
+  .landing-cta h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+  }
+
+  /* Footer */
+  .landing-footer {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-top: auto;
+  }
+
+  .landing-footer a {
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+
+  .landing-footer a:hover {
+    color: var(--text-primary);
+  }
+
+  .footer-divider {
+    margin: 0 0.75rem;
+    opacity: 0.5;
+  }
+</style>
