@@ -1,4 +1,4 @@
-import { type Result, err, ok } from "@f0rbit/corpus";
+import { define_store, json_codec, type CorpusError as LibCorpusError } from "@f0rbit/corpus";
 import { z } from "zod";
 
 export const PostContentSchema = z.object({
@@ -10,39 +10,38 @@ export const PostContentSchema = z.object({
 
 export type PostContent = z.infer<typeof PostContentSchema>;
 
+export const postsStoreDefinition = define_store("posts", json_codec(PostContentSchema));
+
+export const postStoreId = (userId: number, postUuid: string): string =>
+	`posts/${userId}/${postUuid}`;
+
+export const corpusPath = postStoreId;
+
 export const VersionInfoSchema = z.object({
 	hash: z.string(),
 	parent: z.string().nullable(),
-	created_at: z.coerce.date(),
+	created_at: z.date(),
 });
 
 export type VersionInfo = z.infer<typeof VersionInfoSchema>;
 
-export type PutOptions = {
-	parent?: string;
-};
+export type PostCorpusError =
+	| { type: "not_found"; path: string; version?: string }
+	| { type: "invalid_content"; message: string }
+	| { type: "io_error"; message: string };
 
-export type PutResult = {
-	hash: string;
-};
-
-export type CorpusError = { type: "not_found"; path: string; version?: string } | { type: "invalid_content"; message: string } | { type: "io_error"; message: string };
-
-export interface CorpusBackend {
-	put(path: string, content: string, options?: PutOptions): Promise<Result<PutResult, CorpusError>>;
-	get(path: string, version?: string): Promise<Result<string, CorpusError>>;
-	listVersions(path: string): Promise<Result<VersionInfo[], CorpusError>>;
-	delete(path: string): Promise<Result<void, CorpusError>>;
-}
-
-export const corpusPath = (userId: number, postUuid: string): string => `posts/${userId}/${postUuid}`;
-
-export const parsePostContent = (raw: string): Result<PostContent, CorpusError> => {
-	const parsed = PostContentSchema.safeParse(JSON.parse(raw));
-	if (!parsed.success) {
-		return err({ type: "invalid_content", message: parsed.error.message });
+export const mapCorpusError = (e: LibCorpusError): PostCorpusError => {
+	if (e.kind === "not_found") {
+		return { type: "not_found", path: e.store_id, version: e.version };
 	}
-	return ok(parsed.data);
+	if (e.kind === "decode_error" || e.kind === "validation_error") {
+		return { type: "invalid_content", message: e.cause?.message ?? "Decode error" };
+	}
+	if (e.kind === "storage_error") {
+		return { type: "io_error", message: e.cause?.message ?? "Storage error" };
+	}
+	return { type: "io_error", message: "Unknown corpus error" };
 };
 
+export const parsePostContent = PostContentSchema.parse.bind(PostContentSchema);
 export const serializePostContent = (content: PostContent): string => JSON.stringify(content);

@@ -1,75 +1,18 @@
 import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { type DrizzleDB, type PostCreate, type PostUpdate, categories, tags, users } from "@blog/schema";
+import {
+	type DrizzleDB,
+	type PostCreate,
+	type PostUpdate,
+	type PostsCorpus,
+	categories,
+	create_corpus,
+	create_memory_backend,
+	postsStoreDefinition,
+	tags,
+	users,
+} from "@blog/schema";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-
-type R2ObjectBody = {
-	text: () => Promise<string>;
-	customMetadata?: Record<string, string>;
-};
-
-type R2Object = R2ObjectBody & {
-	key: string;
-	uploaded: Date;
-	customMetadata?: Record<string, string>;
-};
-
-type StoredItem = {
-	body: string;
-	metadata: Record<string, string>;
-	uploaded: Date;
-};
-
-class MemoryR2Bucket {
-	private store = new Map<string, StoredItem>();
-
-	async put(key: string, body: string, options?: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string> }): Promise<void> {
-		this.store.set(key, {
-			body,
-			metadata: options?.customMetadata ?? {},
-			uploaded: new Date(),
-		});
-	}
-
-	async get(key: string): Promise<R2ObjectBody | null> {
-		const stored = this.store.get(key);
-		if (!stored) return null;
-
-		return {
-			text: async () => stored.body,
-			customMetadata: stored.metadata,
-		};
-	}
-
-	async list(options?: { prefix?: string }): Promise<{ objects: R2Object[] }> {
-		const prefix = options?.prefix ?? "";
-		const objects: R2Object[] = [];
-
-		for (const [key, value] of this.store.entries()) {
-			if (key.startsWith(prefix)) {
-				objects.push({
-					key,
-					uploaded: value.uploaded,
-					customMetadata: value.metadata,
-					text: async () => value.body,
-				});
-			}
-		}
-
-		return { objects };
-	}
-
-	async delete(keys: string | string[]): Promise<void> {
-		const keyList = Array.isArray(keys) ? keys : [keys];
-		for (const key of keyList) {
-			this.store.delete(key);
-		}
-	}
-
-	clear(): void {
-		this.store.clear();
-	}
-}
 
 const SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS users (
@@ -117,18 +60,21 @@ const createTestContext = () => {
 	sqliteDb.exec(SCHEMA_SQL);
 
 	const db = drizzle(sqliteDb) as DrizzleDB;
-	const corpus = new MemoryR2Bucket();
+	const backend = create_memory_backend();
+	const corpus = create_corpus()
+		.with_backend(backend)
+		.with_store(postsStoreDefinition)
+		.build() as PostsCorpus;
 
 	return {
 		sqliteDb,
 		db,
-		corpus: corpus as unknown as R2Bucket,
+		corpus,
 		reset: () => {
 			sqliteDb.exec("DELETE FROM tags");
 			sqliteDb.exec("DELETE FROM posts");
 			sqliteDb.exec("DELETE FROM categories");
 			sqliteDb.exec("DELETE FROM users");
-			corpus.clear();
 		},
 		close: () => {
 			sqliteDb.close();
@@ -217,7 +163,9 @@ describe("PostService", () => {
 			expect(result.ok).toBe(true);
 			if (!result.ok) return;
 
-			expect(result.value.corpus_version).toMatch(/^[a-f0-9]{64}$/);
+			expect(result.value.corpus_version).toBeDefined();
+			expect(typeof result.value.corpus_version).toBe("string");
+			expect(result.value.corpus_version!.length).toBeGreaterThan(0);
 		});
 
 		it("handles slug conflicts", async () => {

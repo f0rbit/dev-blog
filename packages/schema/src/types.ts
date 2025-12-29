@@ -1,15 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 import { z } from "zod";
+import type { Corpus, Store } from "@f0rbit/corpus";
+import type { PostContent } from "./corpus";
 export { ok, err, pipe, try_catch_async, unwrap_or, match, format_error, type Result, type Pipe } from "@f0rbit/corpus";
-
-export const PostContentSchema = z.object({
-	title: z.string().min(1),
-	content: z.string(),
-	description: z.string().optional(),
-	format: z.enum(["md", "adoc"]),
-});
-
-export type PostContent = z.infer<typeof PostContentSchema>;
+export { PostContentSchema, type PostContent } from "./corpus";
 
 export const PostSchema = z.object({
 	id: z.number(),
@@ -221,14 +215,17 @@ import type { DrizzleDB } from "./database";
 
 export type Bindings = {
 	DB: D1Database;
-	CORPUS: R2Bucket;
+	CORPUS_DB: D1Database;
+	CORPUS_BUCKET: R2Bucket;
 	DEVPAD_API: string;
 	ENVIRONMENT: string;
 };
 
+export type PostsCorpus = Corpus<{ posts: Store<PostContent> }>;
+
 export type AppContext = {
 	db: DrizzleDB;
-	corpus: R2Bucket;
+	corpus: PostsCorpus;
 	devpadApi: string;
 	environment: string;
 };

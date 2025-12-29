@@ -93,7 +93,10 @@ export type {
 export {
 	PostContentSchema as CorpusPostContentSchema,
 	VersionInfoSchema,
+	postsStoreDefinition,
+	postStoreId,
 	corpusPath,
+	mapCorpusError,
 	parsePostContent,
 	serializePostContent,
 } from "./corpus";
@@ -101,8 +104,28 @@ export {
 export type {
 	PostContent as CorpusPostContent,
 	VersionInfo,
-	PutOptions,
-	PutResult,
-	CorpusError,
-	CorpusBackend,
+	PostCorpusError,
 } from "./corpus";
+
+export type { PostsCorpus } from "./types";
+
+export {
+	define_store,
+	json_codec,
+	create_corpus,
+	create_memory_backend,
+	create_file_backend,
+	create_cloudflare_backend,
+} from "@f0rbit/corpus";
+
+export type {
+	Corpus,
+	Store,
+	StoreDefinition,
+	Backend,
+	SnapshotMeta,
+	Snapshot,
+	PutOpts,
+	ListOpts,
+	CorpusError,
+} from "@f0rbit/corpus";

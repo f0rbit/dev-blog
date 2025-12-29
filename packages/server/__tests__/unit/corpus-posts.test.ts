@@ -1,85 +1,22 @@
 import { beforeEach, describe, expect, it } from "bun:test";
-import type { PostContent } from "@blog/schema";
-
-type R2ObjectBody = {
-	text: () => Promise<string>;
-	customMetadata?: Record<string, string>;
-};
-
-type R2Object = R2ObjectBody & {
-	key: string;
-	uploaded: Date;
-	customMetadata?: Record<string, string>;
-};
-
-type R2ListResult = {
-	objects: R2Object[];
-};
-
-type StoredItem = {
-	body: string;
-	metadata: Record<string, string>;
-	uploaded: Date;
-};
-
-class MemoryR2Bucket {
-	private store = new Map<string, StoredItem>();
-
-	async put(key: string, body: string, options?: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string> }): Promise<void> {
-		this.store.set(key, {
-			body,
-			metadata: options?.customMetadata ?? {},
-			uploaded: new Date(),
-		});
-	}
-
-	async get(key: string): Promise<R2ObjectBody | null> {
-		const stored = this.store.get(key);
-		if (!stored) return null;
-
-		return {
-			text: async () => stored.body,
-			customMetadata: stored.metadata,
-		};
-	}
-
-	async list(options?: { prefix?: string }): Promise<R2ListResult> {
-		const prefix = options?.prefix ?? "";
-		const objects: R2Object[] = [];
-
-		for (const [key, value] of this.store.entries()) {
-			if (key.startsWith(prefix)) {
-				objects.push({
-					key,
-					uploaded: value.uploaded,
-					customMetadata: value.metadata,
-					text: async () => value.body,
-				});
-			}
-		}
-
-		return { objects };
-	}
-
-	async delete(keys: string | string[]): Promise<void> {
-		const keyList = Array.isArray(keys) ? keys : [keys];
-		for (const key of keyList) {
-			this.store.delete(key);
-		}
-	}
-
-	clear(): void {
-		this.store.clear();
-	}
-}
-
+import {
+	type PostContent,
+	type PostsCorpus,
+	create_corpus,
+	create_memory_backend,
+	postsStoreDefinition,
+} from "@blog/schema";
 import { corpusPath, deleteContent, getContent, listVersions, putContent } from "../../src/corpus/posts";
 
 describe("corpus/posts", () => {
-	let bucket: MemoryR2Bucket;
+	let corpus: PostsCorpus;
 
 	beforeEach(() => {
-		bucket = new MemoryR2Bucket();
+		const backend = create_memory_backend();
+		corpus = create_corpus()
+			.with_backend(backend)
+			.with_store(postsStoreDefinition)
+			.build() as PostsCorpus;
 	});
 
 	describe("corpusPath", () => {
@@ -100,35 +37,39 @@ describe("corpus/posts", () => {
 	});
 
 	describe("putContent", () => {
-		it("stores content and returns 64-char sha256 hash", async () => {
+		it("stores content and returns hash", async () => {
 			const content: PostContent = {
 				title: "Test Post",
 				content: "Hello world",
 				format: "md",
 			};
 
-			const result = await putContent(bucket as unknown as R2Bucket, "posts/1/test-uuid", content);
+			const result = await putContent(corpus, "posts/1/test-uuid", content);
 
 			expect(result.ok).toBe(true);
 			if (result.ok) {
-				expect(result.value.hash).toMatch(/^[a-f0-9]{64}$/);
+				expect(result.value.hash).toBeDefined();
+				expect(typeof result.value.hash).toBe("string");
+				expect(result.value.hash.length).toBeGreaterThan(0);
 			}
 		});
 
-		it("generates consistent hashes for same content", async () => {
+		it("generates hashes with same content hash prefix for same content", async () => {
 			const content: PostContent = {
 				title: "Test Post",
 				content: "Hello world",
 				format: "md",
 			};
 
-			const result1 = await putContent(bucket as unknown as R2Bucket, "posts/1/test-1", content);
-			const result2 = await putContent(bucket as unknown as R2Bucket, "posts/1/test-2", content);
+			const result1 = await putContent(corpus, "posts/1/test-1", content);
+			const result2 = await putContent(corpus, "posts/1/test-2", content);
 
 			expect(result1.ok).toBe(true);
 			expect(result2.ok).toBe(true);
 			if (result1.ok && result2.ok) {
-				expect(result1.value.hash).toBe(result2.value.hash);
+				const prefix1 = result1.value.hash.split(".")[0];
+				const prefix2 = result2.value.hash.split(".")[0];
+				expect(prefix1).toBe(prefix2);
 			}
 		});
 
@@ -136,8 +77,8 @@ describe("corpus/posts", () => {
 			const content1: PostContent = { title: "Post 1", content: "A", format: "md" };
 			const content2: PostContent = { title: "Post 2", content: "B", format: "md" };
 
-			const result1 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", content1);
-			const result2 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", content2);
+			const result1 = await putContent(corpus, "posts/1/test", content1);
+			const result2 = await putContent(corpus, "posts/1/test", content2);
 
 			expect(result1.ok).toBe(true);
 			expect(result2.ok).toBe(true);
@@ -154,11 +95,11 @@ describe("corpus/posts", () => {
 				format: "md",
 			};
 
-			const putResult = await putContent(bucket as unknown as R2Bucket, "posts/1/test", content);
+			const putResult = await putContent(corpus, "posts/1/test", content);
 			expect(putResult.ok).toBe(true);
 			if (!putResult.ok) return;
 
-			const getResult = await getContent(bucket as unknown as R2Bucket, "posts/1/test", putResult.value.hash);
+			const getResult = await getContent(corpus, "posts/1/test", putResult.value.hash);
 			expect(getResult.ok).toBe(true);
 			if (getResult.ok) {
 				expect(getResult.value.description).toBe("A description");
@@ -172,11 +113,11 @@ describe("corpus/posts", () => {
 				format: "adoc",
 			};
 
-			const putResult = await putContent(bucket as unknown as R2Bucket, "posts/1/test", content);
+			const putResult = await putContent(corpus, "posts/1/test", content);
 			expect(putResult.ok).toBe(true);
 			if (!putResult.ok) return;
 
-			const getResult = await getContent(bucket as unknown as R2Bucket, "posts/1/test", putResult.value.hash);
+			const getResult = await getContent(corpus, "posts/1/test", putResult.value.hash);
 			expect(getResult.ok).toBe(true);
 			if (getResult.ok) {
 				expect(getResult.value.format).toBe("adoc");
@@ -193,11 +134,11 @@ describe("corpus/posts", () => {
 				format: "md",
 			};
 
-			const putResult = await putContent(bucket as unknown as R2Bucket, "posts/1/test", content);
+			const putResult = await putContent(corpus, "posts/1/test", content);
 			expect(putResult.ok).toBe(true);
 			if (!putResult.ok) return;
 
-			const getResult = await getContent(bucket as unknown as R2Bucket, "posts/1/test", putResult.value.hash);
+			const getResult = await getContent(corpus, "posts/1/test", putResult.value.hash);
 
 			expect(getResult.ok).toBe(true);
 			if (getResult.ok) {
@@ -206,7 +147,7 @@ describe("corpus/posts", () => {
 		});
 
 		it("returns not_found for missing content", async () => {
-			const result = await getContent(bucket as unknown as R2Bucket, "posts/1/missing", "nonexistent");
+			const result = await getContent(corpus, "posts/1/missing", "nonexistent");
 
 			expect(result.ok).toBe(false);
 			if (!result.ok) {
@@ -216,9 +157,9 @@ describe("corpus/posts", () => {
 
 		it("returns not_found for wrong hash", async () => {
 			const content: PostContent = { title: "Test", content: "Body", format: "md" };
-			await putContent(bucket as unknown as R2Bucket, "posts/1/test", content);
+			await putContent(corpus, "posts/1/test", content);
 
-			const result = await getContent(bucket as unknown as R2Bucket, "posts/1/test", "wronghash");
+			const result = await getContent(corpus, "posts/1/test", "wronghash");
 
 			expect(result.ok).toBe(false);
 			if (!result.ok) {
@@ -230,14 +171,14 @@ describe("corpus/posts", () => {
 			const content1: PostContent = { title: "V1", content: "First", format: "md" };
 			const content2: PostContent = { title: "V2", content: "Second", format: "md" };
 
-			const put1 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", content1);
-			const put2 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", content2);
+			const put1 = await putContent(corpus, "posts/1/test", content1);
+			const put2 = await putContent(corpus, "posts/1/test", content2);
 
 			expect(put1.ok && put2.ok).toBe(true);
 			if (!put1.ok || !put2.ok) return;
 
-			const get1 = await getContent(bucket as unknown as R2Bucket, "posts/1/test", put1.value.hash);
-			const get2 = await getContent(bucket as unknown as R2Bucket, "posts/1/test", put2.value.hash);
+			const get1 = await getContent(corpus, "posts/1/test", put1.value.hash);
+			const get2 = await getContent(corpus, "posts/1/test", put2.value.hash);
 
 			expect(get1.ok && get2.ok).toBe(true);
 			if (get1.ok) expect(get1.value.title).toBe("V1");
@@ -250,13 +191,13 @@ describe("corpus/posts", () => {
 			const content1: PostContent = { title: "V1", content: "First", format: "md" };
 			const content2: PostContent = { title: "V2", content: "Second", format: "md" };
 
-			const put1 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", content1);
-			const put2 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", content2, put1.ok ? put1.value.hash : undefined);
+			const put1 = await putContent(corpus, "posts/1/test", content1);
+			const put2 = await putContent(corpus, "posts/1/test", content2, put1.ok ? put1.value.hash : undefined);
 
 			expect(put1.ok).toBe(true);
 			expect(put2.ok).toBe(true);
 
-			const result = await listVersions(bucket as unknown as R2Bucket, "posts/1/test");
+			const result = await listVersions(corpus, "posts/1/test");
 
 			expect(result.ok).toBe(true);
 			if (result.ok) {
@@ -266,7 +207,7 @@ describe("corpus/posts", () => {
 		});
 
 		it("returns empty array for path with no versions", async () => {
-			const result = await listVersions(bucket as unknown as R2Bucket, "posts/1/empty");
+			const result = await listVersions(corpus, "posts/1/empty");
 
 			expect(result.ok).toBe(true);
 			if (result.ok) {
@@ -279,16 +220,16 @@ describe("corpus/posts", () => {
 			const content2: PostContent = { title: "V2", content: "Second", format: "md" };
 			const content3: PostContent = { title: "V3", content: "Third", format: "md" };
 
-			const put1 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", content1);
+			const put1 = await putContent(corpus, "posts/1/test", content1);
 			await new Promise(r => setTimeout(r, 10));
-			const put2 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", content2);
+			const put2 = await putContent(corpus, "posts/1/test", content2);
 			await new Promise(r => setTimeout(r, 10));
-			const put3 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", content3);
+			const put3 = await putContent(corpus, "posts/1/test", content3);
 
 			expect(put1.ok && put2.ok && put3.ok).toBe(true);
 			if (!put1.ok || !put2.ok || !put3.ok) return;
 
-			const result = await listVersions(bucket as unknown as R2Bucket, "posts/1/test");
+			const result = await listVersions(corpus, "posts/1/test");
 			expect(result.ok).toBe(true);
 			if (!result.ok) return;
 
@@ -300,9 +241,9 @@ describe("corpus/posts", () => {
 
 		it("includes created_at timestamp for each version", async () => {
 			const content: PostContent = { title: "Test", content: "Body", format: "md" };
-			await putContent(bucket as unknown as R2Bucket, "posts/1/test", content);
+			await putContent(corpus, "posts/1/test", content);
 
-			const result = await listVersions(bucket as unknown as R2Bucket, "posts/1/test");
+			const result = await listVersions(corpus, "posts/1/test");
 			expect(result.ok).toBe(true);
 			if (!result.ok) return;
 
@@ -315,14 +256,14 @@ describe("corpus/posts", () => {
 			const content1: PostContent = { title: "V1", content: "First", format: "md" };
 			const content2: PostContent = { title: "V2", content: "Second", format: "md" };
 
-			const put1 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", content1);
+			const put1 = await putContent(corpus, "posts/1/test", content1);
 			expect(put1.ok).toBe(true);
 			if (!put1.ok) return;
 
-			const put2 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", content2, put1.value.hash);
+			const put2 = await putContent(corpus, "posts/1/test", content2, put1.value.hash);
 			expect(put2.ok).toBe(true);
 
-			const result = await listVersions(bucket as unknown as R2Bucket, "posts/1/test");
+			const result = await listVersions(corpus, "posts/1/test");
 			expect(result.ok).toBe(true);
 			if (!result.ok) return;
 
@@ -332,9 +273,9 @@ describe("corpus/posts", () => {
 
 		it("first version has null parent", async () => {
 			const content: PostContent = { title: "Initial", content: "First version", format: "md" };
-			await putContent(bucket as unknown as R2Bucket, "posts/1/test", content);
+			await putContent(corpus, "posts/1/test", content);
 
-			const result = await listVersions(bucket as unknown as R2Bucket, "posts/1/test");
+			const result = await listVersions(corpus, "posts/1/test");
 			expect(result.ok).toBe(true);
 			if (!result.ok) return;
 
@@ -346,19 +287,19 @@ describe("corpus/posts", () => {
 			const v2: PostContent = { title: "V2", content: "Second", format: "md" };
 			const v3: PostContent = { title: "V3", content: "Third", format: "md" };
 
-			const put1 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", v1);
+			const put1 = await putContent(corpus, "posts/1/test", v1);
 			expect(put1.ok).toBe(true);
 			if (!put1.ok) return;
 
-			const put2 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", v2, put1.value.hash);
+			const put2 = await putContent(corpus, "posts/1/test", v2, put1.value.hash);
 			expect(put2.ok).toBe(true);
 			if (!put2.ok) return;
 
-			const put3 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", v3, put2.value.hash);
+			const put3 = await putContent(corpus, "posts/1/test", v3, put2.value.hash);
 			expect(put3.ok).toBe(true);
 			if (!put3.ok) return;
 
-			const result = await listVersions(bucket as unknown as R2Bucket, "posts/1/test");
+			const result = await listVersions(corpus, "posts/1/test");
 			expect(result.ok).toBe(true);
 			if (!result.ok) return;
 
@@ -379,17 +320,17 @@ describe("corpus/posts", () => {
 			const branch1: PostContent = { title: "Branch 1", content: "Change A", format: "md" };
 			const branch2: PostContent = { title: "Branch 2", content: "Change B", format: "md" };
 
-			const putBase = await putContent(bucket as unknown as R2Bucket, "posts/1/test", base);
+			const putBase = await putContent(corpus, "posts/1/test", base);
 			expect(putBase.ok).toBe(true);
 			if (!putBase.ok) return;
 
-			const putBranch1 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", branch1, putBase.value.hash);
-			const putBranch2 = await putContent(bucket as unknown as R2Bucket, "posts/1/test", branch2, putBase.value.hash);
+			const putBranch1 = await putContent(corpus, "posts/1/test", branch1, putBase.value.hash);
+			const putBranch2 = await putContent(corpus, "posts/1/test", branch2, putBase.value.hash);
 
 			expect(putBranch1.ok && putBranch2.ok).toBe(true);
 			if (!putBranch1.ok || !putBranch2.ok) return;
 
-			const result = await listVersions(bucket as unknown as R2Bucket, "posts/1/test");
+			const result = await listVersions(corpus, "posts/1/test");
 			expect(result.ok).toBe(true);
 			if (!result.ok) return;
 
@@ -405,13 +346,13 @@ describe("corpus/posts", () => {
 			const content1: PostContent = { title: "V1", content: "First", format: "md" };
 			const content2: PostContent = { title: "V2", content: "Second", format: "md" };
 
-			await putContent(bucket as unknown as R2Bucket, "posts/1/test", content1);
-			await putContent(bucket as unknown as R2Bucket, "posts/1/test", content2);
+			await putContent(corpus, "posts/1/test", content1);
+			await putContent(corpus, "posts/1/test", content2);
 
-			const deleteResult = await deleteContent(bucket as unknown as R2Bucket, "posts/1/test");
+			const deleteResult = await deleteContent(corpus, "posts/1/test");
 			expect(deleteResult.ok).toBe(true);
 
-			const listResult = await listVersions(bucket as unknown as R2Bucket, "posts/1/test");
+			const listResult = await listVersions(corpus, "posts/1/test");
 			expect(listResult.ok).toBe(true);
 			if (listResult.ok) {
 				expect(listResult.value).toEqual([]);
@@ -419,20 +360,20 @@ describe("corpus/posts", () => {
 		});
 
 		it("succeeds for non-existent path", async () => {
-			const result = await deleteContent(bucket as unknown as R2Bucket, "posts/1/nonexistent");
+			const result = await deleteContent(corpus, "posts/1/nonexistent");
 			expect(result.ok).toBe(true);
 		});
 
 		it("does not affect other paths", async () => {
 			const content: PostContent = { title: "Keep", content: "Me", format: "md" };
 
-			await putContent(bucket as unknown as R2Bucket, "posts/1/keep", content);
-			await putContent(bucket as unknown as R2Bucket, "posts/1/delete", content);
+			await putContent(corpus, "posts/1/keep", content);
+			await putContent(corpus, "posts/1/delete", content);
 
-			await deleteContent(bucket as unknown as R2Bucket, "posts/1/delete");
+			await deleteContent(corpus, "posts/1/delete");
 
-			const keepResult = await listVersions(bucket as unknown as R2Bucket, "posts/1/keep");
-			const deleteResult = await listVersions(bucket as unknown as R2Bucket, "posts/1/delete");
+			const keepResult = await listVersions(corpus, "posts/1/keep");
+			const deleteResult = await listVersions(corpus, "posts/1/delete");
 
 			expect(keepResult.ok && deleteResult.ok).toBe(true);
 			if (keepResult.ok) expect(keepResult.value.length).toBe(1);

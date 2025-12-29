@@ -1,11 +1,12 @@
 import {
-	type CorpusError,
 	type DrizzleDB,
 	type Post,
 	type PostContent,
+	type PostCorpusError,
 	type PostCreate,
 	type PostListParams,
 	type PostRow,
+	type PostsCorpus,
 	type PostUpdate,
 	type PostsResponse,
 	type Result,
@@ -22,14 +23,18 @@ import {
 import { and, desc, eq, gt, inArray, isNull, lte, sql } from "drizzle-orm";
 import { listVersions as corpusListVersions, corpusPath, deleteContent, getContent, putContent } from "../corpus/posts";
 
-type PostServiceError = { type: "not_found"; resource: string } | { type: "slug_conflict"; slug: string } | { type: "corpus_error"; inner: CorpusError } | { type: "db_error"; message: string };
+type PostServiceError =
+	| { type: "not_found"; resource: string }
+	| { type: "slug_conflict"; slug: string }
+	| { type: "corpus_error"; inner: PostCorpusError }
+	| { type: "db_error"; message: string };
 
 type Deps = {
 	db: DrizzleDB;
-	corpus: R2Bucket;
+	corpus: PostsCorpus;
 };
 
-const toCorpusError = (e: CorpusError): PostServiceError => ({
+const toCorpusError = (e: PostCorpusError): PostServiceError => ({
 	type: "corpus_error",
 	inner: e,
 });

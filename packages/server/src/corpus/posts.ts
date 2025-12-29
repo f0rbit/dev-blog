@@ -1,101 +1,95 @@
-import { type CorpusError, type PostContent, PostContentSchema, type Result, type VersionInfo, err, format_error, ok, pipe, try_catch_async } from "@blog/schema";
+import {
+	type PostContent,
+	type PostCorpusError,
+	type PostsCorpus,
+	type Result,
+	type VersionInfo,
+	corpusPath,
+	err,
+	mapCorpusError,
+	ok,
+	postsStoreDefinition,
+} from "@blog/schema";
+import { create_store, type Backend } from "@f0rbit/corpus";
 
-export const corpusPath = (userId: number, postUuid: string): string => `posts/${userId}/${postUuid}`;
+export { corpusPath };
 
-const versionKey = (basePath: string, hash: string): string => `${basePath}/v/${hash}.json`;
-
-const sha256 = async (content: string): Promise<string> => {
-	const encoder = new TextEncoder();
-	const data = encoder.encode(content);
-	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-	const hashArray = Array.from(new Uint8Array(hashBuffer));
-	return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-};
-
-type R2Metadata = {
-	parent?: string;
-	created_at: string;
-};
-
-const ioError = (e: unknown): CorpusError => ({
-	type: "io_error",
-	message: format_error(e),
-});
-
-export const putContent = async (corpus: R2Bucket, path: string, content: PostContent, parent?: string): Promise<Result<{ hash: string }, CorpusError>> => {
-	const serialized = JSON.stringify(content);
-	const hash = await sha256(serialized);
-	const key = versionKey(path, hash);
-	const now = new Date().toISOString();
-
-	const metadata: R2Metadata = {
-		created_at: now,
-		...(parent && { parent }),
+const corpusToBackend = (corpus: PostsCorpus): Backend => {
+	const backend: Backend = {
+		metadata: corpus.metadata,
+		data: corpus.data,
 	};
-
-	return pipe(
-		try_catch_async(
-			() =>
-				corpus.put(key, serialized, {
-					httpMetadata: { contentType: "application/json" },
-					customMetadata: metadata,
-				}),
-			ioError
-		)
-	)
-		.map(() => ({ hash }))
-		.result();
+	if (corpus.observations) {
+		backend.observations = corpus.observations;
+	}
+	return backend;
 };
 
-export const getContent = async (corpus: R2Bucket, path: string, hash: string): Promise<Result<PostContent, CorpusError>> => {
-	const key = versionKey(path, hash);
+const createDynamicStore = (corpus: PostsCorpus, storeId: string) =>
+	create_store(corpusToBackend(corpus), { ...postsStoreDefinition, id: storeId });
 
-	return pipe(try_catch_async(() => corpus.get(key), ioError))
-		.flat_map(object => {
-			if (!object) return err({ type: "not_found", path, version: hash });
-			return ok(object);
-		})
-		.flat_map(object =>
-			pipe(try_catch_async(() => object.text(), ioError))
-				.map(raw => JSON.parse(raw))
-				.flat_map(json => {
-					const parsed = PostContentSchema.safeParse(json);
-					if (!parsed.success) return err({ type: "invalid_content", message: parsed.error.message });
-					return ok(parsed.data);
-				})
-				.result()
-		)
-		.result();
+export const putContent = async (
+	corpus: PostsCorpus,
+	path: string,
+	content: PostContent,
+	parent?: string
+): Promise<Result<{ hash: string }, PostCorpusError>> => {
+	const store = createDynamicStore(corpus, path);
+
+	const opts = parent ? { parents: [{ store_id: path, version: parent }] } : {};
+	const result = await store.put(content, opts);
+
+	if (!result.ok) return err(mapCorpusError(result.error));
+
+	return ok({ hash: result.value.version });
 };
 
-export const listVersions = async (corpus: R2Bucket, path: string): Promise<Result<VersionInfo[], CorpusError>> => {
-	const prefix = `${path}/v/`;
+export const getContent = async (
+	corpus: PostsCorpus,
+	path: string,
+	hash: string
+): Promise<Result<PostContent, PostCorpusError>> => {
+	const store = createDynamicStore(corpus, path);
 
-	return pipe(try_catch_async(() => corpus.list({ prefix }), ioError))
-		.map(listed =>
-			listed.objects
-				.map(obj => {
-					const hash = obj.key.replace(prefix, "").replace(".json", "");
-					const meta = obj.customMetadata ?? {};
-					const parent = meta.parent ?? null;
-					const createdAtStr = meta.created_at;
-					const created_at = createdAtStr ? new Date(createdAtStr) : obj.uploaded;
-					return { hash, parent, created_at };
-				})
-				.sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
-		)
-		.result();
+	const result = await store.get(hash);
+
+	if (!result.ok) return err(mapCorpusError(result.error));
+
+	return ok(result.value.data);
 };
 
-export const deleteContent = async (corpus: R2Bucket, path: string): Promise<Result<void, CorpusError>> => {
-	const prefix = `${path}/v/`;
+export const listVersions = async (
+	corpus: PostsCorpus,
+	path: string
+): Promise<Result<VersionInfo[], PostCorpusError>> => {
+	const store = createDynamicStore(corpus, path);
 
-	return pipe(try_catch_async(() => corpus.list({ prefix }), ioError))
-		.flat_map(listed => {
-			const keys = listed.objects.map(obj => obj.key);
-			if (keys.length === 0) return ok(undefined);
-			return try_catch_async(() => corpus.delete(keys), ioError);
-		})
-		.map(() => undefined)
-		.result();
+	const versions: VersionInfo[] = [];
+
+	for await (const meta of store.list()) {
+		const firstParent = meta.parents[0];
+		versions.push({
+			hash: meta.version,
+			parent: firstParent?.version ?? null,
+			created_at: meta.created_at,
+		});
+	}
+
+	versions.sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+
+	return ok(versions);
+};
+
+export const deleteContent = async (
+	corpus: PostsCorpus,
+	path: string
+): Promise<Result<void, PostCorpusError>> => {
+	const store = createDynamicStore(corpus, path);
+
+	for await (const meta of store.list()) {
+		const result = await store.delete(meta.version);
+		if (!result.ok) return err(mapCorpusError(result.error));
+	}
+
+	return ok(undefined);
 };
