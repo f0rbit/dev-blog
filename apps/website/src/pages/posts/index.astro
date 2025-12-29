@@ -10,7 +10,11 @@ type Post = {
   tags: string[];
   publish_at: string | null;
   updated_at: string;
+  project_ids: string[];
 };
+
+const formatProjectId = (id: string): string => 
+  id.replace(/^proj[-_]/, "").replace(/[-_]/g, " ");
 
 const relativeTime = (dateStr: string): string => {
   const date = new Date(dateStr);
@@ -69,6 +73,13 @@ try {
                   <span class="post-card__title">{post.title}</span>
                   {post.description && <p class="post-card__description">{post.description}</p>}
                 </a>
+                {post.project_ids.length > 0 && (
+                  <div class="post-card__projects">
+                    {post.project_ids.map(id => (
+                      <span class="post-card__project">{formatProjectId(id)}</span>
+                    ))}
+                  </div>
+                )}
                 <div class="post-card__footer">
                   <span class="post-card__meta">
                     <span class="post-card__category">{post.category}</span>
