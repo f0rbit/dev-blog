@@ -16,7 +16,7 @@ authRouter.get("/user", c => {
 		return c.json({ code: "UNAUTHORIZED", message: "Not authenticated" }, 401);
 	}
 
-	return c.json(user);
+	return c.json({ user });
 });
 
 authRouter.get("/login", c => {

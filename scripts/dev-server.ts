@@ -195,7 +195,12 @@ type R2Objects = {
 const createR2Shim = (corpus: FileCorpusBackend, corpusPath: string): R2Bucket =>
 	({
 		get: async (key: string): Promise<R2ObjectBody | null> => {
-			const result = await corpus.get(key);
+			// Parse key like "posts/1/uuid/v/hash.json" into path and version
+			const versionMatch = key.match(/^(.+)\/v\/([^/]+)\.json$/);
+			if (!versionMatch) return null;
+			
+			const [, path, version] = versionMatch;
+			const result = await corpus.get(path, version);
 			if (!result.ok) return null;
 
 			const content = result.value;
@@ -346,7 +351,7 @@ const createDevApp = (appContext: AppContext) => {
 		})
 	);
 
-	app.get("/auth/user", c => c.json(DEV_USER));
+	app.get("/auth/user", c => c.json({ user: DEV_USER }));
 	app.get("/auth/login", c => c.redirect("/"));
 	app.get("/auth/logout", c => c.json({ success: true, message: "Logged out" }));
 

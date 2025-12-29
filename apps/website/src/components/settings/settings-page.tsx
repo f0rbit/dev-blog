@@ -4,9 +4,13 @@ import TokenForm from "./token-form";
 import TokenList from "./token-list";
 
 interface User {
-	id: string;
-	email: string;
+	id: number;
+	github_id: number;
+	username: string;
+	email: string | null;
+	avatar_url: string | null;
 	created_at: string;
+	updated_at: string;
 }
 
 interface Token {
@@ -127,8 +131,12 @@ const SettingsPage: Component = () => {
 						{(userData) => (
 							<>
 								<div class="profile-row">
+									<span class="profile-row__label">Username</span>
+									<span class="profile-row__value">{userData.username}</span>
+								</div>
+								<div class="profile-row">
 									<span class="profile-row__label">Email</span>
-									<span class="profile-row__value">{userData.email}</span>
+									<span class="profile-row__value">{userData.email ?? "Not set"}</span>
 								</div>
 								<div class="profile-row">
 									<span class="profile-row__label">User ID</span>
