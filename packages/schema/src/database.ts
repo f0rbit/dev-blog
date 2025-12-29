@@ -118,6 +118,21 @@ export const projectsCache = sqliteTable("projects_cache", {
 	fetched_at: integer("fetched_at", { mode: "timestamp" }),
 });
 
+export const postProjects = sqliteTable(
+	"post_projects",
+	{
+		post_id: integer("post_id")
+			.notNull()
+			.references(() => posts.id, { onDelete: "cascade" }),
+		project_id: text("project_id").notNull(),
+		created_at: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+	},
+	table => [primaryKey({ columns: [table.post_id, table.project_id] })]
+);
+
+export type PostProject = typeof postProjects.$inferSelect;
+export type PostProjectInsert = typeof postProjects.$inferInsert;
+
 export type User = typeof users.$inferSelect;
 export type UserInsert = typeof users.$inferInsert;
 

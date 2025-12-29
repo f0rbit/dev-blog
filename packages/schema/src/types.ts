@@ -5,6 +5,18 @@ import type { PostContent } from "./corpus";
 export { ok, err, pipe, try_catch_async, unwrap_or, match, format_error, type Result, type Pipe } from "@f0rbit/corpus";
 export { PostContentSchema, type PostContent } from "./corpus";
 
+export const ProjectSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	slug: z.string(),
+	description: z.string().nullable(),
+	color: z.string().nullable(),
+	icon: z.string().nullable(),
+	url: z.string().nullable(),
+});
+
+export type Project = z.infer<typeof ProjectSchema>;
+
 export const PostSchema = z.object({
 	id: z.number(),
 	uuid: z.string().uuid(),
@@ -20,7 +32,7 @@ export const PostSchema = z.object({
 	publish_at: z.coerce.date().nullable(),
 	created_at: z.coerce.date(),
 	updated_at: z.coerce.date(),
-	project_id: z.string().nullable(),
+	project_ids: z.array(z.string()),
 	corpus_version: z.string().nullable(),
 });
 
@@ -37,7 +49,7 @@ export const PostCreateSchema = z.object({
 	category: z.string().default("root"),
 	tags: z.array(z.string()).default([]),
 	publish_at: z.coerce.date().nullable().optional(),
-	project_id: z.string().nullable().optional(),
+	project_ids: z.array(z.string()).optional(),
 });
 
 export type PostCreate = z.infer<typeof PostCreateSchema>;
@@ -52,7 +64,7 @@ export const PostUpdateSchema = z.object({
 	tags: z.array(z.string()).optional(),
 	archived: z.boolean().optional(),
 	publish_at: z.coerce.date().nullable().optional(),
-	project_id: z.string().nullable().optional(),
+	project_ids: z.array(z.string()).optional(),
 });
 
 export type PostUpdate = z.infer<typeof PostUpdateSchema>;

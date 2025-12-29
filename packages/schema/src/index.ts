@@ -8,6 +8,7 @@ export {
 	fetchLinks,
 	devpadTokens,
 	projectsCache,
+	postProjects,
 } from "./database";
 
 export type {
@@ -30,6 +31,8 @@ export type {
 	DevpadTokenInsert,
 	ProjectCache as ProjectCacheRow,
 	ProjectCacheInsert,
+	PostProject,
+	PostProjectInsert,
 } from "./database";
 
 export {
@@ -50,6 +53,7 @@ export {
 	IntegrationUpsertSchema,
 	FetchLinkSchema,
 	ProjectCacheSchema,
+	ProjectSchema,
 	isPublished,
 	isScheduled,
 	isDraft,
@@ -81,6 +85,7 @@ export type {
 	IntegrationUpsert,
 	FetchLink,
 	ProjectCache,
+	Project,
 	PostStatus,
 	Result,
 	Pipe,
