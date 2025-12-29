@@ -217,9 +217,14 @@ export type PaginatedResponse<T> = {
 	hasMore: boolean;
 };
 
+import type { DrizzleDB } from "./database";
+
 export interface Env {
-	DB: D1Database;
-	CORPUS: R2Bucket;
-	DEVPAD_API: string;
-	ENVIRONMENT: string;
+	db: DrizzleDB;
+	corpus: R2Bucket;
+	devpadApi: string;
+	environment: string;
 }
+
+// Re-export DrizzleDB for convenience
+export type { DrizzleDB } from "./database";

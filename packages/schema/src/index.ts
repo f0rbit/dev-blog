@@ -11,6 +11,7 @@ export {
 } from "./database";
 
 export type {
+	DrizzleDB,
 	User as UserRow,
 	UserInsert,
 	PostRow,

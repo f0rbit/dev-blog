@@ -1,5 +1,10 @@
 import { sql } from "drizzle-orm";
+import type { BaseSQLiteDatabase } from "drizzle-orm/sqlite-core";
 import { integer, primaryKey, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
+
+// Generic Drizzle SQLite database type - works with both D1 and bun-sqlite
+// biome-ignore lint/suspicious/noExplicitAny: Drizzle uses 'any' for flexible query/result types
+export type DrizzleDB = BaseSQLiteDatabase<"async", any, Record<string, never>>;
 
 export const users = sqliteTable("users", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
