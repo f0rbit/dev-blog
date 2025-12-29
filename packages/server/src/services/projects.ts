@@ -34,8 +34,6 @@ type Deps = {
 	devpadProvider: DevpadProvider;
 };
 
-const CACHE_TTL_MS = 5 * 60 * 1000;
-
 const getBackend = (corpus: PostsCorpus): Backend => ({
 	metadata: corpus.metadata,
 	data: corpus.data,
@@ -64,20 +62,12 @@ export const createProjectService = ({ db, corpus, devpadProvider }: Deps) => {
 		return ok(undefined);
 	};
 
-	const isCacheStale = (cache: ProjectsCache): boolean => {
-		const fetchedAt = new Date(cache.fetched_at).getTime();
-		return Date.now() - fetchedAt > CACHE_TTL_MS;
-	};
-
-	const list = async (userId: number, forceRefresh = false): Promise<Result<Project[], ProjectServiceError>> => {
-		if (!forceRefresh) {
-			const cache = await getCache(userId);
-			if (cache && !isCacheStale(cache)) {
-				return ok(cache.projects);
-			}
+	const list = async (userId: number): Promise<Result<Project[], ProjectServiceError>> => {
+		const cache = await getCache(userId);
+		if (cache) {
+			return ok(cache.projects);
 		}
-
-		return refresh(userId);
+		return ok([]);
 	};
 
 	const refresh = async (userId: number): Promise<Result<Project[], ProjectServiceError>> => {

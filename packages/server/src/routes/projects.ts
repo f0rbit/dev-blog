@@ -47,17 +47,14 @@ projectsRouter.get("/", async (c) => {
 	const user = c.get("user");
 	const service = getService(c);
 
-	const refresh = c.req.query("refresh") === "true";
-	const result = await service.list(user.id, refresh);
+	const result = await service.list(user.id);
 
 	if (!result.ok) {
-		if (result.error.type === "no_token") {
-			return c.json({ projects: [], connected: false }, 200);
-		}
-		return c.json({ error: errorMessage(result.error) }, 500);
+		return c.json({ error: result.error.message ?? result.error.type }, 500);
 	}
 
-	return c.json({ projects: result.value, connected: true });
+	const connected = await service.hasToken(user.id);
+	return c.json({ projects: result.value, connected });
 });
 
 projectsRouter.post("/refresh", async (c) => {
