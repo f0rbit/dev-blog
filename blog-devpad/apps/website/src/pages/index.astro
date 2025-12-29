@@ -1,0 +1,82 @@
+---
+import BaseLayout from "@/layouts/base-layout.astro";
+import Button from "@/components/ui/button";
+import StatusBadge from "@/components/ui/status-badge";
+---
+
+<BaseLayout title="Dashboard">
+  <main class="dashboard">
+    <header class="dashboard__header">
+      <h1>Posts</h1>
+      <Button client:load variant="primary">New Post</Button>
+    </header>
+
+    <section class="dashboard__content">
+      <div class="posts-placeholder">
+        <p class="posts-placeholder__text">No posts yet. Create your first post to get started.</p>
+        <div class="posts-placeholder__demo">
+          <h3>Status Badge Examples:</h3>
+          <div class="badge-row">
+            <StatusBadge client:load status="draft" />
+            <StatusBadge client:load status="scheduled" />
+            <StatusBadge client:load status="published" />
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<style>
+  .dashboard {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--space-lg);
+  }
+
+  .dashboard__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-xl);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px solid var(--input-border);
+  }
+
+  .dashboard__content {
+    min-height: 400px;
+  }
+
+  .posts-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xl);
+    padding: var(--space-xl);
+    background-color: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    text-align: center;
+  }
+
+  .posts-placeholder__text {
+    color: var(--text-muted);
+    font-size: 1.125rem;
+  }
+
+  .posts-placeholder__demo {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .posts-placeholder__demo h3 {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .badge-row {
+    display: flex;
+    gap: var(--space-sm);
+  }
+</style>

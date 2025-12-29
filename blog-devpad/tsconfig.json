@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noUncheckedIndexedAccess": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "exactOptionalPropertyTypes": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "paths": {
+      "@blog/schema": ["./packages/schema/src/index.ts"],
+      "@blog/schema/*": ["./packages/schema/src/*"],
+      "@blog/server": ["./packages/server/src/index.ts"],
+      "@blog/server/*": ["./packages/server/src/*"],
+      "@blog/api": ["./packages/api/src/index.ts"],
+      "@blog/api/*": ["./packages/api/src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist", ".wrangler"]
+}
