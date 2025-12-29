@@ -3,11 +3,18 @@ import { existsSync, readdirSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { type Result, err, ok } from "@f0rbit/corpus";
 import { serve } from "bun";
+import { drizzle } from "drizzle-orm/bun-sqlite";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { type CorpusBackend, type CorpusError, type PostContent, PostContentSchema, type PutOptions, type PutResult, type VersionInfo } from "../packages/schema/src/corpus";
-import type { User } from "../packages/schema/src/types";
+import type { DrizzleDB } from "../packages/schema/src/database";
+import type { Env, User } from "../packages/schema/src/types";
+import { assetsRouter } from "../packages/server/src/routes/assets";
+import { categoriesRouter } from "../packages/server/src/routes/categories";
+import { postsRouter } from "../packages/server/src/routes/posts";
+import { tagsRouter } from "../packages/server/src/routes/tags";
+import { tokensRouter } from "../packages/server/src/routes/tokens";
 
 const LOCAL_DIR = "./local";
 const DB_PATH = `${LOCAL_DIR}/sqlite.db`;
@@ -23,6 +30,10 @@ const DEV_USER: User = {
 	created_at: new Date(),
 	updated_at: new Date(),
 };
+
+// -----------------------------------------------------------------------------
+// File-based Corpus Backend (simulates R2 for local dev)
+// -----------------------------------------------------------------------------
 
 type FileCorpusEntry = {
 	content: PostContent;
@@ -159,55 +170,9 @@ class FileCorpusBackend implements CorpusBackend {
 	}
 }
 
-type D1PreparedStatement = {
-	bind: (...args: unknown[]) => D1PreparedStatement;
-	all: () => Promise<{ results: unknown[] }>;
-	run: () => Promise<{ success: boolean }>;
-	first: <T = unknown>() => Promise<T | null>;
-};
-
-const createD1Shim = (sqlite: ReturnType<typeof Database>): D1Database =>
-	({
-		prepare: (query: string): D1PreparedStatement => {
-			let boundArgs: unknown[] = [];
-
-			const statement: D1PreparedStatement = {
-				bind: (...args: unknown[]) => {
-					boundArgs = args;
-					return statement;
-				},
-				all: async () => {
-					const stmt = sqlite.prepare(query);
-					const results = stmt.all(...boundArgs);
-					return { results };
-				},
-				run: async () => {
-					const stmt = sqlite.prepare(query);
-					stmt.run(...boundArgs);
-					return { success: true };
-				},
-				first: async <T = unknown>() => {
-					const stmt = sqlite.prepare(query);
-					return stmt.get(...boundArgs) as T | null;
-				},
-			};
-
-			return statement;
-		},
-		batch: async <T = unknown>(statements: D1PreparedStatement[]): Promise<T[]> => {
-			const results: T[] = [];
-			for (const stmt of statements) {
-				const result = await stmt.all();
-				results.push(result as T);
-			}
-			return results;
-		},
-		exec: async (query: string) => {
-			sqlite.exec(query);
-			return { count: 0, duration: 0 };
-		},
-		dump: async () => new ArrayBuffer(0),
-	}) as unknown as D1Database;
+// -----------------------------------------------------------------------------
+// R2 Shim (wraps FileCorpusBackend to look like R2Bucket)
+// -----------------------------------------------------------------------------
 
 type R2ObjectBody = {
 	body: ReadableStream<Uint8Array>;
@@ -227,7 +192,7 @@ type R2Objects = {
 	cursor?: string;
 };
 
-const createR2Shim = (corpus: FileCorpusBackend): R2Bucket =>
+const createR2Shim = (corpus: FileCorpusBackend, corpusPath: string): R2Bucket =>
 	({
 		get: async (key: string): Promise<R2ObjectBody | null> => {
 			const result = await corpus.get(key);
@@ -291,7 +256,7 @@ const createR2Shim = (corpus: FileCorpusBackend): R2Bucket =>
 
 		list: async (options?: { prefix?: string }): Promise<R2Objects> => {
 			const prefix = options?.prefix ?? "";
-			const basePath = `${CORPUS_PATH}/${prefix}`;
+			const basePath = `${corpusPath}/${prefix}`;
 
 			if (!existsSync(basePath)) {
 				return { objects: [], truncated: false, cursor: undefined };
@@ -343,19 +308,16 @@ const createR2Shim = (corpus: FileCorpusBackend): R2Bucket =>
 		},
 	}) as unknown as R2Bucket;
 
-type DevEnv = {
-	DB: D1Database;
-	CORPUS: R2Bucket;
-	DEVPAD_API: string;
-	ENVIRONMENT: string;
-};
+// -----------------------------------------------------------------------------
+// Dev Server App
+// -----------------------------------------------------------------------------
 
 type DevVariables = {
 	user: User;
 };
 
-const createDevApp = (env: DevEnv) => {
-	const app = new Hono<{ Bindings: DevEnv; Variables: DevVariables }>();
+const createDevApp = (env: Env) => {
+	const app = new Hono<{ Bindings: Env; Variables: DevVariables }>();
 
 	app.use("*", logger());
 	app.use(
@@ -386,6 +348,16 @@ const createDevApp = (env: DevEnv) => {
 	app.get("/auth/user", c => c.json(DEV_USER));
 	app.get("/auth/login", c => c.redirect("/"));
 	app.get("/auth/logout", c => c.json({ success: true, message: "Logged out" }));
+
+	// Mount API routes
+	app.route("/posts", postsRouter);
+	app.route("/post", postsRouter);
+	app.route("/tags", tagsRouter);
+	app.route("/categories", categoriesRouter);
+	app.route("/category", categoriesRouter);
+	app.route("/tokens", tokensRouter);
+	app.route("/token", tokensRouter);
+	app.route("/assets", assetsRouter);
 
 	app.notFound(c => c.json({ code: "NOT_FOUND", message: "Resource not found" }, 404));
 
@@ -419,14 +391,19 @@ const main = async () => {
 
 	console.log("🚀 Starting dev server...\n");
 
+	// Create SQLite database and wrap with Drizzle
 	const sqlite = new Database(DB_PATH);
-	const corpus = new FileCorpusBackend(CORPUS_PATH);
+	const db = drizzle(sqlite) as DrizzleDB;
 
-	const env: DevEnv = {
-		DB: createD1Shim(sqlite),
-		CORPUS: createR2Shim(corpus),
-		DEVPAD_API: "http://localhost:3000",
-		ENVIRONMENT: "development",
+	// Create file-based corpus backend
+	const corpusBackend = new FileCorpusBackend(CORPUS_PATH);
+	const corpus = createR2Shim(corpusBackend, CORPUS_PATH);
+
+	const env: Env = {
+		db,
+		corpus,
+		devpadApi: "http://localhost:3000",
+		environment: "development",
 	};
 
 	const app = createDevApp(env);
@@ -436,9 +413,11 @@ const main = async () => {
 	console.log(`✓ Dev user: ${DEV_USER.username}`);
 	console.log(`\n📡 Dev server running on http://localhost:${PORT}`);
 	console.log("\nEndpoints:");
-	console.log("  GET  /health       - Health check");
-	console.log("  GET  /auth/user    - Current user");
-	console.log('\nUse Auth-Token header with "dev-api-token-12345" for API calls');
+	console.log("  GET  /health        - Health check");
+	console.log("  GET  /auth/user     - Current user");
+	console.log("  GET  /posts         - List posts");
+	console.log("  GET  /categories    - List categories");
+	console.log("  GET  /tokens        - List API tokens");
 
 	serve({
 		port: PORT,
