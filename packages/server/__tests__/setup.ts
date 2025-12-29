@@ -1,34 +1,34 @@
-import { createHash } from "crypto";
+import { createHash } from "node:crypto";
 
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
 
 export type VersionData = {
-  hash: string;
-  content: string;
-  parent?: string;
-  createdAt: Date;
+	hash: string;
+	content: string;
+	parent?: string;
+	createdAt: Date;
 };
 
 export type VersionInfo = {
-  hash: string;
-  parent?: string;
-  createdAt: Date;
+	hash: string;
+	parent?: string;
+	createdAt: Date;
 };
 
 export interface CorpusBackend {
-  put(path: string, content: string, options?: { parent?: string }): Promise<{ hash: string }>;
-  get(path: string, hash: string): Promise<string | null>;
-  listVersions(path: string): Promise<VersionInfo[]>;
+	put(path: string, content: string, options?: { parent?: string }): Promise<{ hash: string }>;
+	get(path: string, hash: string): Promise<string | null>;
+	listVersions(path: string): Promise<VersionInfo[]>;
 }
 
 export type TestUser = {
-  id: number;
-  github_id: number;
-  username: string;
-  email: string;
-  avatar_url: string;
+	id: number;
+	github_id: number;
+	username: string;
+	email: string;
+	avatar_url: string;
 };
 
 // -----------------------------------------------------------------------------
@@ -36,51 +36,47 @@ export type TestUser = {
 // -----------------------------------------------------------------------------
 
 const computeHash = (content: string): string => {
-  return createHash("sha256").update(content).digest("hex").slice(0, 16);
+	return createHash("sha256").update(content).digest("hex").slice(0, 16);
 };
 
 export class MemoryCorpusBackend implements CorpusBackend {
-  private store = new Map<string, Map<string, VersionData>>();
+	private store = new Map<string, Map<string, VersionData>>();
 
-  async put(
-    path: string,
-    content: string,
-    options?: { parent?: string }
-  ): Promise<{ hash: string }> {
-    const hash = computeHash(content);
-    const pathStore = this.store.get(path) ?? new Map<string, VersionData>();
-    
-    pathStore.set(hash, {
-      hash,
-      content,
-      parent: options?.parent,
-      createdAt: new Date(),
-    });
-    
-    this.store.set(path, pathStore);
-    return { hash };
-  }
+	async put(path: string, content: string, options?: { parent?: string }): Promise<{ hash: string }> {
+		const hash = computeHash(content);
+		const pathStore = this.store.get(path) ?? new Map<string, VersionData>();
 
-  async get(path: string, hash: string): Promise<string | null> {
-    const pathStore = this.store.get(path);
-    if (!pathStore) return null;
-    
-    const version = pathStore.get(hash);
-    return version?.content ?? null;
-  }
+		pathStore.set(hash, {
+			hash,
+			content,
+			parent: options?.parent,
+			createdAt: new Date(),
+		});
 
-  async listVersions(path: string): Promise<VersionInfo[]> {
-    const pathStore = this.store.get(path);
-    if (!pathStore) return [];
-    
-    return Array.from(pathStore.values())
-      .map(({ hash, parent, createdAt }) => ({ hash, parent, createdAt }))
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  }
+		this.store.set(path, pathStore);
+		return { hash };
+	}
 
-  clear(): void {
-    this.store.clear();
-  }
+	async get(path: string, hash: string): Promise<string | null> {
+		const pathStore = this.store.get(path);
+		if (!pathStore) return null;
+
+		const version = pathStore.get(hash);
+		return version?.content ?? null;
+	}
+
+	async listVersions(path: string): Promise<VersionInfo[]> {
+		const pathStore = this.store.get(path);
+		if (!pathStore) return [];
+
+		return Array.from(pathStore.values())
+			.map(({ hash, parent, createdAt }) => ({ hash, parent, createdAt }))
+			.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+	}
+
+	clear(): void {
+		this.store.clear();
+	}
 }
 
 // -----------------------------------------------------------------------------
@@ -88,45 +84,45 @@ export class MemoryCorpusBackend implements CorpusBackend {
 // -----------------------------------------------------------------------------
 
 export type DevToArticle = {
-  id: number;
-  title: string;
-  description: string;
-  url: string;
-  published_at: string;
-  tag_list: string[];
+	id: number;
+	title: string;
+	description: string;
+	url: string;
+	published_at: string;
+	tag_list: string[];
 };
 
 export class MockDevToProvider {
-  private articles: DevToArticle[] = [];
+	private articles: DevToArticle[] = [];
 
-  setArticles(articles: DevToArticle[]): void {
-    this.articles = articles;
-  }
+	setArticles(articles: DevToArticle[]): void {
+		this.articles = articles;
+	}
 
-  async fetchArticles(_token: string): Promise<DevToArticle[]> {
-    return this.articles;
-  }
+	async fetchArticles(_token: string): Promise<DevToArticle[]> {
+		return this.articles;
+	}
 }
 
 export type DevpadProject = {
-  id: string;
-  name: string;
-  description: string;
-  url: string;
-  createdAt: string;
-  updatedAt: string;
+	id: string;
+	name: string;
+	description: string;
+	url: string;
+	createdAt: string;
+	updatedAt: string;
 };
 
 export class MockDevpadProvider {
-  private projects: DevpadProject[] = [];
+	private projects: DevpadProject[] = [];
 
-  setProjects(projects: DevpadProject[]): void {
-    this.projects = projects;
-  }
+	setProjects(projects: DevpadProject[]): void {
+		this.projects = projects;
+	}
 
-  async fetchProjects(_token: string): Promise<DevpadProject[]> {
-    return this.projects;
-  }
+	async fetchProjects(_token: string): Promise<DevpadProject[]> {
+		return this.projects;
+	}
 }
 
 // -----------------------------------------------------------------------------
@@ -136,9 +132,9 @@ export class MockDevpadProvider {
 export const generateId = (): string => crypto.randomUUID();
 
 export const seedTestUser = (): TestUser => ({
-  id: 1,
-  github_id: 12345,
-  username: "test-user",
-  email: "test@example.com",
-  avatar_url: "https://github.com/ghost.png",
+	id: 1,
+	github_id: 12345,
+	username: "test-user",
+	email: "test@example.com",
+	avatar_url: "https://github.com/ghost.png",
 });

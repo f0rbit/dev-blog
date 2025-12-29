@@ -5,41 +5,41 @@ type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 type ButtonSize = "sm" | "md" | "lg";
 
 type ButtonProps = {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
-  disabled?: boolean;
+	variant?: ButtonVariant;
+	size?: ButtonSize;
+	disabled?: boolean;
 } & JSX.ButtonHTMLAttributes<HTMLButtonElement>;
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: `
+	primary: `
     background-color: var(--input-focus);
     color: white;
   `,
-  secondary: `
+	secondary: `
     background-color: var(--bg-tertiary);
     color: var(--text-primary);
     border: 1px solid var(--input-border);
   `,
-  ghost: `
+	ghost: `
     background-color: transparent;
     color: var(--text-secondary);
   `,
-  danger: `
+	danger: `
     background-color: oklch(55% 0.2 25);
     color: white;
   `,
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: `
+	sm: `
     padding: var(--space-xs) var(--space-sm);
     font-size: 0.875rem;
   `,
-  md: `
+	md: `
     padding: var(--space-sm) var(--space-md);
     font-size: 1rem;
   `,
-  lg: `
+	lg: `
     padding: var(--space-md) var(--space-lg);
     font-size: 1.125rem;
   `,
@@ -57,52 +57,53 @@ const baseStyles = `
   border: none;
 `;
 
-const Button: ParentComponent<ButtonProps> = (props) => {
-  const [local, rest] = splitProps(props, ["variant", "size", "disabled", "children"]);
-  
-  const variant = () => local.variant ?? "primary";
-  const size = () => local.size ?? "md";
+const Button: ParentComponent<ButtonProps> = props => {
+	const [local, rest] = splitProps(props, ["variant", "size", "disabled", "children"]);
 
-  return (
-    <button
-      {...rest}
-      disabled={local.disabled}
-      style={{
-        ...parseStyles(baseStyles),
-        ...parseStyles(variantStyles[variant()]),
-        ...parseStyles(sizeStyles[size()]),
-        ...(local.disabled ? { opacity: "0.5", cursor: "not-allowed" } : {}),
-      }}
-      onMouseDown={(e) => {
-        if (!local.disabled) {
-          (e.currentTarget as HTMLElement).style.transform = "scale(0.98)";
-        }
-      }}
-      onMouseUp={(e) => {
-        (e.currentTarget as HTMLElement).style.transform = "scale(1)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.transform = "scale(1)";
-      }}
-    >
-      {local.children}
-    </button>
-  );
+	const variant = () => local.variant ?? "primary";
+	const size = () => local.size ?? "md";
+
+	return (
+		<button
+			{...rest}
+			disabled={local.disabled}
+			style={{
+				...parseStyles(baseStyles),
+				...parseStyles(variantStyles[variant()]),
+				...parseStyles(sizeStyles[size()]),
+				...(local.disabled ? { opacity: "0.5", cursor: "not-allowed" } : {}),
+			}}
+			onMouseDown={e => {
+				if (!local.disabled) {
+					(e.currentTarget as HTMLElement).style.transform = "scale(0.98)";
+				}
+			}}
+			onMouseUp={e => {
+				(e.currentTarget as HTMLElement).style.transform = "scale(1)";
+			}}
+			onMouseLeave={e => {
+				(e.currentTarget as HTMLElement).style.transform = "scale(1)";
+			}}
+		>
+			{local.children}
+		</button>
+	);
 };
 
 const parseStyles = (css: string): JSX.CSSProperties => {
-  const result: Record<string, string> = {};
-  css
-    .split(";")
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .forEach((declaration) => {
-      const [prop, ...valueParts] = declaration.split(":");
-      if (!prop || valueParts.length === 0) return;
-      const camelProp = prop.trim().replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
-      result[camelProp] = valueParts.join(":").trim();
-    });
-  return result as JSX.CSSProperties;
+	const result: Record<string, string> = {};
+	const declarations = css
+		.split(";")
+		.map(s => s.trim())
+		.filter(Boolean);
+
+	for (const declaration of declarations) {
+		const [prop, ...valueParts] = declaration.split(":");
+		if (!prop || valueParts.length === 0) continue;
+		const camelProp = prop.trim().replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+		result[camelProp] = valueParts.join(":").trim();
+	}
+	return result as JSX.CSSProperties;
 };
 
 export default Button;

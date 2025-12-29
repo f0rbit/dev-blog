@@ -1,36 +1,39 @@
 {
-  "name": "blog-devpad",
-  "private": true,
-  "workspaces": ["apps/*", "packages/*"],
-  "scripts": {
-    "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
-    "dev:server": "bun --watch scripts/dev-server.ts",
-    "dev:client": "cd apps/website && bun run dev",
-    "db:setup": "bun scripts/seed.ts",
-    "db:reset": "rm -rf local/sqlite.db local/corpus && bun scripts/seed.ts",
-    "db:migrate": "drizzle-kit generate && drizzle-kit push",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage",
-    "build": "bun run build:server && bun run build:client",
-    "build:server": "cd packages/server && bun run build",
-    "build:client": "cd apps/website && bun run build",
-    "deploy": "wrangler deploy"
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241205.0",
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/bun": "^1.1.14",
-    "@vitest/coverage-v8": "^2.1.8",
-    "concurrently": "^9.1.0",
-    "drizzle-kit": "^0.30.0",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8",
-    "wrangler": "^3.99.0"
-  },
-  "dependencies": {
-    "better-sqlite3": "^11.7.0",
-    "drizzle-orm": "^0.38.2",
-    "hono": "^4.6.14",
-    "zod": "^3.24.1"
-  }
+	"name": "blog-devpad",
+	"private": true,
+	"workspaces": ["apps/*", "packages/*"],
+	"scripts": {
+		"dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
+		"dev:server": "bun --watch scripts/dev-server.ts",
+		"dev:client": "cd apps/website && bun run dev",
+		"db:generate": "drizzle-kit generate",
+		"db:push": "drizzle-kit push --force",
+		"db:studio": "drizzle-kit studio",
+		"db:setup": "bun run db:push && bun scripts/seed.ts",
+		"db:reset": "rm -rf local/sqlite.db local/corpus && bun run db:setup",
+		"test": "bun test",
+		"build": "bun run build:server && bun run build:client",
+		"build:server": "cd packages/server && bun run build",
+		"build:client": "cd apps/website && bun run build",
+		"deploy": "wrangler deploy",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"format": "biome format --write ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@cloudflare/workers-types": "^4.20241205.0",
+		"@types/better-sqlite3": "^7.6.13",
+		"@types/bun": "^1.1.14",
+		"concurrently": "^9.1.0",
+		"drizzle-kit": "^0.30.0",
+		"typescript": "^5.7.2",
+		"wrangler": "^3.99.0"
+	},
+	"dependencies": {
+		"better-sqlite3": "^11.7.0",
+		"drizzle-orm": "^0.38.2",
+		"hono": "^4.6.14",
+		"zod": "^3.24.1"
+	}
 }

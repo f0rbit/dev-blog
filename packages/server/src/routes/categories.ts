@@ -1,280 +1,200 @@
-import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
-import { drizzle } from 'drizzle-orm/d1'
-import { eq, and } from 'drizzle-orm'
-import { z } from 'zod'
-import * as schema from '@blog/schema/database'
-import {
-  CategoryCreateSchema,
-  type Category,
-  type Result,
-  type ApiError,
-  type Env,
-  ok,
-  err,
-} from '@blog/schema'
+import { type ApiError, type Category, CategoryCreateSchema, type Env, type Result, err, ok } from "@blog/schema";
+import * as schema from "@blog/schema/database";
+import { zValidator } from "@hono/zod-validator";
+import { and, eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
+import { Hono } from "hono";
+import { z } from "zod";
 
 interface CategoryNode {
-  name: string
-  parent: string | null
-  children: CategoryNode[]
+	name: string;
+	parent: string | null;
+	children: CategoryNode[];
 }
 
 type AuthEnv = {
-  Bindings: Env
-  Variables: { user: { id: number } }
-}
+	Bindings: Env;
+	Variables: { user: { id: number } };
+};
 
 const CategoryNameSchema = z.object({
-  name: z.string().min(1),
-})
+	name: z.string().min(1),
+});
 
 const CategoryUpdateSchema = z.object({
-  name: z.string().min(1),
-})
+	name: z.string().min(1),
+});
 
 const buildCategoryTree = (categories: Category[]): CategoryNode[] => {
-  const nodeMap = new Map<string, CategoryNode>()
-  
-  categories.forEach(cat => {
-    nodeMap.set(cat.name, { name: cat.name, parent: cat.parent, children: [] })
-  })
-  
-  const roots: CategoryNode[] = []
-  
-  nodeMap.forEach(node => {
-    if (!node.parent || node.parent === 'root') {
-      roots.push(node)
-      return
-    }
-    
-    const parent = nodeMap.get(node.parent)
-    if (parent) {
-      parent.children.push(node)
-    } else {
-      roots.push(node)
-    }
-  })
-  
-  return roots
-}
+	const nodeMap = new Map<string, CategoryNode>();
 
-const findCategory = async (
-  db: ReturnType<typeof drizzle>,
-  ownerId: number,
-  name: string
-): Promise<Result<Category, ApiError>> => {
-  const [category] = await db
-    .select()
-    .from(schema.categories)
-    .where(and(
-      eq(schema.categories.owner_id, ownerId),
-      eq(schema.categories.name, name)
-    ))
-    .limit(1)
+	for (const cat of categories) {
+		nodeMap.set(cat.name, { name: cat.name, parent: cat.parent, children: [] });
+	}
 
-  if (!category) {
-    return err({ code: 'NOT_FOUND', message: 'Category not found' })
-  }
+	const roots: CategoryNode[] = [];
 
-  return ok(category)
-}
+	for (const node of nodeMap.values()) {
+		if (!node.parent || node.parent === "root") {
+			roots.push(node);
+			continue;
+		}
 
-const hasChildren = async (
-  db: ReturnType<typeof drizzle>,
-  ownerId: number,
-  name: string
-): Promise<boolean> => {
-  const children = await db
-    .select()
-    .from(schema.categories)
-    .where(and(
-      eq(schema.categories.owner_id, ownerId),
-      eq(schema.categories.parent, name)
-    ))
-    .limit(1)
+		const parent = nodeMap.get(node.parent);
+		if (parent) {
+			parent.children.push(node);
+		} else {
+			roots.push(node);
+		}
+	}
 
-  return children.length > 0
-}
+	return roots;
+};
 
-const hasPosts = async (
-  db: ReturnType<typeof drizzle>,
-  authorId: number,
-  category: string
-): Promise<boolean> => {
-  const postsInCategory = await db
-    .select()
-    .from(schema.posts)
-    .where(and(
-      eq(schema.posts.author_id, authorId),
-      eq(schema.posts.category, category)
-    ))
-    .limit(1)
+const findCategory = async (db: ReturnType<typeof drizzle>, ownerId: number, name: string): Promise<Result<Category, ApiError>> => {
+	const [category] = await db
+		.select()
+		.from(schema.categories)
+		.where(and(eq(schema.categories.owner_id, ownerId), eq(schema.categories.name, name)))
+		.limit(1);
 
-  return postsInCategory.length > 0
-}
+	if (!category) {
+		return err({ code: "NOT_FOUND", message: "Category not found" });
+	}
 
-export const categoriesRouter = new Hono<AuthEnv>()
+	return ok(category);
+};
 
-categoriesRouter.get('/', async (c) => {
-  const user = c.get('user')
-  const db = drizzle(c.env.DB)
+const hasChildren = async (db: ReturnType<typeof drizzle>, ownerId: number, name: string): Promise<boolean> => {
+	const children = await db
+		.select()
+		.from(schema.categories)
+		.where(and(eq(schema.categories.owner_id, ownerId), eq(schema.categories.parent, name)))
+		.limit(1);
 
-  const categories = await db
-    .select()
-    .from(schema.categories)
-    .where(eq(schema.categories.owner_id, user.id))
+	return children.length > 0;
+};
 
-  const tree = buildCategoryTree(categories)
+const hasPosts = async (db: ReturnType<typeof drizzle>, authorId: number, category: string): Promise<boolean> => {
+	const postsInCategory = await db
+		.select()
+		.from(schema.posts)
+		.where(and(eq(schema.posts.author_id, authorId), eq(schema.posts.category, category)))
+		.limit(1);
 
-  return c.json({ categories: tree })
-})
+	return postsInCategory.length > 0;
+};
 
-categoriesRouter.post(
-  '/',
-  zValidator('json', CategoryCreateSchema),
-  async (c) => {
-    const user = c.get('user')
-    const data = c.req.valid('json')
-    const db = drizzle(c.env.DB)
+export const categoriesRouter = new Hono<AuthEnv>();
 
-    const [existing] = await db
-      .select()
-      .from(schema.categories)
-      .where(and(
-        eq(schema.categories.owner_id, user.id),
-        eq(schema.categories.name, data.name)
-      ))
-      .limit(1)
+categoriesRouter.get("/", async c => {
+	const user = c.get("user");
+	const db = drizzle(c.env.DB);
 
-    if (existing) {
-      return c.json(
-        { code: 'CONFLICT', message: 'Category with this name already exists' },
-        409
-      )
-    }
+	const categories = await db.select().from(schema.categories).where(eq(schema.categories.owner_id, user.id));
 
-    if (data.parent && data.parent !== 'root') {
-      const parentResult = await findCategory(db, user.id, data.parent)
-      if (!parentResult.ok) {
-        return c.json(
-          { code: 'BAD_REQUEST', message: 'Parent category does not exist' },
-          400
-        )
-      }
-    }
+	const tree = buildCategoryTree(categories);
 
-    const [created] = await db
-      .insert(schema.categories)
-      .values({
-        owner_id: user.id,
-        name: data.name,
-        parent: data.parent ?? 'root',
-      })
-      .returning()
+	return c.json({ categories: tree });
+});
 
-    return c.json(created, 201)
-  }
-)
+categoriesRouter.post("/", zValidator("json", CategoryCreateSchema), async c => {
+	const user = c.get("user");
+	const data = c.req.valid("json");
+	const db = drizzle(c.env.DB);
 
-categoriesRouter.put(
-  '/:name',
-  zValidator('param', CategoryNameSchema),
-  zValidator('json', CategoryUpdateSchema),
-  async (c) => {
-    const user = c.get('user')
-    const { name } = c.req.valid('param')
-    const data = c.req.valid('json')
-    const db = drizzle(c.env.DB)
+	const [existing] = await db
+		.select()
+		.from(schema.categories)
+		.where(and(eq(schema.categories.owner_id, user.id), eq(schema.categories.name, data.name)))
+		.limit(1);
 
-    const categoryResult = await findCategory(db, user.id, name)
-    if (!categoryResult.ok) {
-      return c.json(categoryResult.error, 404)
-    }
+	if (existing) {
+		return c.json({ code: "CONFLICT", message: "Category with this name already exists" }, 409);
+	}
 
-    if (name === data.name) {
-      return c.json(categoryResult.value)
-    }
+	if (data.parent && data.parent !== "root") {
+		const parentResult = await findCategory(db, user.id, data.parent);
+		if (!parentResult.ok) {
+			return c.json({ code: "BAD_REQUEST", message: "Parent category does not exist" }, 400);
+		}
+	}
 
-    const [existingNew] = await db
-      .select()
-      .from(schema.categories)
-      .where(and(
-        eq(schema.categories.owner_id, user.id),
-        eq(schema.categories.name, data.name)
-      ))
-      .limit(1)
+	const [created] = await db
+		.insert(schema.categories)
+		.values({
+			owner_id: user.id,
+			name: data.name,
+			parent: data.parent ?? "root",
+		})
+		.returning();
 
-    if (existingNew) {
-      return c.json(
-        { code: 'CONFLICT', message: 'Category with this name already exists' },
-        409
-      )
-    }
+	return c.json(created, 201);
+});
 
-    await db
-      .update(schema.categories)
-      .set({ parent: data.name })
-      .where(and(
-        eq(schema.categories.owner_id, user.id),
-        eq(schema.categories.parent, name)
-      ))
+categoriesRouter.put("/:name", zValidator("param", CategoryNameSchema), zValidator("json", CategoryUpdateSchema), async c => {
+	const user = c.get("user");
+	const { name } = c.req.valid("param");
+	const data = c.req.valid("json");
+	const db = drizzle(c.env.DB);
 
-    await db
-      .update(schema.posts)
-      .set({ category: data.name })
-      .where(and(
-        eq(schema.posts.author_id, user.id),
-        eq(schema.posts.category, name)
-      ))
+	const categoryResult = await findCategory(db, user.id, name);
+	if (!categoryResult.ok) {
+		return c.json(categoryResult.error, 404);
+	}
 
-    const [updated] = await db
-      .update(schema.categories)
-      .set({ name: data.name })
-      .where(and(
-        eq(schema.categories.owner_id, user.id),
-        eq(schema.categories.name, name)
-      ))
-      .returning()
+	if (name === data.name) {
+		return c.json(categoryResult.value);
+	}
 
-    return c.json(updated)
-  }
-)
+	const [existingNew] = await db
+		.select()
+		.from(schema.categories)
+		.where(and(eq(schema.categories.owner_id, user.id), eq(schema.categories.name, data.name)))
+		.limit(1);
 
-categoriesRouter.delete(
-  '/:name',
-  zValidator('param', CategoryNameSchema),
-  async (c) => {
-    const user = c.get('user')
-    const { name } = c.req.valid('param')
-    const db = drizzle(c.env.DB)
+	if (existingNew) {
+		return c.json({ code: "CONFLICT", message: "Category with this name already exists" }, 409);
+	}
 
-    const categoryResult = await findCategory(db, user.id, name)
-    if (!categoryResult.ok) {
-      return c.json(categoryResult.error, 404)
-    }
+	await db
+		.update(schema.categories)
+		.set({ parent: data.name })
+		.where(and(eq(schema.categories.owner_id, user.id), eq(schema.categories.parent, name)));
 
-    if (await hasChildren(db, user.id, name)) {
-      return c.json(
-        { code: 'CONFLICT', message: 'Cannot delete category with children' },
-        409
-      )
-    }
+	await db
+		.update(schema.posts)
+		.set({ category: data.name })
+		.where(and(eq(schema.posts.author_id, user.id), eq(schema.posts.category, name)));
 
-    if (await hasPosts(db, user.id, name)) {
-      return c.json(
-        { code: 'CONFLICT', message: 'Cannot delete category with posts' },
-        409
-      )
-    }
+	const [updated] = await db
+		.update(schema.categories)
+		.set({ name: data.name })
+		.where(and(eq(schema.categories.owner_id, user.id), eq(schema.categories.name, name)))
+		.returning();
 
-    await db
-      .delete(schema.categories)
-      .where(and(
-        eq(schema.categories.owner_id, user.id),
-        eq(schema.categories.name, name)
-      ))
+	return c.json(updated);
+});
 
-    return c.body(null, 204)
-  }
-)
+categoriesRouter.delete("/:name", zValidator("param", CategoryNameSchema), async c => {
+	const user = c.get("user");
+	const { name } = c.req.valid("param");
+	const db = drizzle(c.env.DB);
+
+	const categoryResult = await findCategory(db, user.id, name);
+	if (!categoryResult.ok) {
+		return c.json(categoryResult.error, 404);
+	}
+
+	if (await hasChildren(db, user.id, name)) {
+		return c.json({ code: "CONFLICT", message: "Cannot delete category with children" }, 409);
+	}
+
+	if (await hasPosts(db, user.id, name)) {
+		return c.json({ code: "CONFLICT", message: "Cannot delete category with posts" }, 409);
+	}
+
+	await db.delete(schema.categories).where(and(eq(schema.categories.owner_id, user.id), eq(schema.categories.name, name)));
+
+	return c.body(null, 204);
+});

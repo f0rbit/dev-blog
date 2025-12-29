@@ -1,181 +1,148 @@
-import { createMiddleware } from "hono/factory";
+import { type Env, type Result, type User, accessKeys, err, ok, pipe, users } from "@blog/schema";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
-import { eq, and } from "drizzle-orm";
+import { createMiddleware } from "hono/factory";
 import { z } from "zod";
-import {
-  type Env,
-  type User,
-  type Result,
-  ok,
-  err,
-  users,
-  accessKeys,
-} from "@blog/schema";
 
 export interface AuthContext {
-  user: User;
+	user: User;
 }
 
 const EXEMPT_PATHS = ["/health", "/auth/user", "/auth/login", "/auth/logout"];
 
 const DevpadUserSchema = z.object({
-  id: z.number(),
-  github_id: z.number(),
-  username: z.string(),
-  email: z.string().nullable(),
-  avatar_url: z.string().nullable(),
+	id: z.number(),
+	github_id: z.number(),
+	username: z.string(),
+	email: z.string().nullable(),
+	avatar_url: z.string().nullable(),
 });
 
 type DevpadUser = z.infer<typeof DevpadUserSchema>;
 
 const hexEncode = (buffer: ArrayBuffer): string =>
-  Array.from(new Uint8Array(buffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+	Array.from(new Uint8Array(buffer))
+		.map(b => b.toString(16).padStart(2, "0"))
+		.join("");
 
 const hashToken = async (token: string): Promise<string> => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(token);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return hexEncode(hashBuffer);
+	const encoder = new TextEncoder();
+	const data = encoder.encode(token);
+	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+	return hexEncode(hashBuffer);
 };
 
-const isExemptPath = (path: string): boolean =>
-  EXEMPT_PATHS.some(
-    (exempt) => path === exempt || path.startsWith(`${exempt}/`)
-  );
-
-const validateApiToken = async (
-  db: D1Database,
-  token: string
-): Promise<Result<User, string>> => {
-  const tokenHash = await hashToken(token);
-  const drizzleDb = drizzle(db);
-
-  const [keyRow] = await drizzleDb
-    .select()
-    .from(accessKeys)
-    .where(and(eq(accessKeys.key_hash, tokenHash), eq(accessKeys.enabled, true)))
-    .limit(1);
-
-  if (!keyRow) return err("invalid_token");
-
-  const [userRow] = await drizzleDb
-    .select()
-    .from(users)
-    .where(eq(users.id, keyRow.user_id))
-    .limit(1);
-
-  if (!userRow) return err("user_not_found");
-
-  return ok(rowToUser(userRow));
-};
+const isExemptPath = (path: string): boolean => EXEMPT_PATHS.some(exempt => path === exempt || path.startsWith(`${exempt}/`));
 
 const rowToUser = (row: typeof users.$inferSelect): User => ({
-  id: row.id,
-  github_id: row.github_id,
-  username: row.username,
-  email: row.email,
-  avatar_url: row.avatar_url,
-  created_at: row.created_at,
-  updated_at: row.updated_at,
+	id: row.id,
+	github_id: row.github_id,
+	username: row.username,
+	email: row.email,
+	avatar_url: row.avatar_url,
+	created_at: row.created_at,
+	updated_at: row.updated_at,
 });
 
-const verifyWithDevpad = async (
-  devpadApi: string,
-  cookie: string
-): Promise<Result<DevpadUser, string>> => {
-  const response = await fetch(`${devpadApi}/api/auth/verify`, {
-    method: "GET",
-    headers: {
-      Cookie: cookie,
-    },
-  });
+const validateApiToken = async (db: D1Database, token: string): Promise<Result<User, string>> => {
+	const tokenHash = await hashToken(token);
+	const drizzleDb = drizzle(db);
 
-  if (!response.ok) return err("session_invalid");
+	const [keyRow] = await drizzleDb
+		.select()
+		.from(accessKeys)
+		.where(and(eq(accessKeys.key_hash, tokenHash), eq(accessKeys.enabled, true)))
+		.limit(1);
 
-  const json = await response.json();
-  const parsed = DevpadUserSchema.safeParse(json);
+	if (!keyRow) return err("invalid_token");
 
-  if (!parsed.success) return err("invalid_user_response");
+	const [userRow] = await drizzleDb.select().from(users).where(eq(users.id, keyRow.user_id)).limit(1);
 
-  return ok(parsed.data);
+	if (!userRow) return err("user_not_found");
+
+	return ok(rowToUser(userRow));
 };
 
-const ensureUser = async (
-  db: D1Database,
-  devpadUser: DevpadUser
-): Promise<Result<User, string>> => {
-  const drizzleDb = drizzle(db);
-  const now = new Date();
+const verifyWithDevpad = async (devpadApi: string, cookie: string): Promise<Result<DevpadUser, string>> => {
+	const response = await fetch(`${devpadApi}/api/auth/verify`, {
+		method: "GET",
+		headers: { Cookie: cookie },
+	});
 
-  await drizzleDb
-    .insert(users)
-    .values({
-      github_id: devpadUser.github_id,
-      username: devpadUser.username,
-      email: devpadUser.email,
-      avatar_url: devpadUser.avatar_url,
-      created_at: now,
-      updated_at: now,
-    })
-    .onConflictDoUpdate({
-      target: users.github_id,
-      set: {
-        username: devpadUser.username,
-        email: devpadUser.email,
-        avatar_url: devpadUser.avatar_url,
-        updated_at: now,
-      },
-    });
+	if (!response.ok) return err("session_invalid");
 
-  const [userRow] = await drizzleDb
-    .select()
-    .from(users)
-    .where(eq(users.github_id, devpadUser.github_id))
-    .limit(1);
+	const json = await response.json();
+	const parsed = DevpadUserSchema.safeParse(json);
 
-  if (!userRow) return err("upsert_failed");
+	if (!parsed.success) return err("invalid_user_response");
 
-  return ok(rowToUser(userRow));
+	return ok(parsed.data);
 };
+
+const ensureUser = async (db: D1Database, devpadUser: DevpadUser): Promise<Result<User, string>> => {
+	const drizzleDb = drizzle(db);
+	const now = new Date();
+
+	await drizzleDb
+		.insert(users)
+		.values({
+			github_id: devpadUser.github_id,
+			username: devpadUser.username,
+			email: devpadUser.email,
+			avatar_url: devpadUser.avatar_url,
+			created_at: now,
+			updated_at: now,
+		})
+		.onConflictDoUpdate({
+			target: users.github_id,
+			set: {
+				username: devpadUser.username,
+				email: devpadUser.email,
+				avatar_url: devpadUser.avatar_url,
+				updated_at: now,
+			},
+		});
+
+	const [userRow] = await drizzleDb.select().from(users).where(eq(users.github_id, devpadUser.github_id)).limit(1);
+
+	if (!userRow) return err("upsert_failed");
+
+	return ok(rowToUser(userRow));
+};
+
+const authenticateWithCookie = async (db: D1Database, devpadApi: string, cookie: string): Promise<Result<User, string>> =>
+	pipe(verifyWithDevpad(devpadApi, cookie))
+		.flat_map(devpadUser => ensureUser(db, devpadUser))
+		.result();
 
 type AuthEnv = { Bindings: Env; Variables: AuthContext };
 
 export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
-  const path = new URL(c.req.url).pathname;
+	const path = new URL(c.req.url).pathname;
 
-  if (isExemptPath(path)) return next();
+	if (isExemptPath(path)) return next();
 
-  const authToken = c.req.header("Auth-Token");
-  
-  if (authToken) {
-    const result = await validateApiToken(c.env.DB, authToken);
-    if (result.ok) {
-      c.set("user", result.value);
-      return next();
-    }
-  }
+	const authToken = c.req.header("Auth-Token");
 
-  const cookie = c.req.header("Cookie");
-  
-  if (cookie) {
-    const devpadResult = await verifyWithDevpad(c.env.DEVPAD_API, cookie);
-    
-    if (devpadResult.ok) {
-      const userResult = await ensureUser(c.env.DB, devpadResult.value);
-      
-      if (userResult.ok) {
-        c.set("user", userResult.value);
-        return next();
-      }
-    }
-  }
+	if (authToken) {
+		const result = await validateApiToken(c.env.DB, authToken);
+		if (result.ok) {
+			c.set("user", result.value);
+			return next();
+		}
+	}
 
-  return c.json(
-    { code: "UNAUTHORIZED", message: "Authentication required" },
-    401
-  );
+	const cookie = c.req.header("Cookie");
+
+	if (cookie) {
+		const result = await authenticateWithCookie(c.env.DB, c.env.DEVPAD_API, cookie);
+		if (result.ok) {
+			c.set("user", result.value);
+			return next();
+		}
+	}
+
+	return c.json({ code: "UNAUTHORIZED", message: "Authentication required" }, 401);
 });
 
 export const requireAuth = () => authMiddleware;
