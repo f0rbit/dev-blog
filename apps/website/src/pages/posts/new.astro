@@ -53,6 +53,7 @@ import AppLayout from "@/layouts/app-layout.astro";
 		format: "md" | "adoc";
 		category: string;
 		tags: string[];
+		project_ids: string[];
 		publish_at: Date | null;
 	};
 
@@ -83,6 +84,7 @@ import AppLayout from "@/layouts/app-layout.astro";
 				format: data.format,
 				category: data.category,
 				tags: data.tags,
+				project_ids: data.project_ids,
 				publish_at: data.publish_at?.toISOString() ?? null,
 			}),
 		});
