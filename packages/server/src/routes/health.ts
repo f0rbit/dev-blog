@@ -7,6 +7,6 @@ healthRouter.get("/", c =>
 	c.json({
 		status: "ok",
 		timestamp: new Date().toISOString(),
-		environment: c.env.ENVIRONMENT,
+		environment: c.env.environment,
 	})
 );

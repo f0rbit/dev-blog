@@ -1,8 +1,7 @@
-import { AccessKeyCreateSchema, AccessKeyUpdateSchema, type ApiError, type Env, type Result, err, ok } from "@blog/schema";
+import { AccessKeyCreateSchema, AccessKeyUpdateSchema, type ApiError, type DrizzleDB, type Env, type Result, err, ok } from "@blog/schema";
 import * as schema from "@blog/schema/database";
 import { zValidator } from "@hono/zod-validator";
 import { and, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -25,7 +24,7 @@ const hashToken = async (token: string): Promise<string> => {
 	return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 };
 
-const findToken = async (db: ReturnType<typeof drizzle>, userId: number, tokenId: number): Promise<Result<schema.AccessKey, ApiError>> => {
+const findToken = async (db: DrizzleDB, userId: number, tokenId: number): Promise<Result<schema.AccessKey, ApiError>> => {
 	const [token] = await db
 		.select()
 		.from(schema.accessKeys)
@@ -51,7 +50,7 @@ export const tokensRouter = new Hono<AuthEnv>();
 
 tokensRouter.get("/", async c => {
 	const user = c.get("user");
-	const db = drizzle(c.env.DB);
+	const db = c.env.db;
 
 	const tokens = await db.select().from(schema.accessKeys).where(eq(schema.accessKeys.user_id, user.id));
 
@@ -61,7 +60,7 @@ tokensRouter.get("/", async c => {
 tokensRouter.post("/", zValidator("json", AccessKeyCreateSchema), async c => {
 	const user = c.get("user");
 	const data = c.req.valid("json");
-	const db = drizzle(c.env.DB);
+	const db = c.env.db;
 
 	const plainToken = generateToken();
 	const keyHash = await hashToken(plainToken);
@@ -95,7 +94,7 @@ tokensRouter.put("/:id", zValidator("param", TokenIdSchema), zValidator("json", 
 	const user = c.get("user");
 	const { id } = c.req.valid("param");
 	const data = c.req.valid("json");
-	const db = drizzle(c.env.DB);
+	const db = c.env.db;
 
 	const tokenResult = await findToken(db, user.id, id);
 	if (!tokenResult.ok) {
@@ -128,7 +127,7 @@ tokensRouter.put("/:id", zValidator("param", TokenIdSchema), zValidator("json", 
 tokensRouter.delete("/:id", zValidator("param", TokenIdSchema), async c => {
 	const user = c.get("user");
 	const { id } = c.req.valid("param");
-	const db = drizzle(c.env.DB);
+	const db = c.env.db;
 
 	const tokenResult = await findToken(db, user.id, id);
 	if (!tokenResult.ok) {

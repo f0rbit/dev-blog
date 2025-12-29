@@ -66,8 +66,8 @@ postsRouter.use("*", async (c, next) => {
 	}
 
 	const service = createPostService({
-		db: c.env.DB,
-		corpus: c.env.CORPUS,
+		db: c.env.db,
+		corpus: c.env.corpus,
 	});
 	c.set("postService", service);
 

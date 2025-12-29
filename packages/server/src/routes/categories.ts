@@ -1,8 +1,7 @@
-import { type ApiError, type Category, CategoryCreateSchema, type Env, type Result, err, ok } from "@blog/schema";
+import { type ApiError, type Category, CategoryCreateSchema, type DrizzleDB, type Env, type Result, err, ok } from "@blog/schema";
 import * as schema from "@blog/schema/database";
 import { zValidator } from "@hono/zod-validator";
 import { and, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -51,7 +50,7 @@ const buildCategoryTree = (categories: Category[]): CategoryNode[] => {
 	return roots;
 };
 
-const findCategory = async (db: ReturnType<typeof drizzle>, ownerId: number, name: string): Promise<Result<Category, ApiError>> => {
+const findCategory = async (db: DrizzleDB, ownerId: number, name: string): Promise<Result<Category, ApiError>> => {
 	const [category] = await db
 		.select()
 		.from(schema.categories)
@@ -65,7 +64,7 @@ const findCategory = async (db: ReturnType<typeof drizzle>, ownerId: number, nam
 	return ok(category);
 };
 
-const hasChildren = async (db: ReturnType<typeof drizzle>, ownerId: number, name: string): Promise<boolean> => {
+const hasChildren = async (db: DrizzleDB, ownerId: number, name: string): Promise<boolean> => {
 	const children = await db
 		.select()
 		.from(schema.categories)
@@ -75,7 +74,7 @@ const hasChildren = async (db: ReturnType<typeof drizzle>, ownerId: number, name
 	return children.length > 0;
 };
 
-const hasPosts = async (db: ReturnType<typeof drizzle>, authorId: number, category: string): Promise<boolean> => {
+const hasPosts = async (db: DrizzleDB, authorId: number, category: string): Promise<boolean> => {
 	const postsInCategory = await db
 		.select()
 		.from(schema.posts)
@@ -89,7 +88,7 @@ export const categoriesRouter = new Hono<AuthEnv>();
 
 categoriesRouter.get("/", async c => {
 	const user = c.get("user");
-	const db = drizzle(c.env.DB);
+	const db = c.env.db;
 
 	const categories = await db.select().from(schema.categories).where(eq(schema.categories.owner_id, user.id));
 
@@ -101,7 +100,7 @@ categoriesRouter.get("/", async c => {
 categoriesRouter.post("/", zValidator("json", CategoryCreateSchema), async c => {
 	const user = c.get("user");
 	const data = c.req.valid("json");
-	const db = drizzle(c.env.DB);
+	const db = c.env.db;
 
 	const [existing] = await db
 		.select()
@@ -136,7 +135,7 @@ categoriesRouter.put("/:name", zValidator("param", CategoryNameSchema), zValidat
 	const user = c.get("user");
 	const { name } = c.req.valid("param");
 	const data = c.req.valid("json");
-	const db = drizzle(c.env.DB);
+	const db = c.env.db;
 
 	const categoryResult = await findCategory(db, user.id, name);
 	if (!categoryResult.ok) {
@@ -179,7 +178,7 @@ categoriesRouter.put("/:name", zValidator("param", CategoryNameSchema), zValidat
 categoriesRouter.delete("/:name", zValidator("param", CategoryNameSchema), async c => {
 	const user = c.get("user");
 	const { name } = c.req.valid("param");
-	const db = drizzle(c.env.DB);
+	const db = c.env.db;
 
 	const categoryResult = await findCategory(db, user.id, name);
 	if (!categoryResult.ok) {

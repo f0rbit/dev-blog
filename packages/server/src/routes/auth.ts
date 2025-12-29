@@ -18,7 +18,7 @@ authRouter.get("/user", c => {
 });
 
 authRouter.get("/login", c => {
-	const devpadApi = c.env.DEVPAD_API;
+	const devpadApi = c.env.devpadApi;
 	const currentUrl = c.req.url;
 	const returnUrl = new URL(currentUrl).origin;
 
