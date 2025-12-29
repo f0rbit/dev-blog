@@ -1,3 +1,13 @@
 ---
-return Astro.redirect("/settings/tokens");
+import SettingsPage from "@/components/settings/settings-page";
+import AppLayout from "@/layouts/app-layout.astro";
 ---
+
+<AppLayout title="Settings">
+	<section class="flex-col">
+		<header>
+			<h1 class="page-title">Settings</h1>
+		</header>
+		<SettingsPage client:load />
+	</section>
+</AppLayout>
