@@ -1,7 +1,6 @@
 import { type Component, For, createEffect, createSignal } from "solid-js";
 import Button from "../ui/button";
 import Input from "../ui/input";
-import Modal from "../ui/modal";
 
 interface Category {
 	id: number;
@@ -12,10 +11,17 @@ interface Category {
 interface CategoryFormProps {
 	categories: Category[];
 	onSubmit: (data: { name: string; parent: string }) => Promise<void>;
-	isOpen: boolean;
-	onClose: () => void;
 	defaultParent: string;
+	highlighted: boolean;
 }
+
+let formRef: HTMLElement | undefined;
+let nameInputRef: HTMLInputElement | undefined;
+
+const scrollToFormAndFocus = () => {
+	formRef?.scrollIntoView({ behavior: "smooth", block: "center" });
+	nameInputRef?.focus();
+};
 
 const CategoryForm: Component<CategoryFormProps> = props => {
 	const [name, setName] = createSignal("");
@@ -23,10 +29,8 @@ const CategoryForm: Component<CategoryFormProps> = props => {
 	const [submitting, setSubmitting] = createSignal(false);
 
 	createEffect(() => {
-		if (props.isOpen) {
-			setParent(props.defaultParent);
-			setName("");
-		}
+		setParent(props.defaultParent);
+		if (props.highlighted) scrollToFormAndFocus();
 	});
 
 	const handleSubmit = async (e: Event) => {
@@ -39,22 +43,26 @@ const CategoryForm: Component<CategoryFormProps> = props => {
 		setName("");
 		setParent("root");
 		setSubmitting(false);
-		props.onClose();
 	};
 
 	const parentCategory = () => {
-		const p = props.categories.find(c => c.name === props.defaultParent);
+		const p = props.categories.find(c => c.name === parent());
 		return p?.name ?? "root";
 	};
 
 	return (
-		<Modal isOpen={props.isOpen} onClose={props.onClose} title="Add Category">
-			<form onSubmit={handleSubmit} class="modal-form">
+		<section
+			ref={formRef}
+			class="category-form-section"
+			classList={{ "category-form-section--highlighted": props.highlighted }}
+		>
+			<h3 class="category-form-title">New Category</h3>
+			<form onSubmit={handleSubmit} class="category-form">
 				<div class="form-row">
 					<label for="category-name" class="text-xs tertiary">
 						Name
 					</label>
-					<Input value={name()} onInput={setName} placeholder="Category name" disabled={submitting()} />
+					<Input ref={(el) => (nameInputRef = el)} value={name()} onInput={setName} placeholder="Category name" disabled={submitting()} />
 				</div>
 				<div class="form-row">
 					<label for="category-parent" class="text-xs tertiary">
@@ -63,20 +71,14 @@ const CategoryForm: Component<CategoryFormProps> = props => {
 					<select value={parent()} onChange={e => setParent(e.currentTarget.value)} disabled={submitting()}>
 						<For each={props.categories}>{cat => <option value={cat.name}>{cat.name}</option>}</For>
 					</select>
-					<p class="text-xs muted">
-						Creating under: <span class="secondary">{parentCategory()}</span>
-					</p>
 				</div>
-				<div class="modal-actions">
-					<Button type="button" variant="secondary" onClick={props.onClose} disabled={submitting()}>
-						Cancel
-					</Button>
+				<div class="category-form-actions">
 					<Button type="submit" variant="primary" disabled={submitting() || !name().trim()}>
-						{submitting() ? "Adding..." : "Add Category"}
+						{submitting() ? "Creating..." : "+ Create"}
 					</Button>
 				</div>
 			</form>
-		</Modal>
+		</section>
 	);
 };
 

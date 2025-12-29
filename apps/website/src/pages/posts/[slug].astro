@@ -2,7 +2,72 @@
 import PostEditor from "@/components/post/post-editor";
 import AppLayout from "@/layouts/app-layout.astro";
 
+const API_URL = "http://localhost:8080";
 const { slug } = Astro.params;
+
+type Category = {
+	name: string;
+	parent: string | null;
+};
+
+type CategoryNode = Category & { children?: CategoryNode[] };
+
+type Post = {
+	id: number;
+	uuid: string;
+	slug: string;
+	title: string;
+	content: string;
+	description?: string;
+	format: "md" | "adoc";
+	category: string;
+	tags: string[];
+	publish_at: string | null;
+};
+
+const flattenTree = (nodes: CategoryNode[]): Category[] =>
+	nodes.flatMap(n => [{ name: n.name, parent: n.parent }, ...flattenTree(n.children ?? [])]);
+
+// Fetch post and categories server-side
+let post: Post | null = null;
+let categories: Category[] = [];
+let error: string | null = null;
+
+console.log("[SSR] Fetching post with slug:", slug);
+console.log("[SSR] API URL:", `${API_URL}/post/${slug}`);
+
+try {
+	const [postRes, catRes] = await Promise.all([
+		fetch(`${API_URL}/post/${slug}`),
+		fetch(`${API_URL}/categories`)
+	]);
+
+	console.log("[SSR] Post response status:", postRes.status);
+	console.log("[SSR] Categories response status:", catRes.status);
+
+	if (postRes.ok) {
+		post = await postRes.json();
+		console.log("[SSR] Post data:", JSON.stringify(post, null, 2));
+	} else {
+		const errorText = await postRes.text();
+		console.log("[SSR] Post fetch failed:", errorText);
+		error = "Post not found";
+	}
+
+	if (catRes.ok) {
+		const catData = await catRes.json();
+		console.log("[SSR] Raw categories:", JSON.stringify(catData, null, 2));
+		categories = flattenTree(catData.categories ?? []);
+		console.log("[SSR] Flattened categories:", JSON.stringify(categories, null, 2));
+	}
+} catch (e) {
+	console.log("[SSR] Fetch error:", e);
+	error = "Failed to load post";
+}
+
+console.log("[SSR] Final post:", post?.title);
+console.log("[SSR] Final categories count:", categories.length);
+console.log("[SSR] Final error:", error);
 ---
 
 <AppLayout title="Edit Post">
@@ -14,12 +79,18 @@ const { slug } = Astro.params;
 				</a>
 				Edit Post
 			</h1>
-			<button type="button" id="save-btn" class="btn-primary" disabled>Update</button>
+			{post && <button type="button" id="save-btn" class="btn-primary" disabled>Update</button>}
 		</header>
 
-		<div id="editor-container" data-slug={slug}>
-			<p class="muted">Loading post...</p>
-		</div>
+		{error ? (
+			<div class="form-error">{error}</div>
+		) : post ? (
+			<div id="editor-container" data-uuid={post.uuid}>
+				<PostEditor client:load post={post} categories={categories} onFormReady={() => {}} />
+			</div>
+		) : (
+			<div class="form-error">Post not found</div>
+		)}
 	</section>
 </AppLayout>
 
@@ -37,26 +108,6 @@ const { slug } = Astro.params;
 <script>
 	const API_URL = "http://localhost:8080";
 
-	type Category = {
-		name: string;
-		parent: string | null;
-	};
-
-	type CategoryNode = Category & { children?: CategoryNode[] };
-
-	type Post = {
-		id: number;
-		uuid: string;
-		slug: string;
-		title: string;
-		content: string;
-		description?: string;
-		format: "md" | "adoc";
-		category: string;
-		tags: string[];
-		publish_at: string | null;
-	};
-
 	type PostFormData = {
 		slug: string;
 		title: string;
@@ -66,31 +117,6 @@ const { slug } = Astro.params;
 		category: string;
 		tags: string[];
 		publish_at: Date | null;
-	};
-
-	const flattenTree = (nodes: CategoryNode[]): Category[] =>
-		nodes.flatMap(n => [{ name: n.name, parent: n.parent }, ...flattenTree(n.children ?? [])]);
-
-	const fetchCategories = async (): Promise<Category[]> => {
-		try {
-			const response = await fetch(`${API_URL}/categories`);
-			if (!response.ok) return [];
-			const data = await response.json();
-			// API returns tree structure, flatten it
-			return flattenTree(data.categories ?? []);
-		} catch {
-			return [];
-		}
-	};
-
-	const fetchPost = async (slug: string): Promise<Post | null> => {
-		try {
-			const response = await fetch(`${API_URL}/post/${slug}`);
-			if (!response.ok) return null;
-			return await response.json();
-		} catch {
-			return null;
-		}
 	};
 
 	const handleSave = async (uuid: string, data: PostFormData) => {
@@ -120,50 +146,20 @@ const { slug } = Astro.params;
 		}
 	};
 
-	document.addEventListener("DOMContentLoaded", async () => {
-		const container = document.getElementById("editor-container");
+	// Wire up save button once PostEditor is ready
+	document.addEventListener("DOMContentLoaded", () => {
 		const saveBtn = document.getElementById("save-btn") as HTMLButtonElement | null;
-		if (!container) return;
+		const container = document.getElementById("editor-container");
+		if (!saveBtn || !container) return;
 
-		const slug = container.dataset.slug;
-		if (!slug) {
-			container.innerHTML = '<div class="form-error">No slug provided</div>';
-			return;
-		}
+		const uuid = container.dataset.uuid;
+		if (!uuid) return;
 
-		const [post, categories] = await Promise.all([fetchPost(slug), fetchCategories()]);
+		// PostEditor will call window.postEditorReady when form is ready
+		(window as any).postEditorReady = (getFormData: () => PostFormData) => {
+			saveBtn.disabled = false;
 
-		if (!post) {
-			container.innerHTML = '<div class="form-error">Post not found</div>';
-			return;
-		}
-
-		const { render } = await import("solid-js/web");
-		const { default: PostEditor } = await import("@/components/post/post-editor");
-
-		container.innerHTML = "";
-
-		// Store reference to get form data
-		let getFormData: (() => PostFormData) | null = null;
-
-		render(
-			() =>
-				PostEditor({
-					post,
-					categories,
-					onFormReady: (getter) => {
-						getFormData = getter;
-						if (saveBtn) saveBtn.disabled = false;
-					},
-				}),
-			container
-		);
-
-		// Wire up the header save button
-		if (saveBtn) {
 			saveBtn.addEventListener("click", async () => {
-				if (!getFormData) return;
-				
 				const data = getFormData();
 				if (!data.title.trim()) {
 					alert("Title is required");
@@ -176,9 +172,9 @@ const { slug } = Astro.params;
 
 				saveBtn.disabled = true;
 				saveBtn.textContent = "Saving...";
-				
+
 				try {
-					await handleSave(post.uuid, data);
+					await handleSave(uuid, data);
 					saveBtn.textContent = "Update";
 				} catch (e) {
 					alert(e instanceof Error ? e.message : "Failed to save");
@@ -187,6 +183,6 @@ const { slug } = Astro.params;
 					saveBtn.disabled = false;
 				}
 			});
-		}
+		};
 	});
 </script>

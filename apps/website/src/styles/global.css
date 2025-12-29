@@ -1013,6 +1013,49 @@ footer {
 }
 
 /* ==========================================================================
+   CATEGORY FORM (INLINE)
+   ========================================================================== */
+
+.category-form-section {
+	position: relative;
+	border: 1px solid var(--input-border);
+	border-radius: 6px;
+	padding: 12px;
+	padding-top: 16px;
+	margin-top: 8px;
+	transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.category-form-section--highlighted {
+	border-color: var(--text-link);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-link) 20%, transparent);
+}
+
+.category-form-title {
+	position: absolute;
+	top: -12px;
+	left: 12px;
+	background: var(--bg-primary);
+	padding: 0 6px;
+	margin: 0;
+	font-size: 0.875rem;
+	font-weight: 500;
+	color: var(--text-primary);
+}
+
+.category-form {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.category-form-actions {
+	display: flex;
+	justify-content: flex-start;
+	gap: 0.75rem;
+}
+
+/* ==========================================================================
    FILTERS
    ========================================================================== */
 

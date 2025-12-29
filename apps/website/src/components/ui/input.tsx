@@ -9,15 +9,16 @@ interface InputProps {
 	disabled?: boolean;
 	error?: boolean;
 	class?: string;
+	ref?: (el: HTMLInputElement) => void;
 }
 
 const Input: Component<InputProps> = props => {
-	const [local, rest] = splitProps(props, ["type", "value", "onInput", "placeholder", "disabled", "error", "class"]);
+	const [local, rest] = splitProps(props, ["type", "value", "onInput", "placeholder", "disabled", "error", "class", "ref"]);
 
 	const inputType = () => local.type ?? "text";
 	const classes = () => [local.error ? "input-error" : "", local.class ?? ""].filter(Boolean).join(" ");
 
-	return <input {...rest} type={inputType()} value={local.value} onInput={e => local.onInput(e.currentTarget.value)} placeholder={local.placeholder} disabled={local.disabled} class={classes()} />;
+	return <input ref={local.ref} {...rest} type={inputType()} value={local.value} onInput={e => local.onInput(e.currentTarget.value)} placeholder={local.placeholder} disabled={local.disabled} class={classes()} />;
 };
 
 export default Input;

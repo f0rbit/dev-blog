@@ -51,6 +51,9 @@ const formatDateForInput = (date: Date | null): string => {
 };
 
 const PostEditor: Component<PostEditorProps> = props => {
+	console.log("[PostEditor] Received props.post:", JSON.stringify(props.post, null, 2));
+	console.log("[PostEditor] Received props.categories:", JSON.stringify(props.categories, null, 2));
+	
 	const [title, setTitle] = createSignal(props.post?.title ?? "");
 	const [slug, setSlug] = createSignal(props.post?.slug ?? "");
 	const [content, setContent] = createSignal(props.post?.content ?? "");
@@ -59,6 +62,9 @@ const PostEditor: Component<PostEditorProps> = props => {
 	const [category, setCategory] = createSignal(props.post?.category ?? "root");
 	const [tags, setTags] = createSignal<string[]>(props.post?.tags ?? []);
 	const [publishAt, setPublishAt] = createSignal<Date | null>(props.post?.publish_at ? new Date(props.post.publish_at) : null);
+
+	console.log("[PostEditor] Initial title signal:", title());
+	console.log("[PostEditor] Initial content signal:", content());
 
 	const [saving, setSaving] = createSignal(false);
 	const [error, setError] = createSignal<string | null>(null);
@@ -77,9 +83,12 @@ const PostEditor: Component<PostEditorProps> = props => {
 		publish_at: publishAt(),
 	});
 
-	// Call onFormReady immediately so parent can wire up save button
+	// Call onFormReady or window.postEditorReady so parent can wire up save button
 	if (props.onFormReady) {
 		props.onFormReady(getFormData);
+	}
+	if (typeof window !== "undefined" && (window as any).postEditorReady) {
+		(window as any).postEditorReady(getFormData);
 	}
 
 	const handleTitleChange = (newTitle: string) => {
@@ -128,18 +137,18 @@ const PostEditor: Component<PostEditorProps> = props => {
 
 			{/* Title + Metadata section with border */}
 			<div class="post-editor__header">
-				<input type="text" class="post-editor__title-input" placeholder="Post title..." value={title()} onInput={e => handleTitleChange(e.currentTarget.value)} />
+				<input type="text" class="post-editor__title-input" placeholder="Post title..." prop:value={title()} onInput={e => handleTitleChange(e.currentTarget.value)} />
 
 				{/* Metadata grid */}
 				<div class="post-editor__metadata">
 					<div class="post-editor__field">
 						<label>Slug</label>
-						<input type="text" value={slug()} onInput={e => setSlug(e.currentTarget.value)} placeholder="post-slug" />
+						<input type="text" prop:value={slug()} onInput={e => setSlug(e.currentTarget.value)} placeholder="post-slug" />
 					</div>
 
 					<div class="post-editor__field">
 						<label>Category</label>
-						<select value={category()} onChange={e => setCategory(e.currentTarget.value)}>
+						<select prop:value={category()} onChange={e => setCategory(e.currentTarget.value)}>
 							<option value="root">root</option>
 							<For each={props.categories.filter(c => c.name !== "root")}>{c => <option value={c.name}>{c.parent ? `${c.parent}/${c.name}` : c.name}</option>}</For>
 						</select>
@@ -147,7 +156,7 @@ const PostEditor: Component<PostEditorProps> = props => {
 
 					<div class="post-editor__field">
 						<label>Format</label>
-						<select value={format()} onChange={e => setFormat(e.currentTarget.value as "md" | "adoc")}>
+						<select prop:value={format()} onChange={e => setFormat(e.currentTarget.value as "md" | "adoc")}>
 							<option value="md">Markdown</option>
 							<option value="adoc">AsciiDoc</option>
 						</select>
@@ -155,12 +164,12 @@ const PostEditor: Component<PostEditorProps> = props => {
 
 					<div class="post-editor__field">
 						<label>Publish at</label>
-						<input type="datetime-local" value={formatDateForInput(publishAt())} onInput={e => handlePublishAtChange(e.currentTarget.value)} />
+						<input type="datetime-local" prop:value={formatDateForInput(publishAt())} onInput={e => handlePublishAtChange(e.currentTarget.value)} />
 					</div>
 
 					<div class="post-editor__field post-editor__field--wide">
 						<label>Description</label>
-						<input type="text" value={description()} onInput={e => setDescription(e.currentTarget.value)} placeholder="Brief description..." />
+						<input type="text" prop:value={description()} onInput={e => setDescription(e.currentTarget.value)} placeholder="Brief description..." />
 					</div>
 
 					<div class="post-editor__field post-editor__field--wide">
@@ -180,7 +189,7 @@ const PostEditor: Component<PostEditorProps> = props => {
 			</div>
 
 			{/* Content editor - full width, no border */}
-			<textarea class="post-editor__content" placeholder="Write your content..." value={content()} onInput={e => setContent(e.currentTarget.value)} />
+			<textarea class="post-editor__content" placeholder="Write your content..." prop:value={content()} onInput={e => setContent(e.currentTarget.value)} />
 		</div>
 	);
 };

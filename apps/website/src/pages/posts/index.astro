@@ -1,5 +1,46 @@
 ---
 import AppLayout from "@/layouts/app-layout.astro";
+
+type Post = {
+  slug: string;
+  title: string;
+  description?: string;
+  category: string;
+  tags: string[];
+  publish_at: string | null;
+  updated_at: string;
+};
+
+const relativeTime = (dateStr: string): string => {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+
+  if (diffSeconds < 60) return "just now";
+  if (diffMinutes < 60) return diffMinutes === 1 ? "1 minute ago" : `${diffMinutes} minutes ago`;
+  if (diffHours < 24) return diffHours === 1 ? "1 hour ago" : `${diffHours} hours ago`;
+  if (diffDays < 7) return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`;
+  if (diffWeeks < 4) return diffWeeks === 1 ? "1 week ago" : `${diffWeeks} weeks ago`;
+  return diffMonths === 1 ? "1 month ago" : `${diffMonths} months ago`;
+};
+
+let posts: Post[] = [];
+let error: string | null = null;
+
+try {
+  const response = await fetch("http://localhost:8080/posts?limit=100");
+  if (!response.ok) throw new Error("Failed to fetch posts");
+  const data = await response.json();
+  posts = data.posts ?? [];
+} catch (err) {
+  error = "Failed to load posts";
+}
 ---
 
 <AppLayout title="Posts">
@@ -10,105 +51,30 @@ import AppLayout from "@/layouts/app-layout.astro";
     </header>
 
     <div id="posts-container">
-      <div id="posts-grid" class="posts-grid">
-        <p class="muted">Loading posts...</p>
-      </div>
-
-      <div id="empty-state" class="empty-state hidden">
-        <p>No posts yet.</p>
-        <a href="/posts/new" class="btn-primary">Create your first post</a>
-      </div>
+      {error ? (
+        <div class="form-error">{error}</div>
+      ) : posts.length === 0 ? (
+        <div class="empty-state">
+          <p>No posts yet.</p>
+          <a href="/posts/new" class="btn-primary">Create your first post</a>
+        </div>
+      ) : (
+        <div class="posts-grid">
+          {posts.map((post) => {
+            const dateStr = post.publish_at ?? post.updated_at;
+            return (
+              <a href={`/posts/${post.slug}`} class="post-card">
+                <span class="post-card__title">{post.title}</span>
+                {post.description && <p class="post-card__description">{post.description}</p>}
+                <div class="post-card__footer">
+                  <span class="post-card__category">{post.category}</span>
+                  <span class="post-card__date">{relativeTime(dateStr)}</span>
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      )}
     </div>
   </section>
 </AppLayout>
-
-<script>
-  const API_URL = "http://localhost:8080";
-
-  type Post = {
-    slug: string;
-    title: string;
-    description?: string;
-    category: string;
-    tags: string[];
-    publish_at: string | null;
-    updated_at: string;
-  };
-
-  const relativeTime = (dateStr: string): string => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffSeconds = Math.floor(diffMs / 1000);
-    const diffMinutes = Math.floor(diffSeconds / 60);
-    const diffHours = Math.floor(diffMinutes / 60);
-    const diffDays = Math.floor(diffHours / 24);
-    const diffWeeks = Math.floor(diffDays / 7);
-    const diffMonths = Math.floor(diffDays / 30);
-
-    if (diffSeconds < 60) return "just now";
-    if (diffMinutes < 60) return diffMinutes === 1 ? "1 minute ago" : `${diffMinutes} minutes ago`;
-    if (diffHours < 24) return diffHours === 1 ? "1 hour ago" : `${diffHours} hours ago`;
-    if (diffDays < 7) return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`;
-    if (diffWeeks < 4) return diffWeeks === 1 ? "1 week ago" : `${diffWeeks} weeks ago`;
-    return diffMonths === 1 ? "1 month ago" : `${diffMonths} months ago`;
-  };
-
-  const escapeHtml = (str: string): string =>
-    str.replace(/&/g, "&amp;")
-       .replace(/</g, "&lt;")
-       .replace(/>/g, "&gt;")
-       .replace(/"/g, "&quot;");
-
-  const renderPosts = (posts: Post[]) => {
-    const gridEl = document.getElementById("posts-grid");
-    const emptyStateEl = document.getElementById("empty-state");
-    if (!gridEl || !emptyStateEl) return;
-
-    if (posts.length === 0) {
-      gridEl.classList.add("hidden");
-      emptyStateEl.classList.remove("hidden");
-      return;
-    }
-
-    emptyStateEl.classList.add("hidden");
-    gridEl.classList.remove("hidden");
-
-    gridEl.innerHTML = posts
-      .map(post => {
-        const description = post.description ? escapeHtml(post.description) : "";
-        const dateStr = post.publish_at ?? post.updated_at;
-        return `
-          <a href="/posts/${post.slug}" class="post-card">
-            <span class="post-card__title">${escapeHtml(post.title)}</span>
-            ${description ? `<p class="post-card__description">${description}</p>` : ""}
-            <div class="post-card__footer">
-              <span class="post-card__category">${escapeHtml(post.category)}</span>
-              <span class="post-card__date">${relativeTime(dateStr)}</span>
-            </div>
-          </a>
-        `;
-      })
-      .join("");
-  };
-
-  const fetchPosts = async () => {
-    try {
-      const response = await fetch(`${API_URL}/posts?limit=100`);
-      if (!response.ok) throw new Error("Failed to fetch posts");
-
-      const data = await response.json();
-      const posts: Post[] = data.posts ?? [];
-      renderPosts(posts);
-    } catch (err) {
-      const gridEl = document.getElementById("posts-grid");
-      if (gridEl) {
-        gridEl.innerHTML = `<div class="form-error">Failed to load posts</div>`;
-      }
-    }
-  };
-
-  document.addEventListener("DOMContentLoaded", fetchPosts);
-</script>
-
-

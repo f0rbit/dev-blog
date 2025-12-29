@@ -28,8 +28,8 @@ const fetchCategories = async (): Promise<Category[]> => {
 const CategoriesPage: Component = () => {
 	const [categories, { refetch }] = createResource(fetchCategories);
 	const [error, setError] = createSignal<string | null>(null);
-	const [modalOpen, setModalOpen] = createSignal(false);
 	const [defaultParent, setDefaultParent] = createSignal("root");
+	const [formHighlighted, setFormHighlighted] = createSignal(false);
 
 	const handleDelete = async (name: string) => {
 		setError(null);
@@ -61,9 +61,10 @@ const CategoriesPage: Component = () => {
 		refetch();
 	};
 
-	const openAddModal = (parentName: string) => {
+	const selectParentForAdd = (parentName: string) => {
 		setDefaultParent(parentName);
-		setModalOpen(true);
+		setFormHighlighted(true);
+		setTimeout(() => setFormHighlighted(false), 1500);
 	};
 
 	return (
@@ -91,10 +92,15 @@ const CategoriesPage: Component = () => {
 							<h2 class="text-sm muted" style={{ "margin-bottom": "8px" }}>
 								Category Hierarchy
 							</h2>
-							<CategoryTree categories={cats} onDelete={handleDelete} onAddChild={openAddModal} />
+							<CategoryTree categories={cats} onDelete={handleDelete} onAddChild={selectParentForAdd} />
 						</section>
 
-						<CategoryForm categories={cats} onSubmit={handleCreate} isOpen={modalOpen()} onClose={() => setModalOpen(false)} defaultParent={defaultParent()} />
+						<CategoryForm
+							categories={cats}
+							onSubmit={handleCreate}
+							defaultParent={defaultParent()}
+							highlighted={formHighlighted()}
+						/>
 					</>
 				)}
 			</Show>
