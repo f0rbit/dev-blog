@@ -1,0 +1,13 @@
+---
+import TokensPage from "@/components/settings/tokens-page";
+import AppLayout from "@/layouts/app-layout.astro";
+---
+
+<AppLayout title="API Tokens">
+	<section class="flex-col">
+		<header>
+			<h1 class="page-title">API Tokens</h1>
+		</header>
+		<TokensPage client:load />
+	</section>
+</AppLayout>

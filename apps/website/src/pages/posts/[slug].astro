@@ -1,0 +1,153 @@
+---
+import PostEditor from "@/components/post/post-editor";
+import AppLayout from "@/layouts/app-layout.astro";
+
+const { slug } = Astro.params;
+---
+
+<AppLayout title="Edit Post">
+	<section class="flex-col">
+		<header>
+			<h1 class="page-title">Edit Post</h1>
+			<a href="/posts" class="btn-secondary">Back to Posts</a>
+		</header>
+
+		<div id="editor-container" data-slug={slug}>
+			<p class="muted">Loading post...</p>
+		</div>
+	</section>
+</AppLayout>
+
+<script>
+	const API_URL = "http://localhost:8080";
+
+	type Category = {
+		name: string;
+		parent: string | null;
+	};
+
+	type CategoryNode = Category & { children?: CategoryNode[] };
+
+	type Post = {
+		id: number;
+		uuid: string;
+		slug: string;
+		title: string;
+		content: string;
+		description?: string;
+		format: "md" | "adoc";
+		category: string;
+		tags: string[];
+		publish_at: string | null;
+	};
+
+	type PostFormData = {
+		slug: string;
+		title: string;
+		content: string;
+		description?: string;
+		format: "md" | "adoc";
+		category: string;
+		tags: string[];
+		publish_at: Date | null;
+	};
+
+	const flattenTree = (nodes: CategoryNode[]): Category[] =>
+		nodes.flatMap(n => [{ name: n.name, parent: n.parent }, ...flattenTree(n.children ?? [])]);
+
+	const fetchCategories = async (): Promise<Category[]> => {
+		try {
+			const response = await fetch(`${API_URL}/categories`);
+			if (!response.ok) return [];
+			const data = await response.json();
+			// API returns tree structure, flatten it
+			return flattenTree(data.categories ?? []);
+		} catch {
+			return [];
+		}
+	};
+
+	const fetchPost = async (slug: string): Promise<Post | null> => {
+		try {
+			const response = await fetch(`${API_URL}/post/${slug}`);
+			if (!response.ok) return null;
+			return await response.json();
+		} catch {
+			return null;
+		}
+	};
+
+	const handleSave = async (uuid: string, data: PostFormData) => {
+		const response = await fetch(`${API_URL}/post/${uuid}`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				slug: data.slug,
+				title: data.title,
+				content: data.content,
+				description: data.description,
+				format: data.format,
+				category: data.category,
+				tags: data.tags,
+				publish_at: data.publish_at?.toISOString() ?? null,
+			}),
+		});
+
+		if (!response.ok) {
+			const error = await response.json().catch(() => ({ message: "Unknown error" }));
+			throw new Error(error.message ?? "Failed to update post");
+		}
+
+		const post = await response.json();
+		if (post.slug !== data.slug) {
+			window.location.href = `/posts/${post.slug}`;
+		}
+	};
+
+	const handleDelete = async (uuid: string) => {
+		const response = await fetch(`${API_URL}/post/${uuid}`, {
+			method: "DELETE",
+		});
+
+		if (!response.ok) {
+			const error = await response.json().catch(() => ({ message: "Unknown error" }));
+			throw new Error(error.message ?? "Failed to delete post");
+		}
+
+		window.location.href = "/posts";
+	};
+
+	document.addEventListener("DOMContentLoaded", async () => {
+		const container = document.getElementById("editor-container");
+		if (!container) return;
+
+		const slug = container.dataset.slug;
+		if (!slug) {
+			container.innerHTML = '<div class="form-error">No slug provided</div>';
+			return;
+		}
+
+		const [post, categories] = await Promise.all([fetchPost(slug), fetchCategories()]);
+
+		if (!post) {
+			container.innerHTML = '<div class="form-error">Post not found</div>';
+			return;
+		}
+
+		const { render } = await import("solid-js/web");
+		const { default: PostEditor } = await import("@/components/post/post-editor");
+
+		container.innerHTML = "";
+
+		render(
+			() =>
+				PostEditor({
+					post,
+					categories,
+					onSave: data => handleSave(post.uuid, data),
+					onDelete: () => handleDelete(post.uuid),
+				}),
+			container
+		);
+	});
+</script>

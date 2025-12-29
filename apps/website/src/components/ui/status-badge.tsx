@@ -1,12 +1,10 @@
 import type { Component } from "solid-js";
 
-type Status = "draft" | "scheduled" | "published";
+interface StatusBadgeProps {
+	status: "draft" | "scheduled" | "published";
+}
 
-type StatusBadgeProps = {
-	status: Status;
-};
-
-const statusConfig: Record<Status, { label: string; class: string }> = {
+const statusConfig: Record<StatusBadgeProps["status"], { label: string; class: string }> = {
 	draft: { label: "Draft", class: "status-badge--draft" },
 	scheduled: { label: "Scheduled", class: "status-badge--scheduled" },
 	published: { label: "Published", class: "status-badge--published" },
@@ -23,7 +21,7 @@ const StatusBadge: Component<StatusBadgeProps> = props => {
 	);
 };
 
-const StatusIcon: Component<{ status: Status }> = props => {
+const StatusIcon: Component<{ status: StatusBadgeProps["status"] }> = props => {
 	const iconPath = (): string => {
 		switch (props.status) {
 			case "draft":

@@ -1,0 +1,104 @@
+---
+import PostEditor from "@/components/post/post-editor";
+import AppLayout from "@/layouts/app-layout.astro";
+---
+
+<AppLayout title="New Post">
+	<section class="flex-col">
+		<header>
+			<h1 class="page-title">New Post</h1>
+			<a href="/posts" class="btn-secondary">Cancel</a>
+		</header>
+
+		<div id="editor-container">
+			<PostEditor
+				client:load
+				categories={[]}
+				onSave={async () => {}}
+			/>
+		</div>
+	</section>
+</AppLayout>
+
+<script>
+	const API_URL = "http://localhost:8080";
+
+	type Category = {
+		name: string;
+		parent: string | null;
+	};
+
+	type CategoryNode = Category & { children?: CategoryNode[] };
+
+	type PostFormData = {
+		slug: string;
+		title: string;
+		content: string;
+		description?: string;
+		format: "md" | "adoc";
+		category: string;
+		tags: string[];
+		publish_at: Date | null;
+	};
+
+	const flattenTree = (nodes: CategoryNode[]): Category[] =>
+		nodes.flatMap(n => [{ name: n.name, parent: n.parent }, ...flattenTree(n.children ?? [])]);
+
+	const fetchCategories = async (): Promise<Category[]> => {
+		try {
+			const response = await fetch(`${API_URL}/categories`);
+			if (!response.ok) return [];
+			const data = await response.json();
+			// API returns tree structure, flatten it
+			return flattenTree(data.categories ?? []);
+		} catch {
+			return [];
+		}
+	};
+
+	const handleSave = async (data: PostFormData) => {
+		const response = await fetch(`${API_URL}/post`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				slug: data.slug,
+				title: data.title,
+				content: data.content,
+				description: data.description,
+				format: data.format,
+				category: data.category,
+				tags: data.tags,
+				publish_at: data.publish_at?.toISOString() ?? null,
+			}),
+		});
+
+		if (!response.ok) {
+			const error = await response.json().catch(() => ({ message: "Unknown error" }));
+			throw new Error(error.message ?? "Failed to create post");
+		}
+
+		const post = await response.json();
+		window.location.href = `/posts/${post.slug}`;
+	};
+
+	document.addEventListener("DOMContentLoaded", async () => {
+		const categories = await fetchCategories();
+
+		const container = document.getElementById("editor-container");
+		if (!container) return;
+
+		const { render } = await import("solid-js/web");
+		const { default: PostEditor } = await import("@/components/post/post-editor");
+
+		container.innerHTML = "";
+
+		render(
+			() =>
+				PostEditor({
+					categories,
+					onSave: handleSave,
+				}),
+			container
+		);
+	});
+</script>

@@ -1,201 +1,86 @@
-import { type Component, For, Show, createSignal } from "solid-js";
+import type { Component } from "solid-js";
+import { Show, createEffect, createSignal } from "solid-js";
 
-type PostStatus = "draft" | "scheduled" | "published";
+type StatusMode = "draft" | "now" | "schedule";
 
 type PostStatusProps = {
-	value: PostStatus;
-	onChange: (status: PostStatus) => void;
-	disabled?: boolean;
+	publishAt: Date | null;
+	onUpdate: (publishAt: Date | null) => void;
 };
 
-type StatusOption = {
-	value: PostStatus;
-	label: string;
-	description: string;
-	icon: string;
+const deriveMode = (publishAt: Date | null): StatusMode => {
+	if (!publishAt) return "draft";
+	const now = new Date();
+	const diff = publishAt.getTime() - now.getTime();
+	return diff <= 60000 ? "now" : "schedule";
 };
 
-const statusOptions: StatusOption[] = [
-	{
-		value: "draft",
-		label: "Draft",
-		description: "Not visible to readers",
-		icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
-	},
-	{
-		value: "scheduled",
-		label: "Scheduled",
-		description: "Will publish at set time",
-		icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
-	},
-	{
-		value: "published",
-		label: "Published",
-		description: "Live and visible to all",
-		icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
-	},
-];
+const formatDatetimeLocal = (date: Date): string => {
+	const pad = (n: number) => n.toString().padStart(2, "0");
+	const year = date.getFullYear();
+	const month = pad(date.getMonth() + 1);
+	const day = pad(date.getDate());
+	const hours = pad(date.getHours());
+	const minutes = pad(date.getMinutes());
+	return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
 
-const PostStatusSelector: Component<PostStatusProps> = props => {
-	const [isOpen, setIsOpen] = createSignal(false);
+const PostStatus: Component<PostStatusProps> = props => {
+	const [mode, setMode] = createSignal<StatusMode>(deriveMode(props.publishAt));
+	const [scheduleDate, setScheduleDate] = createSignal(props.publishAt ? formatDatetimeLocal(props.publishAt) : "");
 
-	const currentOption = () => statusOptions.find(o => o.value === props.value) ?? statusOptions[0];
+	createEffect(() => {
+		setMode(deriveMode(props.publishAt));
+		if (props.publishAt) {
+			setScheduleDate(formatDatetimeLocal(props.publishAt));
+		}
+	});
 
-	const handleSelect = (status: PostStatus) => {
-		if (props.disabled) return;
-		props.onChange(status);
-		setIsOpen(false);
-	};
+	const handleModeChange = (newMode: StatusMode) => {
+		setMode(newMode);
 
-	const handleKeyDown = (e: KeyboardEvent) => {
-		if (e.key === "Escape") {
-			setIsOpen(false);
+		if (newMode === "draft") {
+			props.onUpdate(null);
 			return;
 		}
-		if (e.key === "Enter" || e.key === " ") {
-			e.preventDefault();
-			setIsOpen(!isOpen());
+
+		if (newMode === "now") {
+			props.onUpdate(new Date());
+			return;
+		}
+
+		const dateValue = scheduleDate();
+		if (dateValue) {
+			props.onUpdate(new Date(dateValue));
+		}
+	};
+
+	const handleScheduleChange = (value: string) => {
+		setScheduleDate(value);
+		if (value && mode() === "schedule") {
+			props.onUpdate(new Date(value));
 		}
 	};
 
 	return (
-		<div class="post-status" style={containerStyles}>
-			<button
-				type="button"
-				class="post-status__trigger"
-				style={triggerStyles(props.disabled)}
-				onClick={() => !props.disabled && setIsOpen(!isOpen())}
-				onKeyDown={handleKeyDown}
-				aria-expanded={isOpen()}
-				aria-haspopup="listbox"
-				disabled={props.disabled}
-			>
-				<span class="post-status__current" style={currentStyles}>
-					<StatusIcon path={currentOption()?.icon ?? ""} status={props.value} />
-					<span>{currentOption()?.label}</span>
-				</span>
-				<ChevronIcon isOpen={isOpen()} />
-			</button>
+		<div class="post-status">
+			<div class="status-options">
+				<button type="button" class={mode() === "draft" ? "selected" : ""} onClick={() => handleModeChange("draft")}>
+					Draft
+				</button>
+				<button type="button" class={mode() === "now" ? "selected" : ""} onClick={() => handleModeChange("now")}>
+					Publish Now
+				</button>
+				<button type="button" class={mode() === "schedule" ? "selected" : ""} onClick={() => handleModeChange("schedule")}>
+					Schedule
+				</button>
+			</div>
 
-			<Show when={isOpen()}>
-				<div class="post-status__dropdown" style={dropdownStyles} aria-label="Post status">
-					<For each={statusOptions}>
-						{option => (
-							<button type="button" class="post-status__option" style={optionStyles(option.value === props.value)} onClick={() => handleSelect(option.value)}>
-								<StatusIcon path={option.icon} status={option.value} />
-								<div style={optionTextStyles}>
-									<span style={optionLabelStyles}>{option.label}</span>
-									<span style={optionDescStyles}>{option.description}</span>
-								</div>
-								<Show when={option.value === props.value}>
-									<CheckIcon />
-								</Show>
-							</button>
-						)}
-					</For>
-				</div>
+			<Show when={mode() === "schedule"}>
+				<input type="datetime-local" value={scheduleDate()} onInput={e => handleScheduleChange(e.currentTarget.value)} style={{ "margin-top": "8px", width: "100%" }} />
 			</Show>
 		</div>
 	);
 };
 
-const StatusIcon: Component<{ path: string; status: PostStatus }> = props => (
-	<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style={{ color: `var(--status-${props.status})` }}>
-		<path d={props.path} />
-	</svg>
-);
-
-const ChevronIcon: Component<{ isOpen: boolean }> = props => (
-	<svg
-		width="16"
-		height="16"
-		viewBox="0 0 24 24"
-		fill="none"
-		stroke="currentColor"
-		stroke-width="2"
-		stroke-linecap="round"
-		stroke-linejoin="round"
-		style={{
-			transition: "transform var(--transition-fast)",
-			transform: props.isOpen ? "rotate(180deg)" : "rotate(0deg)",
-		}}
-	>
-		<path d="M6 9l6 6 6-6" />
-	</svg>
-);
-
-const CheckIcon: Component = () => (
-	<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style={{ color: "var(--input-focus)", "margin-left": "auto" }}>
-		<path d="M5 13l4 4L19 7" />
-	</svg>
-);
-
-const containerStyles = {
-	position: "relative" as const,
-	display: "inline-block",
-};
-
-const triggerStyles = (disabled?: boolean) => ({
-	display: "flex",
-	"align-items": "center",
-	"justify-content": "space-between",
-	gap: "var(--space-sm)",
-	padding: "var(--space-sm) var(--space-md)",
-	"min-width": "180px",
-	"background-color": "var(--input-background)",
-	border: "1px solid var(--input-border)",
-	"border-radius": "var(--radius-md)",
-	cursor: disabled ? "not-allowed" : "pointer",
-	opacity: disabled ? "0.5" : "1",
-	transition: "border-color var(--transition-fast)",
-});
-
-const currentStyles = {
-	display: "flex",
-	"align-items": "center",
-	gap: "var(--space-sm)",
-};
-
-const dropdownStyles = {
-	position: "absolute" as const,
-	top: "calc(100% + var(--space-xs))",
-	left: "0",
-	right: "0",
-	"background-color": "var(--bg-secondary)",
-	border: "1px solid var(--input-border)",
-	"border-radius": "var(--radius-md)",
-	"box-shadow": "0 4px 12px rgba(0, 0, 0, 0.1)",
-	"z-index": "10",
-	overflow: "hidden",
-};
-
-const optionStyles = (isSelected: boolean) => ({
-	display: "flex",
-	"align-items": "center",
-	gap: "var(--space-sm)",
-	width: "100%",
-	padding: "var(--space-sm) var(--space-md)",
-	"background-color": isSelected ? "var(--bg-tertiary)" : "transparent",
-	border: "none",
-	cursor: "pointer",
-	"text-align": "left" as const,
-	transition: "background-color var(--transition-fast)",
-});
-
-const optionTextStyles = {
-	display: "flex",
-	"flex-direction": "column" as const,
-	gap: "2px",
-};
-
-const optionLabelStyles = {
-	"font-weight": "500",
-	color: "var(--text-primary)",
-};
-
-const optionDescStyles = {
-	"font-size": "0.75rem",
-	color: "var(--text-muted)",
-};
-
-export default PostStatusSelector;
+export default PostStatus;
