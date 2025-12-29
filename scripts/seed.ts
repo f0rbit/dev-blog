@@ -1,51 +1,31 @@
 import { Database } from "bun:sqlite";
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
+import { create_corpus, create_file_backend, define_store, json_codec } from "@f0rbit/corpus";
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import type { PostContent } from "../packages/schema/src/corpus";
+import { PostContentSchema, type PostContent } from "../packages/schema/src/corpus";
+import type { DrizzleDB } from "../packages/schema/src/database";
 import * as schema from "../packages/schema/src/database";
+import type { PostsCorpus } from "../packages/schema/src/types";
+import { createPostService } from "../packages/server/src/services/posts";
 
 const LOCAL_DIR = "./local";
 const DB_PATH = `${LOCAL_DIR}/sqlite.db`;
 const CORPUS_PATH = `${LOCAL_DIR}/corpus`;
-
-type FileCorpusEntry = {
-	content: PostContent;
-	parent: string | null;
-	created_at: string;
-};
 
 const ensureDirectories = async (): Promise<void> => {
 	await mkdir(LOCAL_DIR, { recursive: true });
 	await mkdir(CORPUS_PATH, { recursive: true });
 };
 
-const hashContent = (content: string): string => {
-	const hash = Bun.hash(content);
-	return hash.toString(16).padStart(16, "0");
+const createCorpus = (): PostsCorpus => {
+	const backend = create_file_backend({ base_path: CORPUS_PATH });
+	const posts_store = define_store("posts", json_codec(PostContentSchema));
+	return create_corpus().with_backend(backend).with_store(posts_store).build();
 };
 
-const writeCorpusVersion = async (userId: number, postUuid: string, content: PostContent, parent: string | null = null): Promise<string> => {
-	const serialized = JSON.stringify(content);
-	const hash = hashContent(serialized);
-	const dirPath = `${CORPUS_PATH}/posts/${userId}/${postUuid}/v`;
-	const filePath = `${dirPath}/${hash}.json`;
-
-	await mkdir(dirPath, { recursive: true });
-
-	const entry: FileCorpusEntry = {
-		content,
-		parent,
-		created_at: new Date().toISOString(),
-	};
-
-	await Bun.write(filePath, JSON.stringify(entry, null, 2));
-
-	return hash;
-};
-
-const seedDevUser = async (db: ReturnType<typeof drizzle>): Promise<typeof schema.users.$inferSelect> => {
+const seedDevUser = async (db: DrizzleDB): Promise<typeof schema.users.$inferSelect> => {
 	const now = new Date();
 
 	await db
@@ -77,7 +57,7 @@ const categorySeeds: CategorySeed[] = [
 	{ name: "story", parent: "root" },
 ];
 
-const seedCategories = async (db: ReturnType<typeof drizzle>, userId: number): Promise<void> => {
+const seedCategories = async (db: DrizzleDB, userId: number): Promise<void> => {
 	for (const cat of categorySeeds) {
 		await db
 			.insert(schema.categories)
@@ -480,48 +460,33 @@ Need to implement a proper AI system for enemies. Thinking about behavior trees 
 	},
 ];
 
-const seedPosts = async (db: ReturnType<typeof drizzle>, userId: number): Promise<void> => {
-	const now = new Date();
+const seedPosts = async (db: DrizzleDB, corpus: PostsCorpus, userId: number): Promise<void> => {
+	const service = createPostService({ db, corpus });
 	let seededCount = 0;
 
 	for (const seed of postSeeds) {
-		// Check if post with this slug already exists for this user
 		const existing = await db
 			.select({ id: schema.posts.id })
 			.from(schema.posts)
 			.where(and(eq(schema.posts.author_id, userId), eq(schema.posts.slug, seed.slug)))
 			.limit(1);
 
-		if (existing.length > 0) {
-			continue; // Skip already existing posts
-		}
+		if (existing.length > 0) continue;
 
-		const uuid = crypto.randomUUID();
-		const hash = await writeCorpusVersion(userId, uuid, seed.content);
+		const result = await service.create(userId, {
+			slug: seed.slug,
+			title: seed.content.title,
+			content: seed.content.content,
+			description: seed.content.description,
+			format: seed.content.format,
+			category: seed.category,
+			tags: seed.tags,
+			publish_at: seed.publishAt,
+		});
 
-		const [post] = await db
-			.insert(schema.posts)
-			.values({
-				uuid,
-				author_id: userId,
-				slug: seed.slug,
-				corpus_version: hash,
-				category: seed.category,
-				archived: false,
-				publish_at: seed.publishAt,
-				created_at: now,
-				updated_at: now,
-			})
-			.returning();
-
-		for (const tag of seed.tags) {
-			await db
-				.insert(schema.tags)
-				.values({
-					post_id: post.id,
-					tag,
-				})
-				.onConflictDoNothing();
+		if (!result.ok) {
+			console.error(`  ✗ Failed to create post "${seed.slug}":`, result.error);
+			continue;
 		}
 
 		seededCount++;
@@ -530,7 +495,7 @@ const seedPosts = async (db: ReturnType<typeof drizzle>, userId: number): Promis
 	console.log(`✓ Posts seeded: ${seededCount} new posts (${postSeeds.length - seededCount} already existed)`);
 };
 
-const seedAccessKey = async (db: ReturnType<typeof drizzle>, userId: number): Promise<void> => {
+const seedAccessKey = async (db: DrizzleDB, userId: number): Promise<void> => {
 	const devToken = "dev-api-token-12345";
 	const encoder = new TextEncoder();
 	const data = encoder.encode(devToken);
@@ -565,11 +530,12 @@ const main = async (): Promise<void> => {
 	}
 
 	const sqlite = new Database(DB_PATH);
-	const db = drizzle(sqlite, { schema });
+	const db = drizzle(sqlite) as DrizzleDB;
+	const corpus = createCorpus();
 
 	const user = await seedDevUser(db);
 	await seedCategories(db, user.id);
-	await seedPosts(db, user.id);
+	await seedPosts(db, corpus, user.id);
 	await seedAccessKey(db, user.id);
 
 	sqlite.close();
