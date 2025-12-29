@@ -34,8 +34,8 @@ type PostFormData = {
 type PostEditorProps = {
 	post?: Post;
 	categories: Category[];
-	onSave: (data: PostFormData) => Promise<void>;
-	onDelete?: () => Promise<void>;
+	onSave?: (data: PostFormData) => Promise<void>;
+	onFormReady?: (getFormData: () => PostFormData) => void;
 };
 
 const generateSlug = (title: string): string =>
@@ -61,10 +61,26 @@ const PostEditor: Component<PostEditorProps> = props => {
 	const [publishAt, setPublishAt] = createSignal<Date | null>(props.post?.publish_at ? new Date(props.post.publish_at) : null);
 
 	const [saving, setSaving] = createSignal(false);
-	const [deleting, setDeleting] = createSignal(false);
 	const [error, setError] = createSignal<string | null>(null);
 
 	const isEditing = () => !!props.post;
+
+	// Expose form data getter for external save button
+	const getFormData = (): PostFormData => ({
+		slug: slug(),
+		title: title(),
+		content: content(),
+		description: description() || undefined,
+		format: format(),
+		category: category(),
+		tags: tags(),
+		publish_at: publishAt(),
+	});
+
+	// Call onFormReady immediately so parent can wire up save button
+	if (props.onFormReady) {
+		props.onFormReady(getFormData);
+	}
 
 	const handleTitleChange = (newTitle: string) => {
 		setTitle(newTitle);
@@ -82,6 +98,8 @@ const PostEditor: Component<PostEditorProps> = props => {
 	};
 
 	const handleSave = async () => {
+		if (!props.onSave) return;
+		
 		setError(null);
 		if (!title().trim()) {
 			setError("Title is required");
@@ -94,33 +112,11 @@ const PostEditor: Component<PostEditorProps> = props => {
 
 		setSaving(true);
 		try {
-			await props.onSave({
-				slug: slug(),
-				title: title(),
-				content: content(),
-				description: description() || undefined,
-				format: format(),
-				category: category(),
-				tags: tags(),
-				publish_at: publishAt(),
-			});
+			await props.onSave(getFormData());
 		} catch (e) {
 			setError(e instanceof Error ? e.message : "Failed to save post");
 		} finally {
 			setSaving(false);
-		}
-	};
-
-	const handleDelete = async () => {
-		if (!props.onDelete) return;
-		if (!confirm("Are you sure you want to delete this post?")) return;
-
-		setDeleting(true);
-		try {
-			await props.onDelete();
-		} catch (e) {
-			setError(e instanceof Error ? e.message : "Failed to delete post");
-			setDeleting(false);
 		}
 	};
 
@@ -173,17 +169,14 @@ const PostEditor: Component<PostEditorProps> = props => {
 					</div>
 				</div>
 
-				{/* Actions */}
-				<div class="post-editor__actions">
-					<button type="button" class="btn-primary" onClick={handleSave} disabled={saving()}>
-						{saving() ? "Saving..." : isEditing() ? "Update" : "Create"}
-					</button>
-					<Show when={isEditing() && props.onDelete}>
-						<button type="button" class="btn-danger" onClick={handleDelete} disabled={deleting()}>
-							{deleting() ? "Deleting..." : "Delete"}
+				{/* Actions - only show if onSave is provided (new post page) */}
+				<Show when={props.onSave}>
+					<div class="post-editor__actions">
+						<button type="button" class="btn-primary" onClick={handleSave} disabled={saving()}>
+							{saving() ? "Saving..." : isEditing() ? "Update" : "Create"}
 						</button>
-					</Show>
-				</div>
+					</div>
+				</Show>
 			</div>
 
 			{/* Content editor - full width, no border */}

@@ -8,8 +8,13 @@ const { slug } = Astro.params;
 <AppLayout title="Edit Post">
 	<section class="flex-col">
 		<header>
-			<h1 class="page-title">Edit Post</h1>
-			<a href="/posts" class="btn-secondary">Back to Posts</a>
+			<h1 class="page-title flex-row">
+				<a href="/posts" title="Back to posts" class="back-arrow">
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+				</a>
+				Edit Post
+			</h1>
+			<button type="button" id="save-btn" class="btn-primary" disabled>Update</button>
 		</header>
 
 		<div id="editor-container" data-slug={slug}>
@@ -17,6 +22,17 @@ const { slug } = Astro.params;
 		</div>
 	</section>
 </AppLayout>
+
+<style>
+	.back-arrow {
+		display: flex;
+		align-items: center;
+		color: var(--text-muted);
+	}
+	.back-arrow:hover {
+		color: var(--text-link);
+	}
+</style>
 
 <script>
 	const API_URL = "http://localhost:8080";
@@ -104,21 +120,9 @@ const { slug } = Astro.params;
 		}
 	};
 
-	const handleDelete = async (uuid: string) => {
-		const response = await fetch(`${API_URL}/post/${uuid}`, {
-			method: "DELETE",
-		});
-
-		if (!response.ok) {
-			const error = await response.json().catch(() => ({ message: "Unknown error" }));
-			throw new Error(error.message ?? "Failed to delete post");
-		}
-
-		window.location.href = "/posts";
-	};
-
 	document.addEventListener("DOMContentLoaded", async () => {
 		const container = document.getElementById("editor-container");
+		const saveBtn = document.getElementById("save-btn") as HTMLButtonElement | null;
 		if (!container) return;
 
 		const slug = container.dataset.slug;
@@ -139,15 +143,50 @@ const { slug } = Astro.params;
 
 		container.innerHTML = "";
 
+		// Store reference to get form data
+		let getFormData: (() => PostFormData) | null = null;
+
 		render(
 			() =>
 				PostEditor({
 					post,
 					categories,
-					onSave: data => handleSave(post.uuid, data),
-					onDelete: () => handleDelete(post.uuid),
+					onFormReady: (getter) => {
+						getFormData = getter;
+						if (saveBtn) saveBtn.disabled = false;
+					},
 				}),
 			container
 		);
+
+		// Wire up the header save button
+		if (saveBtn) {
+			saveBtn.addEventListener("click", async () => {
+				if (!getFormData) return;
+				
+				const data = getFormData();
+				if (!data.title.trim()) {
+					alert("Title is required");
+					return;
+				}
+				if (!data.slug.trim()) {
+					alert("Slug is required");
+					return;
+				}
+
+				saveBtn.disabled = true;
+				saveBtn.textContent = "Saving...";
+				
+				try {
+					await handleSave(post.uuid, data);
+					saveBtn.textContent = "Update";
+				} catch (e) {
+					alert(e instanceof Error ? e.message : "Failed to save");
+					saveBtn.textContent = "Update";
+				} finally {
+					saveBtn.disabled = false;
+				}
+			});
+		}
 	});
 </script>

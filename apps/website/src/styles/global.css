@@ -844,8 +844,9 @@ footer {
 	font-size: 0.875rem;
 	line-height: 1.6;
 	resize: vertical;
-	border: none;
-	background: transparent;
+	border: 1px solid var(--input-border);
+	border-radius: 4px;
+	background: var(--input-background);
 	color: var(--text-primary);
 }
 
