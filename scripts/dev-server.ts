@@ -30,6 +30,58 @@ const DEV_USER: User = {
 	updated_at: new Date(),
 };
 
+// Mock DevPad projects for testing
+const MOCK_DEVPAD_PROJECTS = [
+	{
+		id: "proj-devpad",
+		name: "DevPad",
+		slug: "devpad",
+		description: "The DevPad application itself",
+		color: "#6366f1",
+		icon: "📝",
+		url: "https://github.com/f0rbit/devpad",
+	},
+	{
+		id: "proj-dev-blog",
+		name: "Dev Blog",
+		slug: "dev-blog",
+		description: "Personal developer blog",
+		color: "#22c55e",
+		icon: "📰",
+		url: "https://github.com/f0rbit/dev-blog",
+	},
+	{
+		id: "proj-media-timeline",
+		name: "Media Timeline",
+		slug: "media-timeline",
+		description: "Track movies, shows, and games",
+		color: "#f59e0b",
+		icon: "🎬",
+		url: "https://github.com/f0rbit/media-timeline",
+	},
+	{
+		id: "proj-corpus",
+		name: "Corpus",
+		slug: "corpus",
+		description: "Content versioning library",
+		color: "#ec4899",
+		icon: "📚",
+		url: "https://github.com/f0rbit/corpus",
+	},
+	{
+		id: "proj-homelab",
+		name: "Homelab",
+		slug: "homelab",
+		description: "Self-hosted infrastructure",
+		color: "#8b5cf6",
+		icon: "🏠",
+		url: null,
+	},
+];
+
+// Valid mock API token for testing
+const MOCK_DEVPAD_TOKEN = "devpad-test-token-12345";
+
 // -----------------------------------------------------------------------------
 // Dev Server App
 // -----------------------------------------------------------------------------
@@ -71,6 +123,19 @@ const createDevApp = (appContext: AppContext) => {
 	app.get("/auth/user", c => c.json({ user: DEV_USER }));
 	app.get("/auth/login", c => c.redirect("/"));
 	app.get("/auth/logout", c => c.json({ success: true, message: "Logged out" }));
+
+	// Mock DevPad API endpoint (simulates external DevPad service)
+	app.get("/mock-devpad/projects", c => {
+		const authHeader = c.req.header("Authorization");
+		if (!authHeader || !authHeader.startsWith("Bearer ")) {
+			return c.json({ error: "Missing authorization header" }, 401);
+		}
+		const token = authHeader.replace("Bearer ", "");
+		if (token !== MOCK_DEVPAD_TOKEN) {
+			return c.json({ error: "Invalid or expired token" }, 401);
+		}
+		return c.json({ projects: MOCK_DEVPAD_PROJECTS });
+	});
 
 	// Mount API routes
 	app.route("/posts", postsRouter);
@@ -128,7 +193,7 @@ const main = async () => {
 	const appContext: AppContext = {
 		db,
 		corpus,
-		devpadApi: "http://localhost:3000",
+		devpadApi: `http://localhost:${PORT}/mock-devpad`,
 		environment: "development",
 	};
 
@@ -137,6 +202,7 @@ const main = async () => {
 	console.log(`✓ Database: ${DB_PATH}`);
 	console.log(`✓ Corpus: ${CORPUS_PATH}`);
 	console.log(`✓ Dev user: ${DEV_USER.username}`);
+	console.log(`✓ Mock DevPad API enabled`);
 	console.log(`\n📡 Dev server running on http://localhost:${PORT}`);
 	console.log("\nEndpoints:");
 	console.log("  GET  /health        - Health check");
@@ -145,6 +211,9 @@ const main = async () => {
 	console.log("  GET  /categories    - List categories");
 	console.log("  GET  /tokens        - List API tokens");
 	console.log("  GET  /projects      - List DevPad projects");
+	console.log("\nMock DevPad:");
+	console.log(`  Token: ${MOCK_DEVPAD_TOKEN}`);
+	console.log(`  Projects: ${MOCK_DEVPAD_PROJECTS.length} available`);
 
 	serve({
 		port: PORT,
