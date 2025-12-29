@@ -3,7 +3,8 @@
 	"private": true,
 	"workspaces": ["apps/*", "packages/*"],
 	"scripts": {
-		"dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
+		"dev": "bun run dev:all",
+		"dev:all": "concurrently -n api,web -c blue,magenta \"bun run dev:server\" \"bun run dev:client\"",
 		"dev:server": "bun --watch scripts/dev-server.ts",
 		"dev:client": "cd apps/website && bun run dev",
 		"db:generate": "drizzle-kit generate",
@@ -31,6 +32,7 @@
 		"wrangler": "^3.99.0"
 	},
 	"dependencies": {
+		"@f0rbit/corpus": "^0.2.2",
 		"better-sqlite3": "^11.7.0",
 		"drizzle-orm": "^0.38.2",
 		"hono": "^4.6.14",
