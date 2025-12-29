@@ -23,6 +23,7 @@ type Post = {
 	category: string;
 	tags: string[];
 	publish_at: string | null;
+	updated_at: string;
 };
 
 const flattenTree = (nodes: CategoryNode[]): Category[] =>

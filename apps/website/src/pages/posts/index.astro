@@ -2,6 +2,7 @@
 import AppLayout from "@/layouts/app-layout.astro";
 
 type Post = {
+  uuid: string;
   slug: string;
   title: string;
   description?: string;
@@ -63,14 +64,19 @@ try {
           {posts.map((post) => {
             const dateStr = post.publish_at ?? post.updated_at;
             return (
-              <a href={`/posts/${post.slug}`} class="post-card">
-                <span class="post-card__title">{post.title}</span>
-                {post.description && <p class="post-card__description">{post.description}</p>}
+              <div class="post-card">
+                <a href={`/posts/${post.slug}`} class="post-card__link">
+                  <span class="post-card__title">{post.title}</span>
+                  {post.description && <p class="post-card__description">{post.description}</p>}
+                </a>
                 <div class="post-card__footer">
-                  <span class="post-card__category">{post.category}</span>
-                  <span class="post-card__date">{relativeTime(dateStr)}</span>
+                  <span class="post-card__meta">
+                    <span class="post-card__category">{post.category}</span>
+                    <span class="post-card__date">{relativeTime(dateStr)}</span>
+                  </span>
+                  <a href={`/posts/${post.uuid}/versions`} class="post-card__history">History</a>
                 </div>
-              </a>
+              </div>
             );
           })}
         </div>

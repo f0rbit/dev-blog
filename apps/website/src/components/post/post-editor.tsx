@@ -13,6 +13,7 @@ type Post = {
 	category: string;
 	tags: string[];
 	publish_at: string | null;
+	updated_at?: string;
 };
 
 type Category = {
@@ -48,6 +49,25 @@ const formatDateForInput = (date: Date | null): string => {
 	if (!date) return "";
 	const pad = (n: number) => n.toString().padStart(2, "0");
 	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const relativeTime = (dateStr: string): string => {
+	const date = new Date(dateStr);
+	const now = new Date();
+	const diffMs = now.getTime() - date.getTime();
+	const diffSeconds = Math.floor(diffMs / 1000);
+	const diffMinutes = Math.floor(diffSeconds / 60);
+	const diffHours = Math.floor(diffMinutes / 60);
+	const diffDays = Math.floor(diffHours / 24);
+	const diffWeeks = Math.floor(diffDays / 7);
+	const diffMonths = Math.floor(diffDays / 30);
+
+	if (diffSeconds < 60) return "just now";
+	if (diffMinutes < 60) return diffMinutes === 1 ? "1 minute ago" : `${diffMinutes} minutes ago`;
+	if (diffHours < 24) return diffHours === 1 ? "1 hour ago" : `${diffHours} hours ago`;
+	if (diffDays < 7) return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`;
+	if (diffWeeks < 4) return diffWeeks === 1 ? "1 week ago" : `${diffWeeks} weeks ago`;
+	return diffMonths === 1 ? "1 month ago" : `${diffMonths} months ago`;
 };
 
 const PostEditor: Component<PostEditorProps> = props => {
@@ -177,6 +197,14 @@ const PostEditor: Component<PostEditorProps> = props => {
 						<TagEditor tags={tags()} onChange={setTags} />
 					</div>
 				</div>
+
+				{/* Version info - only show when editing existing post */}
+				<Show when={isEditing() && props.post?.updated_at}>
+					<div class="post-editor__version-info">
+						<span class="post-editor__last-saved">Last saved {relativeTime(props.post!.updated_at!)}</span>
+						<a href={`/posts/${props.post!.uuid}/versions`} class="post-editor__history-link">View History →</a>
+					</div>
+				</Show>
 
 				{/* Actions - only show if onSave is provided (new post page) */}
 				<Show when={props.onSave}>
