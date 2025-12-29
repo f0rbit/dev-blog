@@ -914,8 +914,7 @@ apps/website/src/pages/
 │       └── versions.astro     # Version history
 ├── categories/
 │   └── index.astro            # Category management
-├── tags/
-│   └── index.astro            # Tag overview
+
 ├── settings/
 │   ├── index.astro            # Settings layout redirect
 │   ├── profile.astro
@@ -933,15 +932,13 @@ apps/website/src/components/
 │   ├── input.tsx
 │   ├── select.tsx
 │   ├── modal.tsx
-│   ├── loader.tsx
-│   └── status-badge.tsx        # published/scheduled/draft badge
+│   └── loader.tsx
 ├── post/
 │   ├── post-card.tsx          # Post grid item
 │   ├── post-editor.tsx        # Content editor (textarea)
 │   ├── post-metadata.tsx      # Metadata form (slug, category, etc.)
 │   ├── post-preview.tsx       # Rendered markdown/asciidoc
-│   ├── post-filters.tsx       # Search/sort/filter controls
-│   ├── post-status.tsx        # Publish status selector
+
 │   ├── version-list.tsx       # Version history list
 │   ├── version-diff.tsx       # Compare versions (future)
 │   └── tag-editor.tsx         # Tag input/management
@@ -1750,7 +1747,7 @@ PHASE 3: Frontend
 │   ├── components/settings/*
 │   └── Depends: T3.2 (parallel with T3.3)
 │
-└── T3.5: Categories + Tags pages (~150 LOC)
+└── T3.5: Categories page (~100 LOC)
     └── Depends: T3.2 (parallel with T3.3, T3.4)
 
 PHASE 4: Migration & Deployment
