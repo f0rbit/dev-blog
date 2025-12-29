@@ -1,179 +1,152 @@
 ---
-import PostFilters from "@/components/post/post-filters";
 import AppLayout from "@/layouts/app-layout.astro";
 ---
 
 <AppLayout title="Posts">
-	<section class="flex-col">
-		<header>
-			<h1 class="page-title">Posts</h1>
-			<a href="/posts/new" class="btn-primary">New Post</a>
-		</header>
+  <section class="flex-col">
+    <header>
+      <h1 class="page-title">Posts</h1>
+      <a href="/posts/new" class="btn-primary">New Post</a>
+    </header>
 
-		<div id="posts-container">
-			<PostFilters
-				client:load
-				status=""
-				category=""
-				search=""
-				categories={[]}
-				onStatusChange={() => {}}
-				onCategoryChange={() => {}}
-				onSearchChange={() => {}}
-			/>
+    <div id="posts-container">
+      <div id="posts-grid" class="posts-grid">
+        <p class="muted">Loading posts...</p>
+      </div>
 
-			<div id="posts-list" class="loading">
-				<p class="muted">Loading posts...</p>
-			</div>
-
-			<div id="empty-state" class="empty-state hidden">
-				<p>No posts found.</p>
-				<a href="/posts/new" class="btn-primary">Create your first post</a>
-			</div>
-		</div>
-	</section>
+      <div id="empty-state" class="empty-state hidden">
+        <p>No posts yet.</p>
+        <a href="/posts/new" class="btn-primary">Create your first post</a>
+      </div>
+    </div>
+  </section>
 </AppLayout>
 
 <script>
-	const API_URL = "http://localhost:8080";
+  const API_URL = "http://localhost:8080";
 
-	type Post = {
-		slug: string;
-		title: string;
-		description?: string;
-		category: string;
-		tags: string[];
-		publish_at: string | null;
-		updated_at: string;
-	};
+  type Post = {
+    slug: string;
+    title: string;
+    description?: string;
+    category: string;
+    tags: string[];
+    publish_at: string | null;
+    updated_at: string;
+  };
 
-	type FilterState = {
-		status: string;
-		category: string;
-		search: string;
-	};
+  const deriveStatus = (publishAt: string | null): "draft" | "scheduled" | "published" => {
+    if (!publishAt) return "draft";
+    const publishDate = new Date(publishAt);
+    return publishDate <= new Date() ? "published" : "scheduled";
+  };
 
-	const state: FilterState = {
-		status: "",
-		category: "",
-		search: "",
-	};
+  const formatDate = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+  };
 
-	const postsListEl = document.getElementById("posts-list");
-	const emptyStateEl = document.getElementById("empty-state");
+  const renderPosts = (posts: Post[]) => {
+    const gridEl = document.getElementById("posts-grid");
+    const emptyStateEl = document.getElementById("empty-state");
+    if (!gridEl || !emptyStateEl) return;
 
-	const deriveStatus = (publishAt: string | null): "draft" | "scheduled" | "published" => {
-		if (!publishAt) return "draft";
-		const publishDate = new Date(publishAt);
-		return publishDate <= new Date() ? "published" : "scheduled";
-	};
+    if (posts.length === 0) {
+      gridEl.classList.add("hidden");
+      emptyStateEl.classList.remove("hidden");
+      return;
+    }
 
-	const formatDate = (dateStr: string): string => {
-		const date = new Date(dateStr);
-		return date.toLocaleDateString("en-US", {
-			month: "short",
-			day: "numeric",
-			year: "numeric",
-		});
-	};
+    emptyStateEl.classList.add("hidden");
+    gridEl.classList.remove("hidden");
 
-	const renderPosts = (posts: Post[]) => {
-		if (!postsListEl || !emptyStateEl) return;
+    gridEl.innerHTML = posts
+      .map(post => {
+        const status = deriveStatus(post.publish_at);
+        return `
+          <a href="/posts/${post.slug}" class="post-card">
+            <div class="post-card__header">
+              <span class="post-card__title">${post.title}</span>
+              <span class="status-badge status-badge--${status}">${status}</span>
+            </div>
+            <p class="post-card__meta">
+              <span>${post.category}</span>
+              <span>·</span>
+              <span>${formatDate(post.updated_at)}</span>
+            </p>
+          </a>
+        `;
+      })
+      .join("");
+  };
 
-		if (posts.length === 0) {
-			postsListEl.classList.add("hidden");
-			emptyStateEl.classList.remove("hidden");
-			return;
-		}
+  const fetchPosts = async () => {
+    try {
+      const response = await fetch(`${API_URL}/posts?limit=100`);
+      if (!response.ok) throw new Error("Failed to fetch posts");
 
-		emptyStateEl.classList.add("hidden");
-		postsListEl.classList.remove("hidden", "loading");
+      const data = await response.json();
+      const posts: Post[] = data.posts ?? [];
+      renderPosts(posts);
+    } catch (err) {
+      const gridEl = document.getElementById("posts-grid");
+      if (gridEl) {
+        gridEl.innerHTML = `<div class="form-error">Failed to load posts</div>`;
+      }
+    }
+  };
 
-		postsListEl.innerHTML = `
-			<div class="post-list">
-				${posts.map(post => {
-					const status = deriveStatus(post.publish_at);
-					return `
-						<article class="post-item">
-							<div class="post-item__header">
-								<h3 class="post-item__title">
-									<a href="/posts/${post.slug}">${post.title}</a>
-								</h3>
-								<span class="status-badge status-badge--${status}">
-									${status.charAt(0).toUpperCase() + status.slice(1)}
-								</span>
-							</div>
-							${post.description ? `<p class="post-item__description">${post.description}</p>` : ""}
-							<div class="post-item__meta">
-								<span class="post-item__category">${post.category}</span>
-								${post.tags.length > 0 ? `
-									<div class="post-item__tags">
-										${post.tags.map((tag: string) => `<span class="tag-badge">${tag}</span>`).join("")}
-									</div>
-								` : ""}
-								<span>Updated ${formatDate(post.updated_at)}</span>
-							</div>
-						</article>
-					`;
-				}).join("")}
-			</div>
-		`;
-	};
-
-	const fetchPosts = async () => {
-		const params = new URLSearchParams();
-		if (state.status) params.set("status", state.status);
-		if (state.category) params.set("category", state.category);
-		params.set("limit", "50");
-
-		try {
-			const response = await fetch(`${API_URL}/posts?${params.toString()}`);
-			if (!response.ok) throw new Error("Failed to fetch posts");
-
-			const data = await response.json();
-			let posts: Post[] = data.posts ?? [];
-
-			if (state.search) {
-				const search = state.search.toLowerCase();
-				posts = posts.filter(
-					p =>
-						p.title.toLowerCase().includes(search) ||
-						(p.description?.toLowerCase().includes(search) ?? false)
-				);
-			}
-
-			renderPosts(posts);
-		} catch (err) {
-			if (postsListEl) {
-				postsListEl.innerHTML = `<div class="form-error">Failed to load posts</div>`;
-			}
-		}
-	};
-
-	document.addEventListener("DOMContentLoaded", () => {
-		fetchPosts();
-
-		const statusSelect = document.getElementById("status-filter") as HTMLSelectElement | null;
-		const categorySelect = document.getElementById("category-filter") as HTMLSelectElement | null;
-		const searchInput = document.getElementById("search-filter") as HTMLInputElement | null;
-
-		statusSelect?.addEventListener("change", e => {
-			state.status = (e.target as HTMLSelectElement).value;
-			fetchPosts();
-		});
-
-		categorySelect?.addEventListener("change", e => {
-			state.category = (e.target as HTMLSelectElement).value;
-			fetchPosts();
-		});
-
-		let searchTimeout: number;
-		searchInput?.addEventListener("input", e => {
-			clearTimeout(searchTimeout);
-			searchTimeout = window.setTimeout(() => {
-				state.search = (e.target as HTMLInputElement).value;
-				fetchPosts();
-			}, 300);
-		});
-	});
+  document.addEventListener("DOMContentLoaded", fetchPosts);
 </script>
+
+<style>
+  .posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+
+  .post-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s;
+  }
+
+  .post-card:hover {
+    border-color: var(--text-muted);
+    text-decoration: none;
+  }
+
+  .post-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .post-card__title {
+    font-weight: 500;
+    color: var(--text-primary);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .post-card__meta {
+    display: flex;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+</style>

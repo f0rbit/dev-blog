@@ -459,9 +459,9 @@ form section label {
 }
 
 button[type="submit"] {
-	background: var(--text-link);
-	color: var(--bg-primary);
-	border: none;
+	background: none;
+	color: var(--text-link);
+	border: 1px solid var(--text-link);
 	border-radius: 4px;
 	padding: 8px 16px;
 	cursor: pointer;
@@ -469,7 +469,7 @@ button[type="submit"] {
 }
 
 button[type="submit"]:hover {
-	filter: var(--hover-filter);
+	background: var(--input-background);
 }
 
 button[type="submit"]:disabled {
@@ -494,9 +494,9 @@ button.icon-btn:disabled {
 }
 
 .btn-primary {
-	background: var(--text-link);
-	color: var(--bg-primary);
-	border: none;
+	background: none;
+	color: var(--text-link);
+	border: 1px solid var(--text-link);
 	border-radius: 4px;
 	padding: 8px 16px;
 	cursor: pointer;
@@ -504,7 +504,7 @@ button.icon-btn:disabled {
 }
 
 .btn-primary:hover {
-	filter: var(--hover-filter);
+	background: var(--input-background);
 }
 
 .btn-primary:disabled {
@@ -532,9 +532,9 @@ button.icon-btn:disabled {
 }
 
 .btn-danger {
-	background: var(--item-red);
-	color: var(--text-primary);
-	border: 1px solid var(--item-red-border);
+	background: none;
+	color: var(--status-draft);
+	border: 1px solid var(--status-draft);
 	border-radius: 4px;
 	padding: 8px 16px;
 	cursor: pointer;
@@ -542,7 +542,7 @@ button.icon-btn:disabled {
 }
 
 .btn-danger:hover {
-	filter: var(--hover-filter);
+	background: var(--input-background);
 }
 
 /* ==========================================================================
@@ -654,19 +654,19 @@ footer {
 }
 
 .status-badge--draft {
-	background-color: color-mix(in oklch, var(--status-draft) 20%, transparent);
+	background: none;
 	color: var(--status-draft);
 	border-color: var(--status-draft);
 }
 
 .status-badge--scheduled {
-	background-color: color-mix(in oklch, var(--status-scheduled) 20%, transparent);
+	background: none;
 	color: var(--status-scheduled);
 	border-color: var(--status-scheduled);
 }
 
 .status-badge--published {
-	background-color: color-mix(in oklch, var(--status-published) 20%, transparent);
+	background: none;
 	color: var(--status-published);
 	border-color: var(--status-published);
 }
@@ -777,112 +777,84 @@ footer {
 	gap: 16px;
 }
 
-.post-editor__main {
-	display: grid;
-	grid-template-columns: 1fr 300px;
-	gap: 24px;
-}
-
-@media (max-width: 768px) {
-	.post-editor__main {
-		grid-template-columns: 1fr;
-	}
-}
-
-.post-editor__content {
+.post-editor__header {
+	border: 1px solid var(--input-border);
+	border-radius: 4px;
+	padding: 12px;
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
 }
 
-.post-editor__sidebar {
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-}
-
 .post-editor__title-input {
-	font-size: 1.5rem;
-	font-weight: bold;
+	font-size: 1.25rem;
+	font-weight: 500;
 	padding: 8px;
-	border: 1px solid transparent;
+	border: none;
 	background: transparent;
 	color: var(--text-primary);
 	width: 100%;
 }
 
 .post-editor__title-input:focus {
-	border-color: var(--input-border);
-	background: var(--input-background);
+	outline: none;
 }
 
-.post-editor__body-input {
+.post-editor__title-input::placeholder {
+	color: var(--text-muted);
+}
+
+.post-editor__metadata {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	gap: 12px;
+}
+
+.post-editor__field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.post-editor__field label {
+	font-size: 0.75rem;
+	color: var(--text-muted);
+}
+
+.post-editor__field input,
+.post-editor__field select {
+	width: 100%;
+}
+
+.post-editor__field--wide {
+	grid-column: 1 / -1;
+}
+
+.post-editor__actions {
+	display: flex;
+	gap: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--input-border);
+}
+
+.post-editor__content {
 	min-height: 400px;
 	padding: 12px;
 	font-family: monospace;
 	font-size: 0.875rem;
 	line-height: 1.6;
 	resize: vertical;
-}
-
-.post-editor__section {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	padding: 12px;
-	border: 1px solid var(--input-border);
-	border-radius: 4px;
-}
-
-.post-editor__section h4 {
-	font-size: 0.75rem;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	color: var(--text-muted);
-	margin-bottom: 4px;
-}
-
-/* ==========================================================================
-   POST STATUS SELECTOR
-   ========================================================================== */
-
-.post-status {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.status-options {
-	display: flex;
-	gap: 0;
-	border: 1px solid var(--input-border);
-	border-radius: 4px;
-	overflow: hidden;
-}
-
-.status-options button {
-	flex: 1;
-	padding: 8px 12px;
 	border: none;
-	background: var(--input-background);
-	color: var(--text-tertiary);
-	font-size: 0.875rem;
-	cursor: pointer;
-	transition: background 0.15s, color 0.15s;
-}
-
-.status-options button:not(:last-child) {
-	border-right: 1px solid var(--input-border);
-}
-
-.status-options button:hover {
-	filter: none;
-	background: var(--input-border);
-}
-
-.status-options button.selected {
+	background: transparent;
 	color: var(--text-primary);
-	background: var(--input-border);
+}
+
+.post-editor__content:focus {
+	outline: none;
+}
+
+.post-editor__content::placeholder {
+	color: var(--text-muted);
 }
 
 /* ==========================================================================
