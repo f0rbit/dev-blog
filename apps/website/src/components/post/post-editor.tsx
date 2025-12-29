@@ -2,6 +2,7 @@ import type { Component } from "solid-js";
 import { For, Show, createSignal } from "solid-js";
 import TagEditor from "./tag-editor";
 import { PostPreview } from "./post-preview";
+import { ProjectSelector } from "./project-selector";
 
 type Post = {
 	id: number;
@@ -13,6 +14,7 @@ type Post = {
 	format: "md" | "adoc";
 	category: string;
 	tags: string[];
+	project_ids?: string[];
 	publish_at: string | null;
 	updated_at?: string;
 };
@@ -30,6 +32,7 @@ type PostFormData = {
 	format: "md" | "adoc";
 	category: string;
 	tags: string[];
+	project_ids: string[];
 	publish_at: Date | null;
 };
 
@@ -82,6 +85,7 @@ const PostEditor: Component<PostEditorProps> = props => {
 	const [format, setFormat] = createSignal<"md" | "adoc">(props.post?.format ?? "md");
 	const [category, setCategory] = createSignal(props.post?.category ?? "root");
 	const [tags, setTags] = createSignal<string[]>(props.post?.tags ?? []);
+	const [projectIds, setProjectIds] = createSignal<string[]>(props.post?.project_ids ?? []);
 	const [publishAt, setPublishAt] = createSignal<Date | null>(props.post?.publish_at ? new Date(props.post.publish_at) : null);
 
 	console.log("[PostEditor] Initial title signal:", title());
@@ -102,6 +106,7 @@ const PostEditor: Component<PostEditorProps> = props => {
 		format: format(),
 		category: category(),
 		tags: tags(),
+		project_ids: projectIds(),
 		publish_at: publishAt(),
 	});
 
@@ -197,6 +202,14 @@ const PostEditor: Component<PostEditorProps> = props => {
 					<div class="post-editor__field post-editor__field--wide">
 						<label>Tags</label>
 						<TagEditor tags={tags()} onChange={setTags} />
+					</div>
+
+					<div class="post-editor__field post-editor__field--wide">
+						<label>Projects</label>
+						<ProjectSelector
+							selectedIds={projectIds()}
+							onChange={setProjectIds}
+						/>
 					</div>
 				</div>
 

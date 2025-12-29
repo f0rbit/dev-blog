@@ -1560,3 +1560,221 @@ footer {
 		width: 100%;
 	}
 }
+
+/* ==========================================================================
+   PROJECT SELECTOR
+   ========================================================================== */
+
+.project-selector {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.project-selector__not-connected {
+	color: var(--text-muted);
+	font-size: 0.875rem;
+	font-style: italic;
+}
+
+.project-selector__selected {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	min-height: 2rem;
+	align-items: center;
+}
+
+.project-selector__placeholder {
+	color: var(--text-muted);
+	font-size: 0.875rem;
+}
+
+.project-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	padding: 0.25rem 0.5rem;
+	background: var(--input-background);
+	border-radius: 4px;
+	font-size: 0.875rem;
+	border-left: 3px solid var(--project-color);
+}
+
+.project-badge__remove {
+	background: none;
+	border: none;
+	color: var(--text-muted);
+	cursor: pointer;
+	padding: 0 0.25rem;
+	font-size: 1rem;
+	line-height: 1;
+}
+
+.project-badge__remove:hover {
+	color: var(--color-danger);
+}
+
+.project-selector__controls {
+	display: flex;
+	gap: 0.5rem;
+}
+
+.project-selector__toggle {
+	padding: 0.375rem 0.75rem;
+	background: var(--input-background);
+	border: 1px solid var(--input-border);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 0.875rem;
+	color: var(--text-secondary);
+}
+
+.project-selector__toggle:hover {
+	background: var(--input-border);
+}
+
+.project-selector__refresh {
+	padding: 0.375rem 0.5rem;
+	background: var(--input-background);
+	border: 1px solid var(--input-border);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 0.875rem;
+	color: var(--text-muted);
+}
+
+.project-selector__refresh:hover {
+	color: var(--text-secondary);
+}
+
+.project-selector__refresh:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.project-selector__dropdown {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	padding: 0.5rem;
+	background: var(--input-background);
+	border: 1px solid var(--input-border);
+	border-radius: 4px;
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.project-selector__empty {
+	color: var(--text-muted);
+	font-size: 0.875rem;
+	text-align: center;
+	padding: 0.5rem;
+}
+
+.project-selector__option {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.5rem;
+	background: transparent;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	text-align: left;
+	width: 100%;
+}
+
+.project-selector__option:hover {
+	background: var(--input-border);
+}
+
+.project-selector__color {
+	width: 0.75rem;
+	height: 0.75rem;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.project-selector__name {
+	font-weight: 500;
+	color: var(--text-secondary);
+}
+
+.project-selector__desc {
+	font-size: 0.75rem;
+	color: var(--text-muted);
+	margin-left: auto;
+	max-width: 150px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* ==========================================================================
+   DEVPAD CONNECTION
+   ========================================================================== */
+
+.devpad-connection {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.devpad-connection__error {
+	color: var(--color-danger);
+	font-size: 0.875rem;
+	padding: 0.5rem;
+	background: var(--item-red);
+	border-radius: 4px;
+}
+
+.devpad-connection__info {
+	color: var(--text-muted);
+	font-size: 0.875rem;
+	margin-bottom: 0.5rem;
+}
+
+.devpad-connection__form {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.devpad-connection__input-row {
+	display: flex;
+	gap: 0.5rem;
+}
+
+.devpad-connection__input-row .input {
+	flex: 1;
+}
+
+.devpad-connection__connected {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.devpad-connection__status {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	color: var(--text-secondary);
+}
+
+.status-dot {
+	width: 0.5rem;
+	height: 0.5rem;
+	border-radius: 50%;
+	background: var(--text-muted);
+}
+
+.status-dot--success {
+	background: oklch(from var(--item-green) 0.6 0.2 h);
+}
+
+.status-dot--error {
+	background: var(--color-danger);
+}

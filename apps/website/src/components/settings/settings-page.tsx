@@ -1,5 +1,6 @@
 import { type Component, For, Show, createResource, createSignal } from "solid-js";
 import Button from "../ui/button";
+import { DevpadConnection } from "./devpad-connection";
 import TokenForm from "./token-form";
 import TokenList from "./token-list";
 
@@ -189,6 +190,13 @@ const SettingsPage: Component = () => {
 							</div>
 						)}
 					</For>
+				</div>
+			</section>
+
+			<section class="settings-section">
+				<h3 class="settings-section__title">DevPad Integration</h3>
+				<div class="settings-section__content">
+					<DevpadConnection />
 				</div>
 			</section>
 
