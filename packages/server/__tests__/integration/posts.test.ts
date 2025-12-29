@@ -1,6 +1,6 @@
-import { Database, type SQLQueryBindings } from "bun:sqlite";
+import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { type PostCreate, type PostUpdate, categories, tags, users } from "@blog/schema";
+import { type DrizzleDB, type PostCreate, type PostUpdate, categories, tags, users } from "@blog/schema";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 
 type R2ObjectBody = {
@@ -71,87 +71,6 @@ class MemoryR2Bucket {
 	}
 }
 
-type D1Result<T = unknown> = {
-	results: T[];
-	success: boolean;
-	meta: { duration: number; changes: number; last_row_id: number };
-};
-
-const convertParam = (param: unknown): unknown => {
-	if (param instanceof Date) {
-		return Math.floor(param.getTime() / 1000);
-	}
-	return param;
-};
-
-const convertParams = (params: unknown[]): unknown[] => params.map(convertParam);
-
-class D1PreparedStatement {
-	constructor(
-		private db: Database,
-		private sql: string,
-		private params: unknown[] = []
-	) {}
-
-	bind(...params: unknown[]): D1PreparedStatement {
-		return new D1PreparedStatement(this.db, this.sql, convertParams(params));
-	}
-
-	async first<T = unknown>(column?: string): Promise<T | null> {
-		const stmt = this.db.prepare(this.sql);
-		const row = stmt.get(...(convertParams(this.params) as SQLQueryBindings[])) as Record<string, unknown> | null;
-		if (!row) return null;
-		if (column) return row[column] as T;
-		return row as T;
-	}
-
-	async all<T = unknown>(): Promise<D1Result<T>> {
-		const stmt = this.db.prepare(this.sql);
-		const results = stmt.all(...(convertParams(this.params) as SQLQueryBindings[])) as T[];
-		return {
-			results,
-			success: true,
-			meta: { duration: 0, changes: 0, last_row_id: 0 },
-		};
-	}
-
-	async raw<T = unknown[]>(): Promise<T[]> {
-		const stmt = this.db.prepare(this.sql);
-		const rows = stmt.values(...(convertParams(this.params) as SQLQueryBindings[]));
-		return rows as T[];
-	}
-
-	async run(): Promise<D1Result> {
-		const stmt = this.db.prepare(this.sql);
-		stmt.run(...(convertParams(this.params) as SQLQueryBindings[]));
-		return {
-			results: [],
-			success: true,
-			meta: { duration: 0, changes: 0, last_row_id: 0 },
-		};
-	}
-}
-
-class D1DatabaseWrapper {
-	constructor(private db: Database) {}
-
-	prepare(sql: string): D1PreparedStatement {
-		return new D1PreparedStatement(this.db, sql);
-	}
-
-	async batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]> {
-		return Promise.all(statements.map(s => s.all<T>()));
-	}
-
-	async exec(sql: string): Promise<void> {
-		this.db.exec(sql);
-	}
-
-	dump(): Promise<ArrayBuffer> {
-		return Promise.resolve(new ArrayBuffer(0));
-	}
-}
-
 const SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -197,12 +116,12 @@ const createTestContext = () => {
 	const sqliteDb = new Database(":memory:");
 	sqliteDb.exec(SCHEMA_SQL);
 
-	const d1 = new D1DatabaseWrapper(sqliteDb);
+	const db = drizzle(sqliteDb) as DrizzleDB;
 	const corpus = new MemoryR2Bucket();
 
 	return {
 		sqliteDb,
-		db: d1 as unknown as D1Database,
+		db,
 		corpus: corpus as unknown as R2Bucket,
 		reset: () => {
 			sqliteDb.exec("DELETE FROM tags");
@@ -220,10 +139,9 @@ const createTestContext = () => {
 import { type PostService, createPostService } from "../../src/services/posts";
 
 const createTestUser = async (ctx: ReturnType<typeof createTestContext>, suffix = "") => {
-	const db = drizzle(ctx.sqliteDb);
 	const now = new Date();
 	const githubId = 12345 + Math.floor(Math.random() * 100000);
-	const [user] = await db
+	const [user] = await ctx.db
 		.insert(users)
 		.values({
 			github_id: githubId,
@@ -239,8 +157,7 @@ const createTestUser = async (ctx: ReturnType<typeof createTestContext>, suffix 
 };
 
 const createTestCategory = async (ctx: ReturnType<typeof createTestContext>, userId: number, name: string, parent = "root") => {
-	const db = drizzle(ctx.sqliteDb);
-	const [category] = await db
+	const [category] = await ctx.db
 		.insert(categories)
 		.values({
 			owner_id: userId,
