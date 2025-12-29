@@ -52,6 +52,10 @@
    RESET & BASE
    ========================================================================== */
 
+html {
+	scroll-behavior: smooth;
+}
+
 * {
 	box-sizing: border-box;
 }
@@ -540,6 +544,11 @@ button.icon-btn:disabled {
 
 .btn-danger:hover {
 	background: var(--input-background);
+}
+
+.btn-large {
+	padding: 0.875rem 2rem;
+	font-size: 1.125rem;
 }
 
 /* ==========================================================================
