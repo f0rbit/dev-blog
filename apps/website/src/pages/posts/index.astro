@@ -41,13 +41,30 @@ import AppLayout from "@/layouts/app-layout.astro";
     return publishDate <= new Date() ? "published" : "scheduled";
   };
 
-  const formatDate = (dateStr: string): string => {
+  const relativeTime = (dateStr: string): string => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffMonths = Math.floor(diffDays / 30);
+
+    if (diffSeconds < 60) return "just now";
+    if (diffMinutes < 60) return diffMinutes === 1 ? "1 minute ago" : `${diffMinutes} minutes ago`;
+    if (diffHours < 24) return diffHours === 1 ? "1 hour ago" : `${diffHours} hours ago`;
+    if (diffDays < 7) return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`;
+    if (diffWeeks < 4) return diffWeeks === 1 ? "1 week ago" : `${diffWeeks} weeks ago`;
+    return diffMonths === 1 ? "1 month ago" : `${diffMonths} months ago`;
   };
+
+  const escapeHtml = (str: string): string =>
+    str.replace(/&/g, "&amp;")
+       .replace(/</g, "&lt;")
+       .replace(/>/g, "&gt;")
+       .replace(/"/g, "&quot;");
 
   const renderPosts = (posts: Post[]) => {
     const gridEl = document.getElementById("posts-grid");
@@ -66,17 +83,19 @@ import AppLayout from "@/layouts/app-layout.astro";
     gridEl.innerHTML = posts
       .map(post => {
         const status = deriveStatus(post.publish_at);
+        const description = post.description ? escapeHtml(post.description) : "";
+        const dateStr = post.publish_at ?? post.updated_at;
         return `
           <a href="/posts/${post.slug}" class="post-card">
             <div class="post-card__header">
-              <span class="post-card__title">${post.title}</span>
+              <span class="post-card__title">${escapeHtml(post.title)}</span>
               <span class="status-badge status-badge--${status}">${status}</span>
             </div>
-            <p class="post-card__meta">
-              <span>${post.category}</span>
-              <span>·</span>
-              <span>${formatDate(post.updated_at)}</span>
-            </p>
+            ${description ? `<p class="post-card__description">${description}</p>` : ""}
+            <div class="post-card__footer">
+              <span class="post-card__category">${escapeHtml(post.category)}</span>
+              <span class="post-card__date">${relativeTime(dateStr)}</span>
+            </div>
           </a>
         `;
       })
@@ -102,51 +121,4 @@ import AppLayout from "@/layouts/app-layout.astro";
   document.addEventListener("DOMContentLoaded", fetchPosts);
 </script>
 
-<style>
-  .posts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 12px;
-  }
 
-  .post-card {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px;
-    border: 1px solid var(--input-border);
-    border-radius: 4px;
-    text-decoration: none;
-    color: inherit;
-    transition: border-color 0.15s;
-  }
-
-  .post-card:hover {
-    border-color: var(--text-muted);
-    text-decoration: none;
-  }
-
-  .post-card__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .post-card__title {
-    font-weight: 500;
-    color: var(--text-primary);
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .post-card__meta {
-    display: flex;
-    gap: 6px;
-    font-size: 0.75rem;
-    color: var(--text-muted);
-  }
-</style>
