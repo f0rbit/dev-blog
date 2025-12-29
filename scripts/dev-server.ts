@@ -11,6 +11,7 @@ import { PostContentSchema, type AppContext, type User } from "../packages/schem
 import { assetsRouter } from "../packages/server/src/routes/assets";
 import { categoriesRouter } from "../packages/server/src/routes/categories";
 import { postsRouter } from "../packages/server/src/routes/posts";
+import { projectsRouter } from "../packages/server/src/routes/projects";
 import { tagsRouter } from "../packages/server/src/routes/tags";
 import { tokensRouter } from "../packages/server/src/routes/tokens";
 
@@ -80,6 +81,8 @@ const createDevApp = (appContext: AppContext) => {
 	app.route("/tokens", tokensRouter);
 	app.route("/token", tokensRouter);
 	app.route("/assets", assetsRouter);
+	app.route("/projects", projectsRouter);
+	app.route("/project", projectsRouter);
 
 	app.notFound(c => c.json({ code: "NOT_FOUND", message: "Resource not found" }, 404));
 
@@ -141,6 +144,7 @@ const main = async () => {
 	console.log("  GET  /posts         - List posts");
 	console.log("  GET  /categories    - List categories");
 	console.log("  GET  /tokens        - List API tokens");
+	console.log("  GET  /projects      - List DevPad projects");
 
 	serve({
 		port: PORT,
