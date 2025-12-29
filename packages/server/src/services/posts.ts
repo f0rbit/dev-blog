@@ -1,5 +1,6 @@
 import {
 	type CorpusError,
+	type DrizzleDB,
 	type Post,
 	type PostContent,
 	type PostCreate,
@@ -18,14 +19,13 @@ import {
 	tags,
 	try_catch_async,
 } from "@blog/schema";
-import { and, desc, eq, inArray, isNull, lte, sql } from "drizzle-orm";
-import { type DrizzleD1Database, drizzle } from "drizzle-orm/d1";
+import { and, desc, eq, gt, inArray, isNull, lte, sql } from "drizzle-orm";
 import { listVersions as corpusListVersions, corpusPath, deleteContent, getContent, putContent } from "../corpus/posts";
 
 type PostServiceError = { type: "not_found"; resource: string } | { type: "slug_conflict"; slug: string } | { type: "corpus_error"; inner: CorpusError } | { type: "db_error"; message: string };
 
 type Deps = {
-	db: D1Database;
+	db: DrizzleDB;
 	corpus: R2Bucket;
 };
 
@@ -49,7 +49,7 @@ const slugConflict = (slug: string): PostServiceError => ({
 	slug,
 });
 
-const getCategoryWithDescendants = async (db: DrizzleD1Database, userId: number, categoryName: string): Promise<string[]> => {
+const getCategoryWithDescendants = async (db: DrizzleDB, userId: number, categoryName: string): Promise<string[]> => {
 	const allCategories = await db.select().from(categories).where(eq(categories.owner_id, userId));
 
 	const collectDescendants = (name: string): string[] => {
@@ -60,7 +60,7 @@ const getCategoryWithDescendants = async (db: DrizzleD1Database, userId: number,
 	return collectDescendants(categoryName);
 };
 
-const fetchTagsForPosts = async (db: DrizzleD1Database, postIds: number[]): Promise<Map<number, string[]>> => {
+const fetchTagsForPosts = async (db: DrizzleDB, postIds: number[]): Promise<Map<number, string[]>> => {
 	if (postIds.length === 0) return new Map();
 
 	const tagRows = await db.select().from(tags).where(inArray(tags.post_id, postIds));
@@ -72,7 +72,7 @@ const fetchTagsForPosts = async (db: DrizzleD1Database, postIds: number[]): Prom
 	}, new Map<number, string[]>());
 };
 
-const syncTags = async (db: DrizzleD1Database, postId: number, tagNames: string[]): Promise<void> => {
+const syncTags = async (db: DrizzleDB, postId: number, tagNames: string[]): Promise<void> => {
 	await db.delete(tags).where(eq(tags.post_id, postId));
 	if (tagNames.length === 0) return;
 	const tagInserts = tagNames.map(tag => ({ post_id: postId, tag }));
@@ -105,10 +105,8 @@ const firstRow = <T>(rows: T[], resource: string): Result<T, PostServiceError> =
 };
 
 export const createPostService = ({ db, corpus }: Deps) => {
-	const drizzleDb = drizzle(db);
-
 	const checkSlugUnique = async (userId: number, slug: string, excludeId?: number): Promise<Result<void, PostServiceError>> => {
-		const existing = await drizzleDb
+		const existing = await db
 			.select({ id: posts.id })
 			.from(posts)
 			.where(and(eq(posts.author_id, userId), eq(posts.slug, slug)))
@@ -141,7 +139,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 						const now = new Date();
 						const publishAt = input.publish_at === undefined ? null : input.publish_at;
 
-						const inserted = await drizzleDb
+						const inserted = await db
 							.insert(posts)
 							.values({
 								uuid,
@@ -160,7 +158,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 						const row = inserted[0];
 						if (!row) throw new Error("Insert returned no rows");
 
-						await syncTags(drizzleDb, row.id, input.tags ?? []);
+						await syncTags(db, row.id, input.tags ?? []);
 						return assemblePost(row, content, input.tags ?? []);
 					}, toDbError)
 				).result()
@@ -169,7 +167,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 	};
 
 	const update = async (userId: number, uuid: string, input: PostUpdate): Promise<Result<Post, PostServiceError>> => {
-		const existing = await drizzleDb
+		const existing = await db
 			.select()
 			.from(posts)
 			.where(and(eq(posts.author_id, userId), eq(posts.uuid, uuid)))
@@ -244,16 +242,16 @@ export const createPostService = ({ db, corpus }: Deps) => {
 				if (input.project_id !== undefined) updates.project_id = input.project_id;
 				if (newVersion !== currentVersion) updates.corpus_version = newVersion;
 
-				const updated = await drizzleDb.update(posts).set(updates).where(eq(posts.id, row.id)).returning();
+				const updated = await db.update(posts).set(updates).where(eq(posts.id, row.id)).returning();
 
 				const updatedRow = updated[0];
 				if (!updatedRow) throw new Error("Update returned no rows");
 
 				if (input.tags !== undefined) {
-					await syncTags(drizzleDb, updatedRow.id, input.tags);
+					await syncTags(db, updatedRow.id, input.tags);
 				}
 
-				const finalTags = input.tags ?? (await fetchTagsForPosts(drizzleDb, [updatedRow.id])).get(updatedRow.id) ?? [];
+				const finalTags = input.tags ?? (await fetchTagsForPosts(db, [updatedRow.id])).get(updatedRow.id) ?? [];
 
 				return assemblePost(updatedRow, finalContent, finalTags);
 			}, toDbError)
@@ -270,7 +268,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 		return pipe(getContent(corpus, path, row.corpus_version))
 			.map_err(toCorpusError)
 			.map_async(async content => {
-				const tagsMap = await fetchTagsForPosts(drizzleDb, [row.id]);
+				const tagsMap = await fetchTagsForPosts(db, [row.id]);
 				const tagList = tagsMap.get(row.id) ?? [];
 				return assemblePost(row, content, tagList);
 			})
@@ -278,7 +276,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 	};
 
 	const getBySlug = async (userId: number, slug: string): Promise<Result<Post, PostServiceError>> => {
-		const rows = await drizzleDb
+		const rows = await db
 			.select()
 			.from(posts)
 			.where(and(eq(posts.author_id, userId), eq(posts.slug, slug)))
@@ -291,7 +289,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 	};
 
 	const getByUuid = async (userId: number, uuid: string): Promise<Result<Post, PostServiceError>> => {
-		const rows = await drizzleDb
+		const rows = await db
 			.select()
 			.from(posts)
 			.where(and(eq(posts.author_id, userId), eq(posts.uuid, uuid)))
@@ -307,7 +305,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 		const conditions = [eq(posts.author_id, userId)];
 
 		if (params.category) {
-			const categoryNames = await getCategoryWithDescendants(drizzleDb, userId, params.category);
+			const categoryNames = await getCategoryWithDescendants(db, userId, params.category);
 			conditions.push(inArray(posts.category, categoryNames));
 		}
 
@@ -323,8 +321,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 		if (params.status === "published") {
 			conditions.push(lte(posts.publish_at, now));
 		} else if (params.status === "scheduled") {
-			const scheduledCondition = and(sql`${posts.publish_at} IS NOT NULL`, sql`${posts.publish_at} > ${now}`);
-			if (scheduledCondition) conditions.push(scheduledCondition);
+			conditions.push(gt(posts.publish_at, now));
 		} else if (params.status === "draft") {
 			conditions.push(isNull(posts.publish_at));
 		}
@@ -337,15 +334,15 @@ export const createPostService = ({ db, corpus }: Deps) => {
 
 		return pipe(
 			try_catch_async(async () => {
-				const countResult = await drizzleDb.select({ count: sql<number>`count(*)` }).from(posts).where(whereClause);
+				const countResult = await db.select({ count: sql<number>`count(*)` }).from(posts).where(whereClause);
 
 				const totalPosts = Number(countResult[0]?.count ?? 0);
 
-				const rows = await drizzleDb.select().from(posts).where(whereClause).orderBy(orderBy).limit(params.limit).offset(params.offset);
+				const rows = await db.select().from(posts).where(whereClause).orderBy(orderBy).limit(params.limit).offset(params.offset);
 
 				let filteredRows = rows;
 				if (params.tag) {
-					const taggedPostIds = await drizzleDb.select({ post_id: tags.post_id }).from(tags).where(eq(tags.tag, params.tag));
+					const taggedPostIds = await db.select({ post_id: tags.post_id }).from(tags).where(eq(tags.tag, params.tag));
 
 					const taggedIds = new Set(taggedPostIds.map(t => t.post_id));
 					filteredRows = rows.filter(r => taggedIds.has(r.id));
@@ -360,7 +357,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 
 	const assemblePostsResponse = async (userId: number, rows: PostRow[], totalPosts: number, params: PostListParams): Promise<Result<PostsResponse, PostServiceError>> => {
 		const postIds = rows.map(r => r.id);
-		const tagsMap = await fetchTagsForPosts(drizzleDb, postIds);
+		const tagsMap = await fetchTagsForPosts(db, postIds);
 
 		const postsWithContent: Post[] = [];
 
@@ -389,7 +386,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 	};
 
 	const remove = async (userId: number, uuid: string): Promise<Result<void, PostServiceError>> => {
-		const existing = await drizzleDb
+		const existing = await db
 			.select()
 			.from(posts)
 			.where(and(eq(posts.author_id, userId), eq(posts.uuid, uuid)))
@@ -405,15 +402,15 @@ export const createPostService = ({ db, corpus }: Deps) => {
 			.map_err(toCorpusError)
 			.flat_map(() =>
 				try_catch_async(async () => {
-					await drizzleDb.delete(tags).where(eq(tags.post_id, row.id));
-					await drizzleDb.delete(posts).where(eq(posts.id, row.id));
+					await db.delete(tags).where(eq(tags.post_id, row.id));
+					await db.delete(posts).where(eq(posts.id, row.id));
 				}, toDbError)
 			)
 			.result();
 	};
 
 	const listVersions = async (userId: number, uuid: string): Promise<Result<VersionInfo[], PostServiceError>> => {
-		const existing = await drizzleDb
+		const existing = await db
 			.select()
 			.from(posts)
 			.where(and(eq(posts.author_id, userId), eq(posts.uuid, uuid)))
@@ -429,7 +426,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 	};
 
 	const getVersion = async (userId: number, uuid: string, hash: string): Promise<Result<PostContent, PostServiceError>> => {
-		const existing = await drizzleDb
+		const existing = await db
 			.select()
 			.from(posts)
 			.where(and(eq(posts.author_id, userId), eq(posts.uuid, uuid)))
@@ -447,7 +444,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 	};
 
 	const restoreVersion = async (userId: number, uuid: string, hash: string): Promise<Result<Post, PostServiceError>> => {
-		const existing = await drizzleDb
+		const existing = await db
 			.select()
 			.from(posts)
 			.where(and(eq(posts.author_id, userId), eq(posts.uuid, uuid)))
@@ -470,7 +467,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 							try_catch_async(async () => {
 								const now = new Date();
 
-								const updated = await drizzleDb
+								const updated = await db
 									.update(posts)
 									.set({
 										corpus_version: newHash,
@@ -482,7 +479,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 								const updatedRow = updated[0];
 								if (!updatedRow) throw new Error("Update returned no rows");
 
-								const tagsMap = await fetchTagsForPosts(drizzleDb, [updatedRow.id]);
+								const tagsMap = await fetchTagsForPosts(db, [updatedRow.id]);
 								const tagList = tagsMap.get(updatedRow.id) ?? [];
 
 								return assemblePost(updatedRow, restoredContent, tagList);

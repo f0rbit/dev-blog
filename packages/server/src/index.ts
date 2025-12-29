@@ -46,7 +46,7 @@ app.onError((error, c) => {
 	return c.json(
 		{
 			code: "INTERNAL_ERROR",
-			message: c.env.ENVIRONMENT === "production" ? "An unexpected error occurred" : error.message,
+			message: c.env.environment === "production" ? "An unexpected error occurred" : error.message,
 		},
 		500
 	);

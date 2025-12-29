@@ -1,6 +1,5 @@
-import { type Env, type Result, type User, accessKeys, err, ok, pipe, users } from "@blog/schema";
+import { type DrizzleDB, type Env, type Result, type User, accessKeys, err, ok, pipe, users } from "@blog/schema";
 import { and, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 
@@ -44,11 +43,10 @@ const rowToUser = (row: typeof users.$inferSelect): User => ({
 	updated_at: row.updated_at,
 });
 
-const validateApiToken = async (db: D1Database, token: string): Promise<Result<User, string>> => {
+const validateApiToken = async (db: DrizzleDB, token: string): Promise<Result<User, string>> => {
 	const tokenHash = await hashToken(token);
-	const drizzleDb = drizzle(db);
 
-	const [keyRow] = await drizzleDb
+	const [keyRow] = await db
 		.select()
 		.from(accessKeys)
 		.where(and(eq(accessKeys.key_hash, tokenHash), eq(accessKeys.enabled, true)))
@@ -56,7 +54,7 @@ const validateApiToken = async (db: D1Database, token: string): Promise<Result<U
 
 	if (!keyRow) return err("invalid_token");
 
-	const [userRow] = await drizzleDb.select().from(users).where(eq(users.id, keyRow.user_id)).limit(1);
+	const [userRow] = await db.select().from(users).where(eq(users.id, keyRow.user_id)).limit(1);
 
 	if (!userRow) return err("user_not_found");
 
@@ -79,11 +77,10 @@ const verifyWithDevpad = async (devpadApi: string, cookie: string): Promise<Resu
 	return ok(parsed.data);
 };
 
-const ensureUser = async (db: D1Database, devpadUser: DevpadUser): Promise<Result<User, string>> => {
-	const drizzleDb = drizzle(db);
+const ensureUser = async (db: DrizzleDB, devpadUser: DevpadUser): Promise<Result<User, string>> => {
 	const now = new Date();
 
-	await drizzleDb
+	await db
 		.insert(users)
 		.values({
 			github_id: devpadUser.github_id,
@@ -103,14 +100,14 @@ const ensureUser = async (db: D1Database, devpadUser: DevpadUser): Promise<Resul
 			},
 		});
 
-	const [userRow] = await drizzleDb.select().from(users).where(eq(users.github_id, devpadUser.github_id)).limit(1);
+	const [userRow] = await db.select().from(users).where(eq(users.github_id, devpadUser.github_id)).limit(1);
 
 	if (!userRow) return err("upsert_failed");
 
 	return ok(rowToUser(userRow));
 };
 
-const authenticateWithCookie = async (db: D1Database, devpadApi: string, cookie: string): Promise<Result<User, string>> =>
+const authenticateWithCookie = async (db: DrizzleDB, devpadApi: string, cookie: string): Promise<Result<User, string>> =>
 	pipe(verifyWithDevpad(devpadApi, cookie))
 		.flat_map(devpadUser => ensureUser(db, devpadUser))
 		.result();
@@ -125,7 +122,7 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 	const authToken = c.req.header("Auth-Token");
 
 	if (authToken) {
-		const result = await validateApiToken(c.env.DB, authToken);
+		const result = await validateApiToken(c.env.db, authToken);
 		if (result.ok) {
 			c.set("user", result.value);
 			return next();
@@ -135,7 +132,7 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 	const cookie = c.req.header("Cookie");
 
 	if (cookie) {
-		const result = await authenticateWithCookie(c.env.DB, c.env.DEVPAD_API, cookie);
+		const result = await authenticateWithCookie(c.env.db, c.env.devpadApi, cookie);
 		if (result.ok) {
 			c.set("user", result.value);
 			return next();
