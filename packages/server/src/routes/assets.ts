@@ -1,10 +1,11 @@
-import type { Env } from "@blog/schema";
+import type { AppContext } from "@blog/schema";
 import { Hono } from "hono";
 
-// Assets route placeholder - asset storage TBD
-// Will require adding assets table to schema and STORAGE binding to Env
+type Variables = {
+	appContext: AppContext;
+};
 
-export const assetsRouter = new Hono<{ Bindings: Env }>();
+export const assetsRouter = new Hono<{ Variables: Variables }>();
 
 assetsRouter.get("/", c => {
 	return c.json(

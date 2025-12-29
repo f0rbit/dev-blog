@@ -86,7 +86,8 @@ export type {
 	Pipe,
 	ApiError,
 	PaginatedResponse,
-	Env,
+	Bindings,
+	AppContext,
 } from "./types";
 
 export {

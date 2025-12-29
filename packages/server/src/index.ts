@@ -1,8 +1,9 @@
-import type { Env } from "@blog/schema";
+import type { AppContext, Bindings, User } from "@blog/schema";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { type AuthContext, authMiddleware } from "./middleware/auth";
+import { createContextFromBindings } from "./context";
+import { authMiddleware } from "./middleware/auth";
 import { assetsRouter } from "./routes/assets";
 import { authRouter } from "./routes/auth";
 import { categoriesRouter } from "./routes/categories";
@@ -11,9 +12,12 @@ import { postsRouter } from "./routes/posts";
 import { tagsRouter } from "./routes/tags";
 import { tokensRouter } from "./routes/tokens";
 
-type AppEnv = { Bindings: Env; Variables: AuthContext };
+type Variables = {
+	user: User;
+	appContext: AppContext;
+};
 
-const app = new Hono<AppEnv>();
+const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 app.use("*", logger());
 app.use(
@@ -25,6 +29,12 @@ app.use(
 		credentials: true,
 	})
 );
+
+app.use("*", async (c, next) => {
+	const ctx = createContextFromBindings(c.env);
+	c.set("appContext", ctx);
+	await next();
+});
 
 app.use("*", authMiddleware);
 
@@ -43,10 +53,11 @@ app.notFound(c => c.json({ code: "NOT_FOUND", message: "Resource not found" }, 4
 
 app.onError((error, c) => {
 	console.error("Unhandled error:", error);
+	const ctx = c.get("appContext");
 	return c.json(
 		{
 			code: "INTERNAL_ERROR",
-			message: c.env.environment === "production" ? "An unexpected error occurred" : error.message,
+			message: ctx?.environment === "production" ? "An unexpected error occurred" : error.message,
 		},
 		500
 	);

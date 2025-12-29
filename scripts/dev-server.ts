@@ -9,7 +9,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { type CorpusBackend, type CorpusError, type PostContent, PostContentSchema, type PutOptions, type PutResult, type VersionInfo } from "../packages/schema/src/corpus";
 import type { DrizzleDB } from "../packages/schema/src/database";
-import type { Env, User } from "../packages/schema/src/types";
+import type { AppContext, User } from "../packages/schema/src/types";
 import { assetsRouter } from "../packages/server/src/routes/assets";
 import { categoriesRouter } from "../packages/server/src/routes/categories";
 import { postsRouter } from "../packages/server/src/routes/posts";
@@ -314,10 +314,11 @@ const createR2Shim = (corpus: FileCorpusBackend, corpusPath: string): R2Bucket =
 
 type DevVariables = {
 	user: User;
+	appContext: AppContext;
 };
 
-const createDevApp = (env: Env) => {
-	const app = new Hono<{ Bindings: Env; Variables: DevVariables }>();
+const createDevApp = (appContext: AppContext) => {
+	const app = new Hono<{ Variables: DevVariables }>();
 
 	app.use("*", logger());
 	app.use(
@@ -331,7 +332,7 @@ const createDevApp = (env: Env) => {
 	);
 
 	app.use("*", async (c, next) => {
-		Object.assign(c.env, env);
+		c.set("appContext", appContext);
 		c.set("user", DEV_USER);
 		await next();
 	});
@@ -399,14 +400,14 @@ const main = async () => {
 	const corpusBackend = new FileCorpusBackend(CORPUS_PATH);
 	const corpus = createR2Shim(corpusBackend, CORPUS_PATH);
 
-	const env: Env = {
+	const appContext: AppContext = {
 		db,
 		corpus,
 		devpadApi: "http://localhost:3000",
 		environment: "development",
 	};
 
-	const app = createDevApp(env);
+	const app = createDevApp(appContext);
 
 	console.log(`✓ Database: ${DB_PATH}`);
 	console.log(`✓ Corpus: ${CORPUS_PATH}`);

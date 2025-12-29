@@ -1,13 +1,13 @@
-import { type ApiError, type DrizzleDB, type Env, type Result, err, ok } from "@blog/schema";
+import { type ApiError, type AppContext, type DrizzleDB, type Result, err, ok } from "@blog/schema";
 import * as schema from "@blog/schema/database";
 import { zValidator } from "@hono/zod-validator";
 import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 
-type AuthEnv = {
-	Bindings: Env;
-	Variables: { user: { id: number } };
+type Variables = {
+	user: { id: number };
+	appContext: AppContext;
 };
 
 interface TagWithCount {
@@ -48,11 +48,12 @@ const getPostTags = async (db: DrizzleDB, postId: number): Promise<string[]> => 
 	return tags.map(t => t.tag);
 };
 
-export const tagsRouter = new Hono<AuthEnv>();
+export const tagsRouter = new Hono<{ Variables: Variables }>();
 
 tagsRouter.get("/", async c => {
 	const user = c.get("user");
-	const db = c.env.db;
+	const ctx = c.get("appContext");
+	const db = ctx.db;
 
 	const tagCounts = await db
 		.select({
@@ -76,7 +77,8 @@ tagsRouter.get("/", async c => {
 tagsRouter.get("/posts/:uuid/tags", zValidator("param", PostUuidSchema), async c => {
 	const user = c.get("user");
 	const { uuid } = c.req.valid("param");
-	const db = c.env.db;
+	const ctx = c.get("appContext");
+	const db = ctx.db;
 
 	const postResult = await findPostByUuid(db, user.id, uuid);
 	if (!postResult.ok) {
@@ -92,7 +94,8 @@ tagsRouter.put("/posts/:uuid/tags", zValidator("param", PostUuidSchema), zValida
 	const user = c.get("user");
 	const { uuid } = c.req.valid("param");
 	const { tags: newTags } = c.req.valid("json");
-	const db = c.env.db;
+	const ctx = c.get("appContext");
+	const db = ctx.db;
 
 	const postResult = await findPostByUuid(db, user.id, uuid);
 	if (!postResult.ok) {
@@ -116,7 +119,8 @@ tagsRouter.post("/posts/:uuid/tags", zValidator("param", PostUuidSchema), zValid
 	const user = c.get("user");
 	const { uuid } = c.req.valid("param");
 	const { tags: tagsToAdd } = c.req.valid("json");
-	const db = c.env.db;
+	const ctx = c.get("appContext");
+	const db = ctx.db;
 
 	const postResult = await findPostByUuid(db, user.id, uuid);
 	if (!postResult.ok) {
@@ -141,7 +145,8 @@ tagsRouter.post("/posts/:uuid/tags", zValidator("param", PostUuidSchema), zValid
 tagsRouter.delete("/posts/:uuid/tags/:tag", zValidator("param", TagParamSchema), async c => {
 	const user = c.get("user");
 	const { uuid, tag } = c.req.valid("param");
-	const db = c.env.db;
+	const ctx = c.get("appContext");
+	const db = ctx.db;
 
 	const postResult = await findPostByUuid(db, user.id, uuid);
 	if (!postResult.ok) {

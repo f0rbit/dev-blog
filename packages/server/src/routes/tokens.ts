@@ -1,13 +1,13 @@
-import { AccessKeyCreateSchema, AccessKeyUpdateSchema, type ApiError, type DrizzleDB, type Env, type Result, err, ok } from "@blog/schema";
+import { AccessKeyCreateSchema, AccessKeyUpdateSchema, type ApiError, type AppContext, type DrizzleDB, type Result, err, ok } from "@blog/schema";
 import * as schema from "@blog/schema/database";
 import { zValidator } from "@hono/zod-validator";
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 
-type AuthEnv = {
-	Bindings: Env;
-	Variables: { user: { id: number } };
+type Variables = {
+	user: { id: number };
+	appContext: AppContext;
 };
 
 const TokenIdSchema = z.object({
@@ -46,11 +46,12 @@ const sanitizeToken = (token: schema.AccessKey) => ({
 	created_at: token.created_at,
 });
 
-export const tokensRouter = new Hono<AuthEnv>();
+export const tokensRouter = new Hono<{ Variables: Variables }>();
 
 tokensRouter.get("/", async c => {
 	const user = c.get("user");
-	const db = c.env.db;
+	const ctx = c.get("appContext");
+	const db = ctx.db;
 
 	const tokens = await db.select().from(schema.accessKeys).where(eq(schema.accessKeys.user_id, user.id));
 
@@ -60,7 +61,8 @@ tokensRouter.get("/", async c => {
 tokensRouter.post("/", zValidator("json", AccessKeyCreateSchema), async c => {
 	const user = c.get("user");
 	const data = c.req.valid("json");
-	const db = c.env.db;
+	const ctx = c.get("appContext");
+	const db = ctx.db;
 
 	const plainToken = generateToken();
 	const keyHash = await hashToken(plainToken);
@@ -94,7 +96,8 @@ tokensRouter.put("/:id", zValidator("param", TokenIdSchema), zValidator("json", 
 	const user = c.get("user");
 	const { id } = c.req.valid("param");
 	const data = c.req.valid("json");
-	const db = c.env.db;
+	const ctx = c.get("appContext");
+	const db = ctx.db;
 
 	const tokenResult = await findToken(db, user.id, id);
 	if (!tokenResult.ok) {
@@ -127,7 +130,8 @@ tokensRouter.put("/:id", zValidator("param", TokenIdSchema), zValidator("json", 
 tokensRouter.delete("/:id", zValidator("param", TokenIdSchema), async c => {
 	const user = c.get("user");
 	const { id } = c.req.valid("param");
-	const db = c.env.db;
+	const ctx = c.get("appContext");
+	const db = ctx.db;
 
 	const tokenResult = await findToken(db, user.id, id);
 	if (!tokenResult.ok) {

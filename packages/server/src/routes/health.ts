@@ -1,12 +1,17 @@
-import type { Env } from "@blog/schema";
+import type { AppContext } from "@blog/schema";
 import { Hono } from "hono";
 
-export const healthRouter = new Hono<{ Bindings: Env }>();
+type Variables = {
+	appContext: AppContext;
+};
 
-healthRouter.get("/", c =>
-	c.json({
+export const healthRouter = new Hono<{ Variables: Variables }>();
+
+healthRouter.get("/", c => {
+	const ctx = c.get("appContext");
+	return c.json({
 		status: "ok",
 		timestamp: new Date().toISOString(),
-		environment: c.env.environment,
-	})
-);
+		environment: ctx.environment,
+	});
+});

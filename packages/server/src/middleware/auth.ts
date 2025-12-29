@@ -1,11 +1,7 @@
-import { type DrizzleDB, type Env, type Result, type User, accessKeys, err, ok, pipe, users } from "@blog/schema";
+import { type AppContext, type Bindings, type DrizzleDB, type Result, type User, accessKeys, err, ok, pipe, users } from "@blog/schema";
 import { and, eq } from "drizzle-orm";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
-
-export interface AuthContext {
-	user: User;
-}
 
 const EXEMPT_PATHS = ["/health", "/auth/user", "/auth/login", "/auth/logout"];
 
@@ -112,17 +108,24 @@ const authenticateWithCookie = async (db: DrizzleDB, devpadApi: string, cookie: 
 		.flat_map(devpadUser => ensureUser(db, devpadUser))
 		.result();
 
-type AuthEnv = { Bindings: Env; Variables: AuthContext };
+type Variables = {
+	user: User;
+	appContext: AppContext;
+};
+
+type AuthEnv = { Bindings: Bindings; Variables: Variables };
 
 export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 	const path = new URL(c.req.url).pathname;
 
 	if (isExemptPath(path)) return next();
 
+	const ctx = c.get("appContext");
+
 	const authToken = c.req.header("Auth-Token");
 
 	if (authToken) {
-		const result = await validateApiToken(c.env.db, authToken);
+		const result = await validateApiToken(ctx.db, authToken);
 		if (result.ok) {
 			c.set("user", result.value);
 			return next();
@@ -132,7 +135,7 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 	const cookie = c.req.header("Cookie");
 
 	if (cookie) {
-		const result = await authenticateWithCookie(c.env.db, c.env.devpadApi, cookie);
+		const result = await authenticateWithCookie(ctx.db, ctx.devpadApi, cookie);
 		if (result.ok) {
 			c.set("user", result.value);
 			return next();

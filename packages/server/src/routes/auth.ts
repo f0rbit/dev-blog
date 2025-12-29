@@ -1,11 +1,13 @@
-import type { Env } from "@blog/schema";
+import type { AppContext, User } from "@blog/schema";
 import { Hono } from "hono";
 import { deleteCookie } from "hono/cookie";
-import type { AuthContext } from "../middleware/auth";
 
-type AuthEnv = { Bindings: Env; Variables: AuthContext };
+type Variables = {
+	user: User;
+	appContext: AppContext;
+};
 
-export const authRouter = new Hono<AuthEnv>();
+export const authRouter = new Hono<{ Variables: Variables }>();
 
 authRouter.get("/user", c => {
 	const user = c.get("user");
@@ -18,7 +20,8 @@ authRouter.get("/user", c => {
 });
 
 authRouter.get("/login", c => {
-	const devpadApi = c.env.devpadApi;
+	const ctx = c.get("appContext");
+	const devpadApi = ctx.devpadApi;
 	const currentUrl = c.req.url;
 	const returnUrl = new URL(currentUrl).origin;
 

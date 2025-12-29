@@ -1,4 +1,4 @@
-import { type Env, PostCreateSchema, PostListParamsSchema, PostUpdateSchema, type User } from "@blog/schema";
+import { type AppContext, PostCreateSchema, PostListParamsSchema, PostUpdateSchema, type User } from "@blog/schema";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -6,10 +6,11 @@ import { type PostService, createPostService } from "../services/posts";
 
 type Variables = {
 	user: User;
+	appContext: AppContext;
 	postService: PostService;
 };
 
-export const postsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
+export const postsRouter = new Hono<{ Variables: Variables }>();
 
 const UuidParam = z.object({
 	uuid: z.string().uuid(),
@@ -65,9 +66,10 @@ postsRouter.use("*", async (c, next) => {
 		return c.json({ code: "UNAUTHORIZED", message: "Authentication required" }, 401);
 	}
 
+	const ctx = c.get("appContext");
 	const service = createPostService({
-		db: c.env.db,
-		corpus: c.env.corpus,
+		db: ctx.db,
+		corpus: ctx.corpus,
 	});
 	c.set("postService", service);
 

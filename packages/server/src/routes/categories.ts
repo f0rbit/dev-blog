@@ -1,4 +1,4 @@
-import { type ApiError, type Category, CategoryCreateSchema, type DrizzleDB, type Env, type Result, err, ok } from "@blog/schema";
+import { type ApiError, type AppContext, type Category, CategoryCreateSchema, type DrizzleDB, type Result, err, ok } from "@blog/schema";
 import * as schema from "@blog/schema/database";
 import { zValidator } from "@hono/zod-validator";
 import { and, eq } from "drizzle-orm";
@@ -11,9 +11,9 @@ interface CategoryNode {
 	children: CategoryNode[];
 }
 
-type AuthEnv = {
-	Bindings: Env;
-	Variables: { user: { id: number } };
+type Variables = {
+	user: { id: number };
+	appContext: AppContext;
 };
 
 const CategoryNameSchema = z.object({
@@ -84,11 +84,12 @@ const hasPosts = async (db: DrizzleDB, authorId: number, category: string): Prom
 	return postsInCategory.length > 0;
 };
 
-export const categoriesRouter = new Hono<AuthEnv>();
+export const categoriesRouter = new Hono<{ Variables: Variables }>();
 
 categoriesRouter.get("/", async c => {
 	const user = c.get("user");
-	const db = c.env.db;
+	const ctx = c.get("appContext");
+	const db = ctx.db;
 
 	const categories = await db.select().from(schema.categories).where(eq(schema.categories.owner_id, user.id));
 
@@ -100,7 +101,8 @@ categoriesRouter.get("/", async c => {
 categoriesRouter.post("/", zValidator("json", CategoryCreateSchema), async c => {
 	const user = c.get("user");
 	const data = c.req.valid("json");
-	const db = c.env.db;
+	const ctx = c.get("appContext");
+	const db = ctx.db;
 
 	const [existing] = await db
 		.select()
@@ -135,7 +137,8 @@ categoriesRouter.put("/:name", zValidator("param", CategoryNameSchema), zValidat
 	const user = c.get("user");
 	const { name } = c.req.valid("param");
 	const data = c.req.valid("json");
-	const db = c.env.db;
+	const ctx = c.get("appContext");
+	const db = ctx.db;
 
 	const categoryResult = await findCategory(db, user.id, name);
 	if (!categoryResult.ok) {
@@ -178,7 +181,8 @@ categoriesRouter.put("/:name", zValidator("param", CategoryNameSchema), zValidat
 categoriesRouter.delete("/:name", zValidator("param", CategoryNameSchema), async c => {
 	const user = c.get("user");
 	const { name } = c.req.valid("param");
-	const db = c.env.db;
+	const ctx = c.get("appContext");
+	const db = ctx.db;
 
 	const categoryResult = await findCategory(db, user.id, name);
 	if (!categoryResult.ok) {
