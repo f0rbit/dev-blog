@@ -1,6 +1,7 @@
 ---
 import PostEditor from "@/components/post/post-editor";
 import AppLayout from "@/layouts/app-layout.astro";
+import { api } from "@/lib/api";
 ---
 
 <AppLayout title="New Post">
@@ -35,8 +36,8 @@ import AppLayout from "@/layouts/app-layout.astro";
 	}
 </style>
 
-<script>
-	const API_URL = "http://localhost:8080";
+<script define:vars={{ API_BASE: api.blog("") }}>
+	const API_URL = API_BASE;
 
 	type Category = {
 		name: string;

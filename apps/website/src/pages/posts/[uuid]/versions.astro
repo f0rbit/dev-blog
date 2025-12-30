@@ -1,7 +1,7 @@
 ---
 import AppLayout from "@/layouts/app-layout.astro";
+import { api } from "@/lib/api";
 
-const API_URL = "http://localhost:8080";
 const { uuid } = Astro.params;
 
 type VersionInfo = {
@@ -43,7 +43,7 @@ let versions: VersionInfo[] = [];
 let error: string | null = null;
 
 try {
-	const versionsRes = await fetch(`${API_URL}/post/${uuid}/versions`);
+	const versionsRes = await fetch(api.blog(`/post/${uuid}/versions`));
 
 	if (versionsRes.ok) {
 		const data = await versionsRes.json();
@@ -57,7 +57,7 @@ try {
 	}
 
 	if (versions.length > 0) {
-		const postsRes = await fetch(`${API_URL}/posts?limit=100`);
+		const postsRes = await fetch(api.blog("/posts?limit=100"));
 		if (postsRes.ok) {
 			const postsData = await postsRes.json();
 			const post = postsData.posts?.find((p: { uuid: string }) => p.uuid === uuid);
@@ -150,7 +150,7 @@ const backUrl = postInfo ? `/posts/${postInfo.slug}` : "/posts";
 	</section>
 </AppLayout>
 
-<script is:inline define:vars={{ API_URL }}>
+<script is:inline define:vars={{ API_URL: api.blog("") }}>
 	function formatBytes(bytes) {
 		if (bytes === 0) return "0 B";
 		const k = 1024;

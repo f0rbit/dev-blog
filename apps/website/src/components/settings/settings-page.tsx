@@ -1,4 +1,5 @@
 import { type Component, For, Show, createResource, createSignal } from "solid-js";
+import { api } from "@/lib/api";
 import Button from "../ui/button";
 import { DevpadConnection } from "./devpad-connection";
 import TokenForm from "./token-form";
@@ -29,17 +30,15 @@ interface Integration {
 	username?: string;
 }
 
-const API_BASE = "http://localhost:8080";
-
 const fetchUser = async (): Promise<User | null> => {
-	const res = await fetch(`${API_BASE}/auth/user`, { credentials: "include" });
+	const res = await fetch(api.auth("/user"), { credentials: "include" });
 	if (!res.ok) return null;
 	const data = await res.json();
 	return data.user ?? null;
 };
 
 const fetchTokens = async (): Promise<Token[]> => {
-	const res = await fetch(`${API_BASE}/tokens`);
+	const res = await fetch(api.blog("/tokens"));
 	if (!res.ok) throw new Error("Failed to fetch tokens");
 	const data = await res.json();
 	return data.tokens ?? [];
@@ -69,7 +68,7 @@ const SettingsPage: Component = () => {
 
 	const handleToggle = async (id: number, enabled: boolean) => {
 		setTokensError(null);
-		const res = await fetch(`${API_BASE}/token/${id}`, {
+		const res = await fetch(api.blog(`/token/${id}`), {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ enabled }),
@@ -85,7 +84,7 @@ const SettingsPage: Component = () => {
 
 	const handleDelete = async (id: number) => {
 		setTokensError(null);
-		const res = await fetch(`${API_BASE}/token/${id}`, {
+		const res = await fetch(api.blog(`/token/${id}`), {
 			method: "DELETE",
 		});
 
@@ -98,7 +97,7 @@ const SettingsPage: Component = () => {
 	};
 
 	const handleCreate = async (data: { name: string; note?: string }): Promise<{ key: string }> => {
-		const res = await fetch(`${API_BASE}/token`, {
+		const res = await fetch(api.blog("/token"), {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(data),

@@ -39,18 +39,21 @@ app.use("*", async (c, next) => {
 
 app.use("*", authMiddleware);
 
+const blogRouter = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+blogRouter.route("/posts", postsRouter);
+blogRouter.route("/post", postsRouter);
+blogRouter.route("/tags", tagsRouter);
+blogRouter.route("/categories", categoriesRouter);
+blogRouter.route("/category", categoriesRouter);
+blogRouter.route("/tokens", tokensRouter);
+blogRouter.route("/token", tokensRouter);
+blogRouter.route("/assets", assetsRouter);
+blogRouter.route("/projects", projectsRouter);
+blogRouter.route("/project", projectsRouter);
+
+app.route("/api/blog", blogRouter);
 app.route("/health", healthRouter);
 app.route("/auth", authRouter);
-app.route("/api/posts", postsRouter);
-app.route("/api/post", postsRouter);
-app.route("/api/tags", tagsRouter);
-app.route("/api/categories", categoriesRouter);
-app.route("/api/category", categoriesRouter);
-app.route("/api/tokens", tokensRouter);
-app.route("/api/token", tokensRouter);
-app.route("/api/assets", assetsRouter);
-app.route("/api/projects", projectsRouter);
-app.route("/api/project", projectsRouter);
 
 app.notFound(c => c.json({ code: "NOT_FOUND", message: "Resource not found" }, 404));
 

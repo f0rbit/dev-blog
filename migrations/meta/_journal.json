@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1766991199140,
-      "tag": "0000_dizzy_skaar",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1735441200000,
-      "tag": "0001_corpus",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1767013034318,
-      "tag": "0002_ambiguous_guardian",
+      "when": 1767059933198,
+      "tag": "0000_polite_amphibian",
       "breakpoints": true
     }
   ]

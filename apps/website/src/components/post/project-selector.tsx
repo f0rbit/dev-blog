@@ -1,4 +1,5 @@
 import { createSignal, createResource, For, Show } from "solid-js";
+import { api } from "@/lib/api";
 
 type Project = {
   id: string;
@@ -15,7 +16,7 @@ type ProjectSelectorProps = {
 };
 
 const fetchProjects = async (): Promise<{ projects: Project[]; connected: boolean }> => {
-  const response = await fetch("http://localhost:8080/projects", { 
+  const response = await fetch(api.blog("/projects"), { 
     credentials: "include" 
   });
   if (!response.ok) return { projects: [], connected: false };
@@ -52,7 +53,7 @@ export const ProjectSelector = (props: ProjectSelectorProps) => {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await fetch("http://localhost:8080/projects/refresh", {
+      await fetch(api.blog("/projects/refresh"), {
         method: "POST",
         credentials: "include",
       });

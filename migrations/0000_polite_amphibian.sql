@@ -10,7 +10,7 @@ CREATE TABLE `access_keys` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `access_keys_key_hash_unique` ON `access_keys` (`key_hash`);--> statement-breakpoint
-CREATE TABLE `categories` (
+CREATE TABLE `blog_categories` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`owner_id` integer NOT NULL,
 	`name` text NOT NULL,
@@ -18,25 +18,25 @@ CREATE TABLE `categories` (
 	FOREIGN KEY (`owner_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `categories_owner_name_unique` ON `categories` (`owner_id`,`name`);--> statement-breakpoint
-CREATE TABLE `devpad_tokens` (
+CREATE UNIQUE INDEX `categories_owner_name_unique` ON `blog_categories` (`owner_id`,`name`);--> statement-breakpoint
+CREATE TABLE `blog_devpad_tokens` (
 	`user_id` integer PRIMARY KEY NOT NULL,
 	`token_encrypted` text NOT NULL,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-CREATE TABLE `fetch_links` (
+CREATE TABLE `blog_fetch_links` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`post_id` integer NOT NULL,
 	`integration_id` integer NOT NULL,
 	`identifier` text NOT NULL,
-	FOREIGN KEY (`post_id`) REFERENCES `posts`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`integration_id`) REFERENCES `integrations`(`id`) ON UPDATE no action ON DELETE cascade
+	FOREIGN KEY (`post_id`) REFERENCES `blog_posts`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`integration_id`) REFERENCES `blog_integrations`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `fetch_links_integration_identifier_unique` ON `fetch_links` (`integration_id`,`identifier`);--> statement-breakpoint
-CREATE TABLE `integrations` (
+CREATE UNIQUE INDEX `fetch_links_integration_identifier_unique` ON `blog_fetch_links` (`integration_id`,`identifier`);--> statement-breakpoint
+CREATE TABLE `blog_integrations` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`user_id` integer NOT NULL,
 	`source` text NOT NULL,
@@ -48,7 +48,15 @@ CREATE TABLE `integrations` (
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-CREATE TABLE `posts` (
+CREATE TABLE `blog_post_projects` (
+	`post_id` integer NOT NULL,
+	`project_id` text NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	PRIMARY KEY(`post_id`, `project_id`),
+	FOREIGN KEY (`post_id`) REFERENCES `blog_posts`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE TABLE `blog_posts` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`uuid` text NOT NULL,
 	`author_id` integer NOT NULL,
@@ -63,9 +71,9 @@ CREATE TABLE `posts` (
 	FOREIGN KEY (`author_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `posts_uuid_unique` ON `posts` (`uuid`);--> statement-breakpoint
-CREATE UNIQUE INDEX `posts_author_slug_unique` ON `posts` (`author_id`,`slug`);--> statement-breakpoint
-CREATE TABLE `projects_cache` (
+CREATE UNIQUE INDEX `blog_posts_uuid_unique` ON `blog_posts` (`uuid`);--> statement-breakpoint
+CREATE UNIQUE INDEX `posts_author_slug_unique` ON `blog_posts` (`author_id`,`slug`);--> statement-breakpoint
+CREATE TABLE `blog_projects_cache` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`user_id` integer NOT NULL,
 	`status` text DEFAULT 'pending' NOT NULL,
@@ -74,11 +82,11 @@ CREATE TABLE `projects_cache` (
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-CREATE TABLE `tags` (
+CREATE TABLE `blog_tags` (
 	`post_id` integer NOT NULL,
 	`tag` text NOT NULL,
 	PRIMARY KEY(`post_id`, `tag`),
-	FOREIGN KEY (`post_id`) REFERENCES `posts`(`id`) ON UPDATE no action ON DELETE cascade
+	FOREIGN KEY (`post_id`) REFERENCES `blog_posts`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE TABLE `users` (

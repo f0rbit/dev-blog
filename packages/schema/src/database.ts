@@ -17,7 +17,7 @@ export const users = sqliteTable("users", {
 });
 
 export const posts = sqliteTable(
-	"posts",
+	"blog_posts",
 	{
 		id: integer("id").primaryKey({ autoIncrement: true }),
 		uuid: text("uuid").notNull().unique(),
@@ -37,7 +37,7 @@ export const posts = sqliteTable(
 );
 
 export const categories = sqliteTable(
-	"categories",
+	"blog_categories",
 	{
 		id: integer("id").primaryKey({ autoIncrement: true }),
 		owner_id: integer("owner_id")
@@ -50,7 +50,7 @@ export const categories = sqliteTable(
 );
 
 export const tags = sqliteTable(
-	"tags",
+	"blog_tags",
 	{
 		post_id: integer("post_id")
 			.notNull()
@@ -72,7 +72,7 @@ export const accessKeys = sqliteTable("access_keys", {
 	created_at: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
-export const integrations = sqliteTable("integrations", {
+export const integrations = sqliteTable("blog_integrations", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
 	user_id: integer("user_id")
 		.notNull()
@@ -86,7 +86,7 @@ export const integrations = sqliteTable("integrations", {
 });
 
 export const fetchLinks = sqliteTable(
-	"fetch_links",
+	"blog_fetch_links",
 	{
 		id: integer("id").primaryKey({ autoIncrement: true }),
 		post_id: integer("post_id")
@@ -100,7 +100,7 @@ export const fetchLinks = sqliteTable(
 	table => [unique("fetch_links_integration_identifier_unique").on(table.integration_id, table.identifier)]
 );
 
-export const devpadTokens = sqliteTable("devpad_tokens", {
+export const devpadTokens = sqliteTable("blog_devpad_tokens", {
 	user_id: integer("user_id")
 		.primaryKey()
 		.references(() => users.id),
@@ -108,7 +108,7 @@ export const devpadTokens = sqliteTable("devpad_tokens", {
 	created_at: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
-export const projectsCache = sqliteTable("projects_cache", {
+export const projectsCache = sqliteTable("blog_projects_cache", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
 	user_id: integer("user_id")
 		.notNull()
@@ -119,7 +119,7 @@ export const projectsCache = sqliteTable("projects_cache", {
 });
 
 export const postProjects = sqliteTable(
-	"post_projects",
+	"blog_post_projects",
 	{
 		post_id: integer("post_id")
 			.notNull()

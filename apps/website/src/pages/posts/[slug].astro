@@ -1,8 +1,8 @@
 ---
 import PostEditor from "@/components/post/post-editor";
 import AppLayout from "@/layouts/app-layout.astro";
+import { api } from "@/lib/api";
 
-const API_URL = "http://localhost:8080";
 const { slug } = Astro.params;
 
 type Category = {
@@ -36,12 +36,12 @@ let categories: Category[] = [];
 let error: string | null = null;
 
 console.log("[SSR] Fetching post with slug:", slug);
-console.log("[SSR] API URL:", `${API_URL}/post/${slug}`);
+console.log("[SSR] API URL:", api.blog(`/post/${slug}`));
 
 try {
 	const [postRes, catRes] = await Promise.all([
-		fetch(`${API_URL}/post/${slug}`),
-		fetch(`${API_URL}/categories`)
+		fetch(api.blog(`/post/${slug}`)),
+		fetch(api.blog("/categories"))
 	]);
 
 	console.log("[SSR] Post response status:", postRes.status);
@@ -107,8 +107,8 @@ console.log("[SSR] Final error:", error);
 	}
 </style>
 
-<script>
-	const API_URL = "http://localhost:8080";
+<script define:vars={{ API_BASE: api.blog("") }}>
+	const API_URL = API_BASE;
 
 	type PostFormData = {
 		slug: string;

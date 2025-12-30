@@ -1,5 +1,6 @@
 ---
 import AppLayout from "@/layouts/app-layout.astro";
+import { api } from "@/lib/api";
 
 type Post = {
   uuid: string;
@@ -39,7 +40,7 @@ let posts: Post[] = [];
 let error: string | null = null;
 
 try {
-  const response = await fetch("http://localhost:8080/posts?limit=100");
+  const response = await fetch(api.blog("/posts?limit=100"));
   if (!response.ok) throw new Error("Failed to fetch posts");
   const data = await response.json();
   posts = data.posts ?? [];

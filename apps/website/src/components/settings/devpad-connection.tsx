@@ -1,11 +1,12 @@
 import { createSignal, createResource, Show } from "solid-js";
+import { api } from "@/lib/api";
 
 type ConnectionStatus = {
   connected: boolean;
 };
 
 const fetchStatus = async (): Promise<ConnectionStatus> => {
-  const response = await fetch("http://localhost:8080/projects/status", {
+  const response = await fetch(api.blog("/projects/status"), {
     credentials: "include",
   });
   if (!response.ok) return { connected: false };
@@ -28,7 +29,7 @@ export const DevpadConnection = () => {
     setError(null);
 
     try {
-      const response = await fetch("http://localhost:8080/projects/token", {
+      const response = await fetch(api.blog("/projects/token"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: token() }),
@@ -55,7 +56,7 @@ export const DevpadConnection = () => {
     setError(null);
 
     try {
-      await fetch("http://localhost:8080/projects/token", {
+      await fetch(api.blog("/projects/token"), {
         method: "DELETE",
         credentials: "include",
       });

@@ -25,7 +25,7 @@ const SCHEMA_SQL = `
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
   );
 
-  CREATE TABLE IF NOT EXISTS posts (
+  CREATE TABLE IF NOT EXISTS blog_posts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     uuid TEXT NOT NULL UNIQUE,
     author_id INTEGER NOT NULL REFERENCES users(id),
@@ -40,7 +40,7 @@ const SCHEMA_SQL = `
     UNIQUE(author_id, slug)
   );
 
-  CREATE TABLE IF NOT EXISTS categories (
+  CREATE TABLE IF NOT EXISTS blog_categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id INTEGER NOT NULL REFERENCES users(id),
     name TEXT NOT NULL,
@@ -48,14 +48,14 @@ const SCHEMA_SQL = `
     UNIQUE(owner_id, name)
   );
 
-  CREATE TABLE IF NOT EXISTS tags (
-    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  CREATE TABLE IF NOT EXISTS blog_tags (
+    post_id INTEGER NOT NULL REFERENCES blog_posts(id) ON DELETE CASCADE,
     tag TEXT NOT NULL,
     PRIMARY KEY (post_id, tag)
   );
 
-  CREATE TABLE IF NOT EXISTS post_projects (
-    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  CREATE TABLE IF NOT EXISTS blog_post_projects (
+    post_id INTEGER NOT NULL REFERENCES blog_posts(id) ON DELETE CASCADE,
     project_id TEXT NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     PRIMARY KEY (post_id, project_id)
@@ -78,10 +78,10 @@ const createTestContext = () => {
 		db,
 		corpus,
 		reset: () => {
-			sqliteDb.exec("DELETE FROM post_projects");
-			sqliteDb.exec("DELETE FROM tags");
-			sqliteDb.exec("DELETE FROM posts");
-			sqliteDb.exec("DELETE FROM categories");
+			sqliteDb.exec("DELETE FROM blog_post_projects");
+			sqliteDb.exec("DELETE FROM blog_tags");
+			sqliteDb.exec("DELETE FROM blog_posts");
+			sqliteDb.exec("DELETE FROM blog_categories");
 			sqliteDb.exec("DELETE FROM users");
 		},
 		close: () => {
