@@ -1,5 +1,5 @@
-import { type Component, For, Show, createResource, createSignal } from "solid-js";
 import { api } from "@/lib/api";
+import { type Component, For, Show, createResource, createSignal } from "solid-js";
 import Button from "../ui/button";
 import { DevpadConnection } from "./devpad-connection";
 import TokenForm from "./token-form";
@@ -128,7 +128,7 @@ const SettingsPage: Component = () => {
 						<p class="muted text-sm">Unable to load profile</p>
 					</Show>
 					<Show when={user()} keyed>
-						{(userData) => (
+						{userData => (
 							<>
 								<div class="profile-row">
 									<span class="profile-row__label">Username</span>
@@ -165,7 +165,7 @@ const SettingsPage: Component = () => {
 				<h3 class="settings-section__title">Integrations</h3>
 				<div class="settings-section__content">
 					<For each={integrations}>
-						{(integration) => (
+						{integration => (
 							<div class="integration-row">
 								<span class="integration-row__name">{integration.name}</span>
 								<Show
@@ -219,7 +219,7 @@ const SettingsPage: Component = () => {
 					</Show>
 
 					<Show when={tokens()} keyed>
-						{(tokenList) => <TokenList tokens={tokenList} onToggle={handleToggle} onDelete={handleDelete} />}
+						{tokenList => <TokenList tokens={tokenList} onToggle={handleToggle} onDelete={handleDelete} />}
 					</Show>
 
 					<div class="settings-section__actions">

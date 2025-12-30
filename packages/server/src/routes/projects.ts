@@ -1,9 +1,9 @@
-import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
-import { z } from "zod";
-import { createProjectService, type ProjectServiceError } from "../services/projects";
-import { createDevpadProvider } from "../providers/devpad";
 import type { AppContext, User } from "@blog/schema";
+import { zValidator } from "@hono/zod-validator";
+import { Hono } from "hono";
+import { z } from "zod";
+import { createDevpadProvider } from "../providers/devpad";
+import { type ProjectServiceError, createProjectService } from "../services/projects";
 
 type Variables = {
 	user: User;
@@ -43,7 +43,7 @@ projectsRouter.use("*", async (c, next) => {
 	return next();
 });
 
-projectsRouter.get("/", async (c) => {
+projectsRouter.get("/", async c => {
 	const user = c.get("user");
 	const service = getService(c);
 
@@ -57,7 +57,7 @@ projectsRouter.get("/", async (c) => {
 	return c.json({ projects: result.value, connected });
 });
 
-projectsRouter.post("/refresh", async (c) => {
+projectsRouter.post("/refresh", async c => {
 	const user = c.get("user");
 	const service = getService(c);
 
@@ -73,25 +73,21 @@ projectsRouter.post("/refresh", async (c) => {
 	return c.json({ projects: result.value });
 });
 
-projectsRouter.put(
-	"/token",
-	zValidator("json", z.object({ token: z.string().min(1) })),
-	async (c) => {
-		const user = c.get("user");
-		const { token } = c.req.valid("json");
-		const service = getService(c);
+projectsRouter.put("/token", zValidator("json", z.object({ token: z.string().min(1) })), async c => {
+	const user = c.get("user");
+	const { token } = c.req.valid("json");
+	const service = getService(c);
 
-		const result = await service.setToken(user.id, token);
+	const result = await service.setToken(user.id, token);
 
-		if (!result.ok) {
-			return c.json({ error: errorMessage(result.error) }, 500);
-		}
-
-		return c.json({ success: true });
+	if (!result.ok) {
+		return c.json({ error: errorMessage(result.error) }, 500);
 	}
-);
 
-projectsRouter.delete("/token", async (c) => {
+	return c.json({ success: true });
+});
+
+projectsRouter.delete("/token", async c => {
 	const user = c.get("user");
 	const service = getService(c);
 
@@ -104,7 +100,7 @@ projectsRouter.delete("/token", async (c) => {
 	return c.json({ success: true });
 });
 
-projectsRouter.get("/status", async (c) => {
+projectsRouter.get("/status", async c => {
 	const user = c.get("user");
 	const service = getService(c);
 

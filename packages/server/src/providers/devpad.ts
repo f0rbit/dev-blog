@@ -1,4 +1,4 @@
-import { type Result, type Project, ProjectSchema, ok, err } from "@blog/schema";
+import { type Project, ProjectSchema, type Result, err, ok } from "@blog/schema";
 import { z } from "zod";
 
 export type DevpadProviderConfig = {
@@ -53,13 +53,13 @@ export const createMockDevpadProvider = (): DevpadProvider & {
 	let error: string | null = null;
 
 	return {
-		setProjects: (p) => {
+		setProjects: p => {
 			projects = p;
 		},
-		setError: (e) => {
+		setError: e => {
 			error = e;
 		},
-		fetchProjects: async (_token) => {
+		fetchProjects: async _token => {
 			if (error) return err(error);
 			return ok(projects);
 		},

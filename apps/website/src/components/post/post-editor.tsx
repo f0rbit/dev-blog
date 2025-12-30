@@ -1,8 +1,8 @@
 import type { Component } from "solid-js";
 import { For, Show, createSignal } from "solid-js";
-import TagEditor from "./tag-editor";
 import { PostPreview } from "./post-preview";
 import { ProjectSelector } from "./project-selector";
+import TagEditor from "./tag-editor";
 
 type Post = {
 	id: number;
@@ -77,7 +77,7 @@ const relativeTime = (dateStr: string): string => {
 const PostEditor: Component<PostEditorProps> = props => {
 	console.log("[PostEditor] Received props.post:", JSON.stringify(props.post, null, 2));
 	console.log("[PostEditor] Received props.categories:", JSON.stringify(props.categories, null, 2));
-	
+
 	const [title, setTitle] = createSignal(props.post?.title ?? "");
 	const [slug, setSlug] = createSignal(props.post?.slug ?? "");
 	const [content, setContent] = createSignal(props.post?.content ?? "");
@@ -114,8 +114,11 @@ const PostEditor: Component<PostEditorProps> = props => {
 	if (props.onFormReady) {
 		props.onFormReady(getFormData);
 	}
-	if (typeof window !== "undefined" && (window as any).postEditorReady) {
-		(window as any).postEditorReady(getFormData);
+	if (typeof window !== "undefined") {
+		const win = window as Window & { postEditorReady?: (fn: typeof getFormData) => void };
+		if (win.postEditorReady) {
+			win.postEditorReady(getFormData);
+		}
 	}
 
 	const handleTitleChange = (newTitle: string) => {
@@ -206,19 +209,20 @@ const PostEditor: Component<PostEditorProps> = props => {
 
 					<div class="post-editor__field post-editor__field--wide">
 						<label>Projects</label>
-						<ProjectSelector
-							selectedIds={projectIds()}
-							onChange={setProjectIds}
-						/>
+						<ProjectSelector selectedIds={projectIds()} onChange={setProjectIds} />
 					</div>
 				</div>
 
 				{/* Version info - only show when editing existing post */}
-				<Show when={isEditing() && props.post?.updated_at}>
-					<div class="post-editor__version-info">
-						<span class="post-editor__last-saved">Last saved {relativeTime(props.post!.updated_at!)}</span>
-						<a href={`/posts/${props.post!.uuid}/versions`} class="post-editor__history-link">View History →</a>
-					</div>
+				<Show when={isEditing() && props.post?.updated_at} keyed>
+					{updatedAt => (
+						<div class="post-editor__version-info">
+							<span class="post-editor__last-saved">Last saved {relativeTime(updatedAt)}</span>
+							<a href={`/posts/${props.post?.uuid}/versions`} class="post-editor__history-link">
+								View History →
+							</a>
+						</div>
+					)}
 				</Show>
 
 				{/* Actions - only show if onSave is provided (new post page) */}
@@ -233,18 +237,10 @@ const PostEditor: Component<PostEditorProps> = props => {
 
 			{/* Content editor with tabs */}
 			<div class="editor-tabs">
-				<button
-					type="button"
-					class={`tab ${activeTab() === "write" ? "active" : ""}`}
-					onClick={() => setActiveTab("write")}
-				>
+				<button type="button" class={`tab ${activeTab() === "write" ? "active" : ""}`} onClick={() => setActiveTab("write")}>
 					Write
 				</button>
-				<button
-					type="button"
-					class={`tab ${activeTab() === "preview" ? "active" : ""}`}
-					onClick={() => setActiveTab("preview")}
-				>
+				<button type="button" class={`tab ${activeTab() === "preview" ? "active" : ""}`} onClick={() => setActiveTab("preview")}>
 					Preview
 				</button>
 			</div>

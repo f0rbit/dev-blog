@@ -9,9 +9,9 @@ import { authRouter } from "./routes/auth";
 import { categoriesRouter } from "./routes/categories";
 import { healthRouter } from "./routes/health";
 import { postsRouter } from "./routes/posts";
+import { projectsRouter } from "./routes/projects";
 import { tagsRouter } from "./routes/tags";
 import { tokensRouter } from "./routes/tokens";
-import { projectsRouter } from "./routes/projects";
 
 type Variables = {
 	user: User;
@@ -21,10 +21,19 @@ type Variables = {
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 app.use("*", logger());
+
+const isAllowedOrigin = (origin: string | undefined): boolean => {
+	if (!origin) return true;
+
+	const patterns = [/^https:\/\/.*\.blog-devpad\.pages\.dev$/, /^https:\/\/blog\.devpad\.tools$/, /^http:\/\/localhost:\d+$/];
+
+	return patterns.some(pattern => pattern.test(origin));
+};
+
 app.use(
 	"*",
 	cors({
-		origin: ["http://localhost:4321", "http://localhost:3000"],
+		origin: origin => (isAllowedOrigin(origin) ? origin : ""),
 		allowMethods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
 		allowHeaders: ["Content-Type", "Authorization", "Auth-Token"],
 		credentials: true,

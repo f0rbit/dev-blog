@@ -1,16 +1,5 @@
-import {
-	type PostContent,
-	type PostCorpusError,
-	type PostsCorpus,
-	type Result,
-	type VersionInfo,
-	corpusPath,
-	err,
-	mapCorpusError,
-	ok,
-	postsStoreDefinition,
-} from "@blog/schema";
-import { create_store, type Backend } from "@f0rbit/corpus";
+import { type PostContent, type PostCorpusError, type PostsCorpus, type Result, type VersionInfo, corpusPath, err, mapCorpusError, ok, postsStoreDefinition } from "@blog/schema";
+import { type Backend, create_store } from "@f0rbit/corpus";
 
 export { corpusPath };
 
@@ -25,15 +14,9 @@ const corpusToBackend = (corpus: PostsCorpus): Backend => {
 	return backend;
 };
 
-const createDynamicStore = (corpus: PostsCorpus, storeId: string) =>
-	create_store(corpusToBackend(corpus), { ...postsStoreDefinition, id: storeId });
+const createDynamicStore = (corpus: PostsCorpus, storeId: string) => create_store(corpusToBackend(corpus), { ...postsStoreDefinition, id: storeId });
 
-export const putContent = async (
-	corpus: PostsCorpus,
-	path: string,
-	content: PostContent,
-	parent?: string
-): Promise<Result<{ hash: string }, PostCorpusError>> => {
+export const putContent = async (corpus: PostsCorpus, path: string, content: PostContent, parent?: string): Promise<Result<{ hash: string }, PostCorpusError>> => {
 	const store = createDynamicStore(corpus, path);
 
 	const opts = parent ? { parents: [{ store_id: path, version: parent }] } : {};
@@ -44,11 +27,7 @@ export const putContent = async (
 	return ok({ hash: result.value.version });
 };
 
-export const getContent = async (
-	corpus: PostsCorpus,
-	path: string,
-	hash: string
-): Promise<Result<PostContent, PostCorpusError>> => {
+export const getContent = async (corpus: PostsCorpus, path: string, hash: string): Promise<Result<PostContent, PostCorpusError>> => {
 	const store = createDynamicStore(corpus, path);
 
 	const result = await store.get(hash);
@@ -58,10 +37,7 @@ export const getContent = async (
 	return ok(result.value.data);
 };
 
-export const listVersions = async (
-	corpus: PostsCorpus,
-	path: string
-): Promise<Result<VersionInfo[], PostCorpusError>> => {
+export const listVersions = async (corpus: PostsCorpus, path: string): Promise<Result<VersionInfo[], PostCorpusError>> => {
 	const store = createDynamicStore(corpus, path);
 
 	const versions: VersionInfo[] = [];
@@ -80,10 +56,7 @@ export const listVersions = async (
 	return ok(versions);
 };
 
-export const deleteContent = async (
-	corpus: PostsCorpus,
-	path: string
-): Promise<Result<void, PostCorpusError>> => {
+export const deleteContent = async (corpus: PostsCorpus, path: string): Promise<Result<void, PostCorpusError>> => {
 	const store = createDynamicStore(corpus, path);
 
 	for await (const meta of store.list()) {

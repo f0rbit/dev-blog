@@ -1,11 +1,5 @@
 import { beforeEach, describe, expect, it } from "bun:test";
-import {
-	type PostContent,
-	type PostsCorpus,
-	create_corpus,
-	create_memory_backend,
-	postsStoreDefinition,
-} from "@blog/schema";
+import { type PostContent, type PostsCorpus, create_corpus, create_memory_backend, postsStoreDefinition } from "@blog/schema";
 import { corpusPath, deleteContent, getContent, listVersions, putContent } from "../../src/corpus/posts";
 
 describe("corpus/posts", () => {
@@ -13,10 +7,7 @@ describe("corpus/posts", () => {
 
 	beforeEach(() => {
 		const backend = create_memory_backend();
-		corpus = create_corpus()
-			.with_backend(backend)
-			.with_store(postsStoreDefinition)
-			.build() as PostsCorpus;
+		corpus = create_corpus().with_backend(backend).with_store(postsStoreDefinition).build() as PostsCorpus;
 	});
 
 	describe("corpusPath", () => {

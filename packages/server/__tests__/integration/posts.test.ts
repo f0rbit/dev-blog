@@ -1,17 +1,6 @@
 import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import {
-	type DrizzleDB,
-	type PostCreate,
-	type PostUpdate,
-	type PostsCorpus,
-	categories,
-	create_corpus,
-	create_memory_backend,
-	postsStoreDefinition,
-	tags,
-	users,
-} from "@blog/schema";
+import { type DrizzleDB, type PostCreate, type PostUpdate, type PostsCorpus, categories, create_corpus, create_memory_backend, postsStoreDefinition, tags, users } from "@blog/schema";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 
 const SCHEMA_SQL = `
@@ -68,10 +57,7 @@ const createTestContext = () => {
 
 	const db = drizzle(sqliteDb) as DrizzleDB;
 	const backend = create_memory_backend();
-	const corpus = create_corpus()
-		.with_backend(backend)
-		.with_store(postsStoreDefinition)
-		.build() as PostsCorpus;
+	const corpus = create_corpus().with_backend(backend).with_store(postsStoreDefinition).build() as PostsCorpus;
 
 	return {
 		sqliteDb,
@@ -173,7 +159,7 @@ describe("PostService", () => {
 
 			expect(result.value.corpus_version).toBeDefined();
 			expect(typeof result.value.corpus_version).toBe("string");
-			expect(result.value.corpus_version!.length).toBeGreaterThan(0);
+			expect(result.value.corpus_version?.length).toBeGreaterThan(0);
 		});
 
 		it("handles slug conflicts", async () => {

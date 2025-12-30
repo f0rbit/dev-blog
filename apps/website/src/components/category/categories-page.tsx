@@ -1,5 +1,5 @@
-import { type Component, Show, createResource, createSignal } from "solid-js";
 import { api } from "@/lib/api";
+import { type Component, Show, createResource, createSignal } from "solid-js";
 import CategoryForm from "./category-form";
 import CategoryTree from "./category-tree";
 
@@ -94,12 +94,7 @@ const CategoriesPage: Component = () => {
 							<CategoryTree categories={cats} onDelete={handleDelete} onAddChild={selectParentForAdd} />
 						</section>
 
-						<CategoryForm
-							categories={cats}
-							onSubmit={handleCreate}
-							defaultParent={defaultParent()}
-							highlighted={formHighlighted()}
-						/>
+						<CategoryForm categories={cats} onSubmit={handleCreate} defaultParent={defaultParent()} highlighted={formHighlighted()} />
 					</>
 				)}
 			</Show>

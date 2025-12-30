@@ -6,8 +6,8 @@ import {
 	type PostCreate,
 	type PostListParams,
 	type PostRow,
-	type PostsCorpus,
 	type PostUpdate,
+	type PostsCorpus,
 	type PostsResponse,
 	type Result,
 	type VersionInfo,
@@ -24,11 +24,7 @@ import {
 import { and, desc, eq, gt, inArray, isNull, lte, sql } from "drizzle-orm";
 import { listVersions as corpusListVersions, corpusPath, deleteContent, getContent, putContent } from "../corpus/posts";
 
-type PostServiceError =
-	| { type: "not_found"; resource: string }
-	| { type: "slug_conflict"; slug: string }
-	| { type: "corpus_error"; inner: PostCorpusError }
-	| { type: "db_error"; message: string };
+type PostServiceError = { type: "not_found"; resource: string } | { type: "slug_conflict"; slug: string } | { type: "corpus_error"; inner: PostCorpusError } | { type: "db_error"; message: string };
 
 type Deps = {
 	db: DrizzleDB;
@@ -340,16 +336,18 @@ export const createPostService = ({ db, corpus }: Deps) => {
 		}
 
 		if (params.project) {
-			const projectPostIds = await db
-				.select({ post_id: postProjects.post_id })
-				.from(postProjects)
-				.where(eq(postProjects.project_id, params.project));
+			const projectPostIds = await db.select({ post_id: postProjects.post_id }).from(postProjects).where(eq(postProjects.project_id, params.project));
 
 			if (projectPostIds.length === 0) {
 				return ok({ posts: [], total_posts: 0, total_pages: 0, per_page: params.limit, current_page: 1 });
 			}
 
-			conditions.push(inArray(posts.id, projectPostIds.map(p => p.post_id)));
+			conditions.push(
+				inArray(
+					posts.id,
+					projectPostIds.map(p => p.post_id)
+				)
+			);
 		}
 
 		if (!params.archived) {

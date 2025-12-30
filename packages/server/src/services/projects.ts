@@ -1,17 +1,8 @@
-import {
-	type DrizzleDB,
-	type Project,
-	type PostsCorpus,
-	type Result,
-	ProjectSchema,
-	devpadTokens,
-	err,
-	ok,
-} from "@blog/schema";
+import { type DrizzleDB, type PostsCorpus, type Project, ProjectSchema, type Result, devpadTokens, err, ok } from "@blog/schema";
+import { type Backend, create_store, define_store, json_codec } from "@f0rbit/corpus";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import type { DevpadProvider } from "../providers/devpad";
-import { create_store, type Backend, define_store, json_codec } from "@f0rbit/corpus";
 
 const ProjectsCacheSchema = z.object({
 	projects: z.array(ProjectSchema),
@@ -22,11 +13,7 @@ type ProjectsCache = z.infer<typeof ProjectsCacheSchema>;
 
 const projectsCacheStore = define_store("projects-cache", json_codec(ProjectsCacheSchema));
 
-export type ProjectServiceError =
-	| { type: "no_token" }
-	| { type: "provider_error"; message: string }
-	| { type: "db_error"; message: string }
-	| { type: "corpus_error"; message: string };
+export type ProjectServiceError = { type: "no_token" } | { type: "provider_error"; message: string } | { type: "db_error"; message: string } | { type: "corpus_error"; message: string };
 
 type Deps = {
 	db: DrizzleDB;
@@ -116,11 +103,7 @@ export const createProjectService = ({ db, corpus, devpadProvider }: Deps) => {
 	};
 
 	const hasToken = async (userId: number): Promise<boolean> => {
-		const rows = await db
-			.select({ id: devpadTokens.user_id })
-			.from(devpadTokens)
-			.where(eq(devpadTokens.user_id, userId))
-			.limit(1);
+		const rows = await db.select({ id: devpadTokens.user_id }).from(devpadTokens).where(eq(devpadTokens.user_id, userId)).limit(1);
 		return rows.length > 0;
 	};
 

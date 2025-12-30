@@ -7,7 +7,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import type { DrizzleDB } from "../packages/schema/src/database";
-import { PostContentSchema, type AppContext, type User } from "../packages/schema/src/types";
+import { type AppContext, PostContentSchema, type User } from "../packages/schema/src/types";
 import { assetsRouter } from "../packages/server/src/routes/assets";
 import { categoriesRouter } from "../packages/server/src/routes/categories";
 import { postsRouter } from "../packages/server/src/routes/posts";
@@ -202,7 +202,7 @@ const main = async () => {
 	console.log(`✓ Database: ${DB_PATH}`);
 	console.log(`✓ Corpus: ${CORPUS_PATH}`);
 	console.log(`✓ Dev user: ${DEV_USER.username}`);
-	console.log(`✓ Mock DevPad API enabled`);
+	console.log("✓ Mock DevPad API enabled");
 	console.log(`\n📡 Dev server running on http://localhost:${PORT}`);
 	console.log("\nEndpoints:");
 	console.log("  GET  /health        - Health check");

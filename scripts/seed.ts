@@ -4,7 +4,7 @@ import { mkdir } from "node:fs/promises";
 import { create_corpus, create_file_backend, define_store, json_codec } from "@f0rbit/corpus";
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import { PostContentSchema, type PostContent } from "../packages/schema/src/corpus";
+import { type PostContent, PostContentSchema } from "../packages/schema/src/corpus";
 import type { DrizzleDB } from "../packages/schema/src/database";
 import * as schema from "../packages/schema/src/database";
 import type { PostsCorpus } from "../packages/schema/src/types";

@@ -51,18 +51,22 @@ const CategoryForm: Component<CategoryFormProps> = props => {
 	};
 
 	return (
-		<section
-			ref={formRef}
-			class="category-form-section"
-			classList={{ "category-form-section--highlighted": props.highlighted }}
-		>
+		<section ref={formRef} class="category-form-section" classList={{ "category-form-section--highlighted": props.highlighted }}>
 			<h3 class="category-form-title">New Category</h3>
 			<form onSubmit={handleSubmit} class="category-form">
 				<div class="form-row">
 					<label for="category-name" class="text-xs tertiary">
 						Name
 					</label>
-					<Input ref={(el) => (nameInputRef = el)} value={name()} onInput={setName} placeholder="Category name" disabled={submitting()} />
+					<Input
+						ref={el => {
+							nameInputRef = el;
+						}}
+						value={name()}
+						onInput={setName}
+						placeholder="Category name"
+						disabled={submitting()}
+					/>
 				</div>
 				<div class="form-row">
 					<label for="category-parent" class="text-xs tertiary">

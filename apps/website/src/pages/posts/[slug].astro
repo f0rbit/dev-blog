@@ -27,8 +27,7 @@ type Post = {
 	updated_at: string;
 };
 
-const flattenTree = (nodes: CategoryNode[]): Category[] =>
-	nodes.flatMap(n => [{ name: n.name, parent: n.parent }, ...flattenTree(n.children ?? [])]);
+const flattenTree = (nodes: CategoryNode[]): Category[] => nodes.flatMap(n => [{ name: n.name, parent: n.parent }, ...flattenTree(n.children ?? [])]);
 
 // Fetch post and categories server-side
 let post: Post | null = null;
@@ -39,10 +38,7 @@ console.log("[SSR] Fetching post with slug:", slug);
 console.log("[SSR] API URL:", api.blog(`/post/${slug}`));
 
 try {
-	const [postRes, catRes] = await Promise.all([
-		fetch(api.blog(`/post/${slug}`)),
-		fetch(api.blog("/categories"))
-	]);
+	const [postRes, catRes] = await Promise.all([fetch(api.blog(`/post/${slug}`)), fetch(api.blog("/categories"))]);
 
 	console.log("[SSR] Post response status:", postRes.status);
 	console.log("[SSR] Categories response status:", catRes.status);

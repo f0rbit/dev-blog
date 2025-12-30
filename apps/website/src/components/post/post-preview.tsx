@@ -1,4 +1,4 @@
-import { createSignal, createEffect, Show } from "solid-js";
+import { Show, createEffect, createSignal } from "solid-js";
 import { renderMarkdown } from "../../lib/markdown";
 
 type Props = {
@@ -30,10 +30,4 @@ export const PostPreview = (props: Props) => {
 	);
 };
 
-const escapeHtml = (text: string): string =>
-	text
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;")
-		.replace(/'/g, "&#039;");
+const escapeHtml = (text: string): string => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");

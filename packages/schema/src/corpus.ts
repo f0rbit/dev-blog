@@ -1,4 +1,4 @@
-import { define_store, json_codec, type CorpusError as LibCorpusError } from "@f0rbit/corpus";
+import { type CorpusError as LibCorpusError, define_store, json_codec } from "@f0rbit/corpus";
 import { z } from "zod";
 
 export const PostContentSchema = z.object({
@@ -12,8 +12,7 @@ export type PostContent = z.infer<typeof PostContentSchema>;
 
 export const postsStoreDefinition = define_store("posts", json_codec(PostContentSchema));
 
-export const postStoreId = (userId: number, postUuid: string): string =>
-	`posts/${userId}/${postUuid}`;
+export const postStoreId = (userId: number, postUuid: string): string => `posts/${userId}/${postUuid}`;
 
 export const corpusPath = postStoreId;
 
@@ -25,10 +24,7 @@ export const VersionInfoSchema = z.object({
 
 export type VersionInfo = z.infer<typeof VersionInfoSchema>;
 
-export type PostCorpusError =
-	| { type: "not_found"; path: string; version?: string }
-	| { type: "invalid_content"; message: string }
-	| { type: "io_error"; message: string };
+export type PostCorpusError = { type: "not_found"; path: string; version?: string } | { type: "invalid_content"; message: string } | { type: "io_error"; message: string };
 
 export const mapCorpusError = (e: LibCorpusError): PostCorpusError => {
 	if (e.kind === "not_found") {

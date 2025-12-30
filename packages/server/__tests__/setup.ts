@@ -1,4 +1,4 @@
-import { create_corpus, create_memory_backend, postsStoreDefinition, type PostsCorpus } from "@blog/schema";
+import { type PostsCorpus, create_corpus, create_memory_backend, postsStoreDefinition } from "@blog/schema";
 
 export type TestUser = {
 	id: number;
@@ -10,10 +10,7 @@ export type TestUser = {
 
 export const createTestCorpus = (): PostsCorpus => {
 	const backend = create_memory_backend();
-	return create_corpus()
-		.with_backend(backend)
-		.with_store(postsStoreDefinition)
-		.build() as PostsCorpus;
+	return create_corpus().with_backend(backend).with_store(postsStoreDefinition).build() as PostsCorpus;
 };
 
 export type DevToArticle = {
