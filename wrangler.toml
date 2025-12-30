@@ -1,35 +1,38 @@
-name = "blog-devpad"
+name = "blog-devpad-api"
 main = "packages/server/src/index.ts"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Production environment (default)
 [vars]
 ENVIRONMENT = "production"
-DEVPAD_API = "https://devpad.io/api"
+DEVPAD_API = "https://devpad.tools"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "blog-devpad-db"
-database_id = "placeholder-update-after-creation"
+database_id = "bfb27257-dc51-46b1-a532-bf4fde3aa117"
 
 [[r2_buckets]]
 binding = "CORPUS_BUCKET"
 bucket_name = "blog-devpad-corpus"
 
-[env.staging]
-name = "blog-devpad-staging"
-[env.staging.vars]
-ENVIRONMENT = "staging"
-DEVPAD_API = "https://staging.devpad.io/api"
+# Preview environment
+[env.preview]
+name = "blog-devpad-api-preview"
 
-[[env.staging.d1_databases]]
+[env.preview.vars]
+ENVIRONMENT = "preview"
+DEVPAD_API = "https://devpad.tools"
+
+[[env.preview.d1_databases]]
 binding = "DB"
-database_name = "blog-devpad-db-staging"
-database_id = "placeholder-update-after-creation"
+database_name = "blog-devpad-db-preview"
+database_id = "c6fe56a9-3c1c-4438-86fe-a2d0cf9fdd41"
 
-[[env.staging.r2_buckets]]
+[[env.preview.r2_buckets]]
 binding = "CORPUS_BUCKET"
-bucket_name = "blog-devpad-corpus-staging"
+bucket_name = "blog-devpad-corpus-preview"
 
 [dev]
 port = 8787

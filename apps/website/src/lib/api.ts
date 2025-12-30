@@ -1,6 +1,6 @@
 // API configuration - single source of truth for API URLs
 
-const API_HOST = import.meta.env.PUBLIC_API_URL || "http://localhost:8080";
+const API_HOST = import.meta.env.PUBLIC_API_URL ?? "http://localhost:8080";
 
 /** API URL builders */
 export const api = {

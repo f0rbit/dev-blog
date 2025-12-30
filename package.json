@@ -17,6 +17,8 @@
 		"build:server": "cd packages/server && bun run build",
 		"build:client": "cd apps/website && bun run build",
 		"deploy": "wrangler deploy",
+		"deploy:preview": "bunx wrangler deploy --env preview && bunx wrangler pages deploy apps/website/dist --project-name=blog-devpad --branch=preview",
+		"deploy:production": "bunx wrangler deploy && bunx wrangler pages deploy apps/website/dist --project-name=blog-devpad --branch=main",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write ."
