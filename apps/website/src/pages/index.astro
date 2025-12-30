@@ -1,59 +1,99 @@
 ---
 import BaseLayout from "@/layouts/base-layout.astro";
+import Github from "lucide-astro/Github";
+import FileText from "lucide-astro/FileText";
+import History from "lucide-astro/History";
+import Sparkles from "lucide-astro/Sparkles";
+import CalendarCheck from "lucide-astro/CalendarCheck";
+import Tag from "lucide-astro/Tag";
+import RefreshCw from "lucide-astro/RefreshCw";
 ---
 
-<BaseLayout title="Blog - DevPad">
+<BaseLayout title="Blog - devpad">
   <div class="landing">
     <!-- Navigation -->
     <nav class="landing-nav">
       <a href="/" class="landing-logo">blog</a>
-      <a href="/auth/login" class="btn-primary">Login with DevPad</a>
+      <a href="/auth/login" class="btn-primary btn-login"><Github size={16} />login</a>
     </nav>
 
     <!-- Hero Section -->
     <section class="landing-hero">
-      <h1 class="landing-title">
-        Blog Management<br />
-        <span class="landing-title-accent">for DevPad</span>
-      </h1>
-      <p class="landing-tagline">
-        Write in Markdown. Version everything. Publish when ready.
-      </p>
-      <a href="/auth/login" class="btn-primary btn-large">Get Started</a>
+      <div class="hero-content">
+        <h1 class="landing-title">
+          blogging.<br />
+          <span class="landing-title-accent">for developers.</span>
+        </h1>
+        <p class="landing-tagline">
+          A blog platform built for devpad. Link posts to your projects and tasks, write in Markdown, and publish with full version control.
+        </p>
+        <a href="/auth/login" class="btn-primary btn-large">Get Started</a>
+      </div>
+      <div class="hero-mockup">
+        <div class="mockup-window">
+          <div class="mockup-header">
+            <span class="mockup-dot"></span>
+            <span class="mockup-dot"></span>
+            <span class="mockup-dot"></span>
+          </div>
+          <div class="mockup-content">
+            <div class="mockup-editor">
+              <code class="typing-text"></code><span class="typing-cursor">|</span>
+            </div>
+            <div class="mockup-divider"></div>
+            <div class="mockup-preview">
+              <h1 class="preview-h1">Hello World</h1>
+              <p class="preview-p">Write your thoughts in <strong>markdown</strong>.</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- Features Section -->
     <section class="landing-features">
       <div class="feature-grid">
         <div class="feature-card">
-          <span class="feature-icon">&#9672;</span>
-          <h3>Markdown & AsciiDoc</h3>
-          <p>Write naturally in your preferred format with live preview</p>
+          <div class="feature-header">
+            <FileText size={20} class="feature-icon" />
+            <h3>Markdown Editor</h3>
+          </div>
+          <p>Write posts in Markdown with a split-pane live preview. Supports syntax highlighting, tables, and code blocks.</p>
         </div>
         <div class="feature-card">
-          <span class="feature-icon">&#9719;</span>
-          <h3>Version History</h3>
-          <p>Every save creates a version. Restore any previous state</p>
+          <div class="feature-header">
+            <History size={20} class="feature-icon" />
+            <h3>Version History</h3>
+          </div>
+          <p>Every save creates an immutable version. Browse history, compare changes, and restore any previous state with one click.</p>
         </div>
         <div class="feature-card">
-          <span class="feature-icon">&#8862;</span>
-          <h3>Categories & Tags</h3>
-          <p>Organize content with nested categories and flexible tags</p>
+          <div class="feature-header">
+            <Sparkles size={20} class="feature-icon" />
+            <h3>Project Linking</h3>
+          </div>
+          <p>Connect posts to your devpad projects. Write devlogs, release notes, or tutorials tied directly to what you're building.</p>
         </div>
         <div class="feature-card">
-          <span class="feature-icon">&#9889;</span>
-          <h3>Scheduled Publishing</h3>
-          <p>Set posts to go live at a specific date and time</p>
+          <div class="feature-header">
+            <CalendarCheck size={20} class="feature-icon" />
+            <h3>Scheduled Publishing</h3>
+          </div>
+          <p>Set a publish date and time. Posts automatically go live on schedule—no need to be at your desk.</p>
         </div>
         <div class="feature-card">
-          <span class="feature-icon">&#11041;</span>
-          <h3>DevPad Integration</h3>
-          <p>Link blog posts to your DevPad projects seamlessly</p>
+          <div class="feature-header">
+            <Tag size={20} class="feature-icon" />
+            <h3>Categories & Tags</h3>
+          </div>
+          <p>Organize posts with nested categories and flexible tags. Filter and find content across your entire blog.</p>
         </div>
         <div class="feature-card">
-          <span class="feature-icon">&#128065;</span>
-          <h3>Live Preview</h3>
-          <p>See rendered output as you type with syntax highlighting</p>
+          <div class="feature-header">
+            <RefreshCw size={20} class="feature-icon" />
+            <h3>API Access</h3>
+          </div>
+          <p>Generate API tokens to read your published posts. Build custom frontends or integrate with static site generators.</p>
         </div>
       </div>
     </section>
@@ -65,7 +105,7 @@ import BaseLayout from "@/layouts/base-layout.astro";
         <div class="step">
           <span class="step-number">1</span>
           <h3>Connect</h3>
-          <p>Sign in with your DevPad account</p>
+          <p>Sign in with GitHub</p>
         </div>
         <div class="step-divider"></div>
         <div class="step">
@@ -82,10 +122,44 @@ import BaseLayout from "@/layouts/base-layout.astro";
       </div>
     </section>
 
+    <!-- API Section -->
+    <section class="landing-api">
+      <h2 class="section-title">build your own frontend</h2>
+      <div class="api-steps">
+        <div class="api-step">
+          <div class="api-step__code">
+            <code>bun add @devpad/blog</code>
+          </div>
+          <div class="api-step__label">install</div>
+        </div>
+        <div class="api-step">
+          <div class="api-step__code">
+            <pre><code>await devpad
+  .blog
+  .getByProject
+  ('my-app')</code></pre>
+          </div>
+          <div class="api-step__label">fetch</div>
+        </div>
+        <div class="api-step">
+          <div class="api-step__code api-step__code--render">
+            <div class="render-preview">
+              <div class="render-line render-line--title"></div>
+              <div class="render-line render-line--short"></div>
+              <div class="render-line render-line--medium"></div>
+              <div class="render-line render-line--long"></div>
+            </div>
+          </div>
+          <div class="api-step__label">render</div>
+        </div>
+      </div>
+      <p class="api-tagline">Full TypeScript support. Works everywhere.</p>
+    </section>
+
     <!-- Bottom CTA -->
     <section class="landing-cta">
       <h2>Ready to start writing?</h2>
-      <a href="/auth/login" class="btn-primary btn-large">Login with DevPad</a>
+      <a href="/auth/login" class="btn-primary btn-large"><Github size={18} />login</a>
     </section>
 
     <!-- Footer -->
@@ -135,15 +209,19 @@ import BaseLayout from "@/layouts/base-layout.astro";
 
   /* Hero */
   .landing-hero {
-    text-align: center;
     padding: 6rem 2rem 4rem;
-    max-width: 800px;
+    max-width: 1200px;
     margin: 0 auto;
     width: 100%;
     box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
     align-items: center;
+  }
+
+  .hero-content {
+    text-align: left;
   }
 
   .landing-title {
@@ -170,6 +248,119 @@ import BaseLayout from "@/layouts/base-layout.astro";
     font-size: 0.9375rem;
   }
 
+  .btn-login {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .btn-login svg {
+    flex-shrink: 0;
+  }
+
+  /* Editor Mockup */
+  .hero-mockup {
+    width: 100%;
+  }
+
+  .mockup-window {
+    background: var(--input-background);
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  }
+
+  .mockup-header {
+    display: flex;
+    gap: 6px;
+    padding: 12px 14px;
+    background: var(--background-primary);
+    border-bottom: 1px solid var(--input-border);
+  }
+
+  .mockup-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--input-border);
+  }
+
+  .mockup-dot:nth-child(1) {
+    background: #ff5f57;
+  }
+
+  .mockup-dot:nth-child(2) {
+    background: #febc2e;
+  }
+
+  .mockup-dot:nth-child(3) {
+    background: #28c840;
+  }
+
+  .mockup-content {
+    display: grid;
+    grid-template-columns: 1fr 1px 1fr;
+    min-height: 180px;
+  }
+
+  .mockup-editor {
+    padding: 1rem;
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    white-space: pre-wrap;
+    overflow: hidden;
+  }
+
+  .typing-text {
+    color: var(--text-primary);
+  }
+
+  .typing-cursor {
+    color: var(--text-primary);
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .mockup-divider {
+    background: var(--input-border);
+  }
+
+  .mockup-preview {
+    padding: 1rem;
+    color: var(--text-primary);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .mockup-preview.visible {
+    opacity: 1;
+  }
+
+  .preview-h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+  }
+
+  .preview-p {
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+  }
+
+  .preview-p strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
   /* Features */
   .landing-features {
     padding: 4rem 2rem;
@@ -192,21 +383,26 @@ import BaseLayout from "@/layouts/base-layout.astro";
     border-radius: 4px;
   }
 
+  .feature-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
   .feature-icon {
-    font-size: 1.5rem;
-    display: block;
-    margin-bottom: 1rem;
+    flex-shrink: 0;
+    color: var(--text-muted);
   }
 
   .feature-card h3 {
-    font-size: 1.125rem;
+    font-size: 1rem;
     font-weight: 600;
-    margin-bottom: 0.5rem;
     color: var(--text-primary);
   }
 
   .feature-card p {
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
     color: var(--text-muted);
     line-height: 1.5;
   }
@@ -277,20 +473,126 @@ import BaseLayout from "@/layouts/base-layout.astro";
     flex-shrink: 0;
   }
 
-  /* Bottom CTA */
-  .landing-cta {
+  /* API Section */
+  .landing-api {
+    padding: 4rem 2rem;
+    max-width: 1000px;
+    margin: 0 auto;
     text-align: center;
-    padding: 5rem 2rem;
-    background: var(--input-background);
-    border-top: 1px solid var(--input-border);
-    border-bottom: 1px solid var(--input-border);
-    margin-top: 2rem;
     width: 100%;
     box-sizing: border-box;
   }
 
+  .api-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .api-step {
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .api-step__code {
+    flex: 1;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+    background: var(--input-background);
+  }
+
+  .api-step__code code {
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+  }
+
+  .api-step__code pre {
+    margin: 0;
+    text-align: left;
+  }
+
+  .api-step__code pre code {
+    line-height: 1.5;
+  }
+
+  .api-step__code--render {
+    padding: 1.5rem 2rem;
+  }
+
+  .render-preview {
+    width: 100%;
+    max-width: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    background: var(--background-primary);
+  }
+
+  .render-line {
+    height: 8px;
+    background: var(--input-border);
+    border-radius: 2px;
+  }
+
+  .render-line--title {
+    width: 70%;
+    height: 10px;
+    margin-bottom: 0.25rem;
+  }
+
+  .render-line--short {
+    width: 40%;
+  }
+
+  .render-line--medium {
+    width: 60%;
+  }
+
+  .render-line--long {
+    width: 85%;
+  }
+
+  .api-step__label {
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    border-top: 1px solid var(--input-border);
+    background: var(--background-primary);
+  }
+
+  .api-tagline {
+    font-size: 0.9375rem;
+    color: var(--text-muted);
+  }
+
+  /* Bottom CTA */
+  .landing-cta {
+    text-align: center;
+    padding: 5rem 2rem;
+    background: transparent;
+    border-top: 1px solid var(--input-border);
+    margin-top: 2rem;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
   .landing-cta h2 {
-    font-size: 1.75rem;
+    font-size: 1.25rem;
     font-weight: 600;
     margin-bottom: 1.5rem;
     color: var(--text-primary);
@@ -335,6 +637,24 @@ import BaseLayout from "@/layouts/base-layout.astro";
 
     .landing-hero {
       padding: 4rem 1.5rem 3rem;
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
+    }
+
+    .hero-content {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .hero-mockup {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .mockup-content {
+      min-height: 160px;
     }
 
     .landing-features {
@@ -364,6 +684,23 @@ import BaseLayout from "@/layouts/base-layout.astro";
     .landing-cta h2 {
       font-size: 1.5rem;
     }
+
+    .landing-api {
+      padding: 3rem 1.5rem;
+    }
+
+    .api-steps {
+      gap: 1rem;
+    }
+
+    .api-step__code {
+      min-height: 100px;
+      padding: 1.25rem;
+    }
+
+    .api-step__code code {
+      font-size: 0.8125rem;
+    }
   }
 
   /* Mobile breakpoint */
@@ -384,6 +721,7 @@ import BaseLayout from "@/layouts/base-layout.astro";
 
     .landing-hero {
       padding: 3rem 1rem 2rem;
+      gap: 2rem;
     }
 
     .landing-title {
@@ -400,6 +738,37 @@ import BaseLayout from "@/layouts/base-layout.astro";
       font-size: 0.875rem;
     }
 
+    .hero-mockup {
+      max-width: 100%;
+    }
+
+    .mockup-content {
+      grid-template-columns: 1fr;
+      min-height: auto;
+    }
+
+    .mockup-divider {
+      height: 1px;
+    }
+
+    .mockup-editor,
+    .mockup-preview {
+      padding: 0.875rem;
+    }
+
+    .mockup-editor {
+      font-size: 0.75rem;
+      min-height: 80px;
+    }
+
+    .preview-h1 {
+      font-size: 1.125rem;
+    }
+
+    .preview-p {
+      font-size: 0.8125rem;
+    }
+
     .landing-features {
       padding: 2rem 1rem;
     }
@@ -411,11 +780,6 @@ import BaseLayout from "@/layouts/base-layout.astro";
 
     .feature-card {
       padding: 1.25rem;
-    }
-
-    .feature-icon {
-      font-size: 1.25rem;
-      margin-bottom: 0.75rem;
     }
 
     .feature-card h3 {
@@ -477,6 +841,41 @@ import BaseLayout from "@/layouts/base-layout.astro";
       margin-bottom: 1rem;
     }
 
+    .landing-api {
+      padding: 2rem 1rem;
+    }
+
+    .api-steps {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .api-step__code {
+      min-height: 80px;
+      padding: 1rem;
+    }
+
+    .api-step__code code {
+      font-size: 0.8125rem;
+    }
+
+    .api-step__code--render {
+      padding: 1rem 1.5rem;
+    }
+
+    .render-preview {
+      max-width: 120px;
+    }
+
+    .api-step__label {
+      padding: 0.625rem;
+      font-size: 0.8125rem;
+    }
+
+    .api-tagline {
+      font-size: 0.875rem;
+    }
+
     .landing-footer {
       padding: 1.5rem 1rem;
       display: flex;
@@ -490,3 +889,52 @@ import BaseLayout from "@/layouts/base-layout.astro";
     }
   }
 </style>
+
+<script>
+  const TYPING_TEXT = `# Hello World
+
+Write your thoughts in **markdown**.`;
+
+  const TYPING_SPEED = 50;
+  const INITIAL_DELAY = 500;
+  const RESTART_DELAY = 3000;
+
+  const typeText = (element: Element, text: string, onComplete: () => void) => {
+    let index = 0;
+    
+    const tick = () => {
+      if (index >= text.length) {
+        onComplete();
+        return;
+      }
+      element.textContent = text.slice(0, index + 1);
+      index++;
+      setTimeout(tick, TYPING_SPEED);
+    };
+    
+    tick();
+  };
+
+  const init = () => {
+    const textElement = document.querySelector('.typing-text');
+    const previewElement = document.querySelector('.mockup-preview');
+    
+    if (!textElement || !previewElement) return;
+
+    const runAnimation = () => {
+      textElement.textContent = '';
+      previewElement.classList.remove('visible');
+      
+      setTimeout(() => {
+        typeText(textElement, TYPING_TEXT, () => {
+          previewElement.classList.add('visible');
+          setTimeout(runAnimation, RESTART_DELAY);
+        });
+      }, INITIAL_DELAY);
+    };
+
+    runAnimation();
+  };
+
+  document.addEventListener('DOMContentLoaded', init);
+</script>
