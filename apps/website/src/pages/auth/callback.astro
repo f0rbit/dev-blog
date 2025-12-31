@@ -1,7 +1,19 @@
 ---
 // This page handles the JWT callback from devpad
-// The actual token storage happens via the backend's HTML response
-// This is just a fallback if someone navigates here directly
+// Sets httpOnly cookie on frontend domain for SSR auth
+
+const token = Astro.url.searchParams.get("token");
+
+if (token) {
+	// Set httpOnly cookie on the frontend domain for SSR requests
+	Astro.cookies.set("devpad_jwt", token, {
+		httpOnly: true,
+		secure: true,
+		sameSite: "lax",
+		path: "/",
+		maxAge: 60 * 60 * 24, // 24 hours
+	});
+}
 ---
 
 <html>
@@ -9,19 +21,14 @@
   <title>Authenticating...</title>
 </head>
 <body>
-  <script>
-    // Check if we have a token in the URL (fallback handling)
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
-    
+  <script define:vars={{ token }}>
+    // Also store in localStorage for client-side requests
     if (token) {
       localStorage.setItem('devpad_jwt', token);
       window.location.href = '/posts';
     } else if (localStorage.getItem('devpad_jwt')) {
-      // Already have token, redirect to posts
       window.location.href = '/posts';
     } else {
-      // No token, redirect to login
       window.location.href = '/auth/login';
     }
   </script>

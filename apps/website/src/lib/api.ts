@@ -23,14 +23,27 @@ export const api = {
 	},
 
 	async ssrFetch(path: string, request: Request, options: RequestInit = {}): Promise<Response> {
-		const cookies = request.headers.get("cookie") ?? "";
+		// Extract devpad_jwt from cookies for SSR auth
+		const cookieHeader = request.headers.get("cookie") ?? "";
+		const cookies: Record<string, string> = {};
+		for (const c of cookieHeader.split(";")) {
+			const [key, ...val] = c.trim().split("=");
+			if (key) cookies[key] = val.join("=");
+		}
+		const jwtToken = cookies.devpad_jwt;
+
+		const headers: Record<string, string> = {
+			...((options.headers as Record<string, string>) ?? {}),
+		};
+
+		// Send JWT as Authorization header if available
+		if (jwtToken) {
+			headers.Authorization = `Bearer jwt:${jwtToken}`;
+		}
 
 		return fetch(`${API_HOST}${path}`, {
 			...options,
-			headers: {
-				...options.headers,
-				Cookie: cookies,
-			},
+			headers,
 		});
 	},
 };
