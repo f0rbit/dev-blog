@@ -3,7 +3,8 @@ import { and, eq } from "drizzle-orm";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 
-const EXEMPT_PATHS = ["/health", "/auth/user", "/auth/login", "/auth/logout", "/auth/callback", "/auth/status"];
+const EXEMPT_PATHS = ["/health", "/auth/user", "/auth/login", "/auth/logout", "/auth/callback"];
+const OPTIONAL_AUTH_PATHS = ["/auth/status"];
 
 const DevpadVerifyResponseSchema = z.object({
 	authenticated: z.boolean(),
@@ -39,6 +40,7 @@ const hashToken = async (token: string): Promise<string> => {
 };
 
 const isExemptPath = (path: string): boolean => EXEMPT_PATHS.some(exempt => path === exempt || path.startsWith(`${exempt}/`));
+const isOptionalAuthPath = (path: string): boolean => OPTIONAL_AUTH_PATHS.some(p => path === p || path.startsWith(`${p}/`));
 
 const rowToUser = (row: typeof users.$inferSelect): User => ({
 	id: row.id,
@@ -173,6 +175,7 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 	if (isExemptPath(path)) return next();
 
 	const ctx = c.get("appContext");
+	const isOptional = isOptionalAuthPath(path);
 
 	const authToken = c.req.header("Auth-Token");
 	if (authToken) {
@@ -203,6 +206,8 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 			return next();
 		}
 	}
+
+	if (isOptional) return next();
 
 	return c.json({ code: "UNAUTHORIZED", message: "Authentication required" }, 401);
 });
