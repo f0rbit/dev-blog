@@ -21,4 +21,16 @@ export const api = {
 			credentials: "include",
 		});
 	},
+
+	async ssrFetch(path: string, request: Request, options: RequestInit = {}): Promise<Response> {
+		const cookies = request.headers.get("cookie") ?? "";
+
+		return fetch(`${API_HOST}${path}`, {
+			...options,
+			headers: {
+				...options.headers,
+				Cookie: cookies,
+			},
+		});
+	},
 };

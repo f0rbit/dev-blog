@@ -1,6 +1,6 @@
 import type { AppContext, User } from "@blog/schema";
 import { Hono } from "hono";
-import { deleteCookie } from "hono/cookie";
+import { deleteCookie, setCookie } from "hono/cookie";
 
 type Variables = {
 	user: User;
@@ -39,6 +39,14 @@ authRouter.get("/callback", c => {
 		return c.json({ code: "INVALID_CALLBACK", message: "No token provided" }, 400);
 	}
 
+	setCookie(c, "devpad_jwt", token, {
+		httpOnly: true,
+		secure: true,
+		sameSite: "None",
+		path: "/",
+		maxAge: 60 * 60 * 24,
+	});
+
 	const escapedToken = token.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 
 	return c.html(`
@@ -58,6 +66,7 @@ authRouter.get("/callback", c => {
 authRouter.get("/logout", c => {
 	deleteCookie(c, "session");
 	deleteCookie(c, "devpad_session");
+	deleteCookie(c, "devpad_jwt");
 
 	return c.html(`
 		<!DOCTYPE html>

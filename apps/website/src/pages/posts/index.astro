@@ -39,11 +39,19 @@ let posts: Post[] = [];
 let error: string | null = null;
 
 try {
-	const response = await fetch(api.blog("/posts?limit=100"));
-	if (!response.ok) throw new Error("Failed to fetch posts");
+	console.log("[SSR:posts] Fetching posts...");
+	const response = await api.ssrFetch("/api/blog/posts?limit=100", Astro.request);
+	console.log("[SSR:posts] Response status:", response.status);
+
+	if (!response.ok) {
+		const errorText = await response.text();
+		console.error("[SSR:posts] Error response:", errorText);
+		throw new Error("Failed to fetch posts");
+	}
 	const data = await response.json();
 	posts = data.posts ?? [];
 } catch (err) {
+	console.error("[SSR:posts] Fetch error:", err);
 	error = "Failed to load posts";
 }
 ---
