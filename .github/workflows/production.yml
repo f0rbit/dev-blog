@@ -27,7 +27,7 @@ jobs:
       - name: Build frontend
         run: bun run build:client
         env:
-          PUBLIC_API_URL: https://blog-devpad-api.${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.workers.dev
+          PUBLIC_API_URL: https://blog-devpad-api.dev-818.workers.dev
       
       - name: Deploy Worker (Production)
         run: bunx wrangler deploy

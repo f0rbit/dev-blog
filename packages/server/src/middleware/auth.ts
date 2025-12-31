@@ -3,17 +3,28 @@ import { and, eq } from "drizzle-orm";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 
-const EXEMPT_PATHS = ["/health", "/auth/user", "/auth/login", "/auth/logout"];
+const EXEMPT_PATHS = ["/health", "/auth/user", "/auth/login", "/auth/logout", "/auth/callback", "/auth/status"];
 
-const DevpadUserSchema = z.object({
-	id: z.number(),
-	github_id: z.number(),
-	username: z.string(),
-	email: z.string().nullable(),
-	avatar_url: z.string().nullable(),
+const DevpadVerifyResponseSchema = z.object({
+	authenticated: z.boolean(),
+	user: z
+		.object({
+			id: z.string(),
+			name: z.string(),
+			email: z.string().nullable().optional(),
+			github_id: z.number(),
+			image_url: z.string().nullable().optional(),
+			task_view: z.string().optional(),
+		})
+		.nullable(),
 });
 
-type DevpadUser = z.infer<typeof DevpadUserSchema>;
+type DevpadUser = {
+	github_id: number;
+	username: string;
+	email: string | null;
+	avatar_url: string | null;
+};
 
 const hexEncode = (buffer: ArrayBuffer): string =>
 	Array.from(new Uint8Array(buffer))
@@ -66,11 +77,19 @@ const verifyWithDevpad = async (devpadApi: string, cookie: string): Promise<Resu
 	if (!response.ok) return err("session_invalid");
 
 	const json = await response.json();
-	const parsed = DevpadUserSchema.safeParse(json);
+	const parsed = DevpadVerifyResponseSchema.safeParse(json);
 
 	if (!parsed.success) return err("invalid_user_response");
 
-	return ok(parsed.data);
+	if (!parsed.data.authenticated || !parsed.data.user) return err("session_invalid");
+
+	const devpadUser = parsed.data.user;
+	return ok({
+		github_id: devpadUser.github_id,
+		username: devpadUser.name,
+		email: devpadUser.email ?? null,
+		avatar_url: devpadUser.image_url ?? null,
+	});
 };
 
 const ensureUser = async (db: DrizzleDB, devpadUser: DevpadUser): Promise<Result<User, string>> => {
@@ -103,8 +122,41 @@ const ensureUser = async (db: DrizzleDB, devpadUser: DevpadUser): Promise<Result
 	return ok(rowToUser(userRow));
 };
 
+const extractJWTFromHeader = (authHeader: string): string | null => {
+	if (!authHeader.startsWith("Bearer jwt:")) return null;
+	return authHeader.slice("Bearer jwt:".length);
+};
+
+const verifyWithDevpadJWT = async (devpadApi: string, jwtToken: string): Promise<Result<DevpadUser, string>> => {
+	const response = await fetch(`${devpadApi}/api/auth/verify`, {
+		method: "GET",
+		headers: { Authorization: `Bearer jwt:${jwtToken}` },
+	});
+
+	if (!response.ok) return err("jwt_invalid");
+
+	const json = await response.json();
+	const parsed = DevpadVerifyResponseSchema.safeParse(json);
+
+	if (!parsed.success) return err("invalid_user_response");
+	if (!parsed.data.authenticated || !parsed.data.user) return err("not_authenticated");
+
+	const devpadUser = parsed.data.user;
+	return ok({
+		github_id: devpadUser.github_id,
+		username: devpadUser.name,
+		email: devpadUser.email ?? null,
+		avatar_url: devpadUser.image_url ?? null,
+	});
+};
+
 const authenticateWithCookie = async (db: DrizzleDB, devpadApi: string, cookie: string): Promise<Result<User, string>> =>
 	pipe(verifyWithDevpad(devpadApi, cookie))
+		.flat_map(devpadUser => ensureUser(db, devpadUser))
+		.result();
+
+const authenticateWithJWT = async (db: DrizzleDB, devpadApi: string, jwtToken: string): Promise<Result<User, string>> =>
+	pipe(verifyWithDevpadJWT(devpadApi, jwtToken))
 		.flat_map(devpadUser => ensureUser(db, devpadUser))
 		.result();
 
@@ -123,7 +175,6 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 	const ctx = c.get("appContext");
 
 	const authToken = c.req.header("Auth-Token");
-
 	if (authToken) {
 		const result = await validateApiToken(ctx.db, authToken);
 		if (result.ok) {
@@ -132,8 +183,19 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 		}
 	}
 
-	const cookie = c.req.header("Cookie");
+	const authHeader = c.req.header("Authorization");
+	if (authHeader) {
+		const jwtToken = extractJWTFromHeader(authHeader);
+		if (jwtToken) {
+			const result = await authenticateWithJWT(ctx.db, ctx.devpadApi, jwtToken);
+			if (result.ok) {
+				c.set("user", result.value);
+				return next();
+			}
+		}
+	}
 
+	const cookie = c.req.header("Cookie");
 	if (cookie) {
 		const result = await authenticateWithCookie(ctx.db, ctx.devpadApi, cookie);
 		if (result.ok) {

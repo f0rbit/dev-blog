@@ -21,18 +21,71 @@ authRouter.get("/user", c => {
 
 authRouter.get("/login", c => {
 	const ctx = c.get("appContext");
-	const devpadApi = ctx.devpadApi;
-	const currentUrl = c.req.url;
-	const returnUrl = new URL(currentUrl).origin;
+	const origin = new URL(c.req.url).origin;
+	const isPreview = !origin.includes("devpad.tools");
 
-	const loginUrl = `${devpadApi}/auth/github?return_to=${encodeURIComponent(returnUrl)}`;
+	const params = new URLSearchParams({
+		return_to: `${origin}/auth/callback`,
+		...(isPreview && { mode: "jwt" }),
+	});
 
-	return c.redirect(loginUrl);
+	return c.redirect(`${ctx.devpadApi}/api/auth/login?${params}`);
+});
+
+authRouter.get("/callback", c => {
+	const token = c.req.query("token");
+
+	if (!token) {
+		return c.json({ code: "INVALID_CALLBACK", message: "No token provided" }, 400);
+	}
+
+	const escapedToken = token.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+
+	return c.html(`
+		<!DOCTYPE html>
+		<html>
+		<head><title>Authenticating...</title></head>
+		<body>
+			<script>
+				localStorage.setItem('devpad_jwt', '${escapedToken}');
+				window.location.href = '/posts';
+			</script>
+		</body>
+		</html>
+	`);
 });
 
 authRouter.get("/logout", c => {
 	deleteCookie(c, "session");
 	deleteCookie(c, "devpad_session");
 
-	return c.json({ success: true, message: "Logged out" });
+	return c.html(`
+		<!DOCTYPE html>
+		<html>
+		<head><title>Logging out...</title></head>
+		<body>
+			<script>
+				localStorage.removeItem('devpad_jwt');
+				document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+				window.location.href = '/';
+			</script>
+		</body>
+		</html>
+	`);
+});
+
+authRouter.get("/status", c => {
+	const user = c.get("user");
+
+	return c.json({
+		authenticated: !!user,
+		user: user
+			? {
+					id: user.id,
+					username: user.username,
+					email: user.email,
+					avatar_url: user.avatar_url,
+				}
+			: null,
+	});
 });
