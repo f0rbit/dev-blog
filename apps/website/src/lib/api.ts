@@ -22,7 +22,7 @@ export const api = {
 		});
 	},
 
-	async ssrFetch(path: string, request: Request, options: RequestInit = {}): Promise<Response> {
+	async ssr(path: string, request: Request, options: RequestInit = {}): Promise<Response> {
 		// Extract devpad_jwt from cookies for SSR auth
 		const cookieHeader = request.headers.get("cookie") ?? "";
 		const cookies: Record<string, string> = {};

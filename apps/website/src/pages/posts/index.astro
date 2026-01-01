@@ -40,7 +40,7 @@ let error: string | null = null;
 
 try {
 	console.log("[SSR:posts] Fetching posts...");
-	const response = await api.ssrFetch("/api/blog/posts?limit=100", Astro.request);
+	const response = await api.ssr("/api/blog/posts?limit=100", Astro.request);
 	console.log("[SSR:posts] Response status:", response.status);
 
 	if (!response.ok) {

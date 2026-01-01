@@ -43,7 +43,7 @@ let versions: VersionInfo[] = [];
 let error: string | null = null;
 
 try {
-	const versionsRes = await fetch(api.blog(`/post/${uuid}/versions`));
+	const versionsRes = await api.ssr(`/api/blog/post/${uuid}/versions`, Astro.request);
 
 	if (versionsRes.ok) {
 		const data = await versionsRes.json();
@@ -57,7 +57,7 @@ try {
 	}
 
 	if (versions.length > 0) {
-		const postsRes = await fetch(api.blog("/posts?limit=100"));
+		const postsRes = await api.ssr("/api/blog/posts?limit=100", Astro.request);
 		if (postsRes.ok) {
 			const postsData = await postsRes.json();
 			const post = postsData.posts?.find((p: { uuid: string }) => p.uuid === uuid);

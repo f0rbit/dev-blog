@@ -38,7 +38,7 @@ console.log("[SSR] Fetching post with slug:", slug);
 console.log("[SSR] API URL:", api.blog(`/post/${slug}`));
 
 try {
-	const [postRes, catRes] = await Promise.all([fetch(api.blog(`/post/${slug}`)), fetch(api.blog("/categories"))]);
+	const [postRes, catRes] = await Promise.all([api.ssr(`/api/blog/post/${slug}`, Astro.request), api.ssr("/api/blog/categories", Astro.request)]);
 
 	console.log("[SSR] Post response status:", postRes.status);
 	console.log("[SSR] Categories response status:", catRes.status);
