@@ -16,9 +16,7 @@ type ProjectSelectorProps = {
 };
 
 const fetchProjects = async (): Promise<{ projects: Project[]; connected: boolean }> => {
-	const response = await fetch(api.blog("/projects"), {
-		credentials: "include",
-	});
+	const response = await api.fetch("/api/blog/projects");
 	if (!response.ok) return { projects: [], connected: false };
 	return response.json();
 };
@@ -51,9 +49,8 @@ export const ProjectSelector = (props: ProjectSelectorProps) => {
 	const handleRefresh = async () => {
 		setRefreshing(true);
 		try {
-			await fetch(api.blog("/projects/refresh"), {
+			await api.fetch("/api/blog/projects/refresh", {
 				method: "POST",
-				credentials: "include",
 			});
 			await refetch();
 		} finally {

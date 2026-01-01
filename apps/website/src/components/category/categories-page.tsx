@@ -18,7 +18,7 @@ interface CategoryNode {
 const flattenTree = (nodes: CategoryNode[], id = 1): Category[] => nodes.flatMap((n, i) => [{ id: id + i, name: n.name, parent: n.parent }, ...flattenTree(n.children ?? [], id + i + 100)]);
 
 const fetchCategories = async (): Promise<Category[]> => {
-	const res = await fetch(api.blog("/categories"));
+	const res = await api.fetch("/api/blog/categories");
 	if (!res.ok) throw new Error("Failed to fetch categories");
 	const data = await res.json();
 	return flattenTree(data.categories ?? []);
@@ -32,7 +32,7 @@ const CategoriesPage: Component = () => {
 
 	const handleDelete = async (name: string) => {
 		setError(null);
-		const res = await fetch(api.blog(`/category/${encodeURIComponent(name)}`), {
+		const res = await api.fetch(`/api/blog/category/${encodeURIComponent(name)}`, {
 			method: "DELETE",
 		});
 
@@ -46,7 +46,7 @@ const CategoriesPage: Component = () => {
 
 	const handleCreate = async (data: { name: string; parent: string }) => {
 		setError(null);
-		const res = await fetch(api.blog("/category"), {
+		const res = await api.fetch("/api/blog/category", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(data),

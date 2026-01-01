@@ -6,7 +6,7 @@ type ConnectionStatus = {
 };
 
 const fetchStatus = async (): Promise<ConnectionStatus> => {
-	const response = await fetch(api.blog("/projects/status"), {
+	const response = await api.fetch("/api/blog/projects/status", {
 		credentials: "include",
 	});
 	if (!response.ok) return { connected: false };
@@ -29,7 +29,7 @@ export const DevpadConnection = () => {
 		setError(null);
 
 		try {
-			const response = await fetch(api.blog("/projects/token"), {
+			const response = await api.fetch("/api/blog/projects/token", {
 				method: "PUT",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ token: token() }),
@@ -56,7 +56,7 @@ export const DevpadConnection = () => {
 		setError(null);
 
 		try {
-			await fetch(api.blog("/projects/token"), {
+			await api.fetch("/api/blog/projects/token", {
 				method: "DELETE",
 				credentials: "include",
 			});

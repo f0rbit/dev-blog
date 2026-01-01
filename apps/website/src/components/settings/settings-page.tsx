@@ -31,14 +31,14 @@ interface Integration {
 }
 
 const fetchUser = async (): Promise<User | null> => {
-	const res = await fetch(api.auth("/user"), { credentials: "include" });
+	const res = await api.fetch("/auth/user");
 	if (!res.ok) return null;
 	const data = await res.json();
 	return data.user ?? null;
 };
 
 const fetchTokens = async (): Promise<Token[]> => {
-	const res = await fetch(api.blog("/tokens"));
+	const res = await api.fetch("/api/blog/tokens");
 	if (!res.ok) throw new Error("Failed to fetch tokens");
 	const data = await res.json();
 	return data.tokens ?? [];
@@ -68,7 +68,7 @@ const SettingsPage: Component = () => {
 
 	const handleToggle = async (id: number, enabled: boolean) => {
 		setTokensError(null);
-		const res = await fetch(api.blog(`/token/${id}`), {
+		const res = await api.fetch(`/api/blog/token/${id}`, {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ enabled }),
@@ -84,7 +84,7 @@ const SettingsPage: Component = () => {
 
 	const handleDelete = async (id: number) => {
 		setTokensError(null);
-		const res = await fetch(api.blog(`/token/${id}`), {
+		const res = await api.fetch(`/api/blog/token/${id}`, {
 			method: "DELETE",
 		});
 
@@ -97,7 +97,7 @@ const SettingsPage: Component = () => {
 	};
 
 	const handleCreate = async (data: { name: string; note?: string }): Promise<{ key: string }> => {
-		const res = await fetch(api.blog("/token"), {
+		const res = await api.fetch("/api/blog/token", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(data),
