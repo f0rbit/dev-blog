@@ -1,7 +1,6 @@
 ---
 import PostEditor from "@/components/post/post-editor";
 import AppLayout from "@/layouts/app-layout.astro";
-import { api } from "@/lib/api";
 ---
 
 <AppLayout title="New Post">
@@ -16,11 +15,7 @@ import { api } from "@/lib/api";
 		</header>
 
 		<div id="editor-container">
-			<PostEditor
-				client:load
-				categories={[]}
-				onSave={async () => {}}
-			/>
+			<PostEditor client:load categories={[]} />
 		</div>
 	</section>
 </AppLayout>
@@ -36,67 +31,4 @@ import { api } from "@/lib/api";
 	}
 </style>
 
-<script is:inline define:vars={{ API_BASE: api.blog("") }}>
-	const API_URL = API_BASE;
 
-	const flattenTree = (nodes) =>
-		nodes.flatMap(n => [{ name: n.name, parent: n.parent }, ...flattenTree(n.children ?? [])]);
-
-	const fetchCategories = async () => {
-		try {
-			const response = await fetch(`${API_URL}/categories`);
-			if (!response.ok) return [];
-			const data = await response.json();
-			return flattenTree(data.categories ?? []);
-		} catch {
-			return [];
-		}
-	};
-
-	const handleSave = async (data) => {
-		const response = await fetch(`${API_URL}/post`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				slug: data.slug,
-				title: data.title,
-				content: data.content,
-				description: data.description,
-				format: data.format,
-				category: data.category,
-				tags: data.tags,
-				project_ids: data.project_ids,
-				publish_at: data.publish_at?.toISOString() ?? null,
-			}),
-		});
-
-		if (!response.ok) {
-			const error = await response.json().catch(() => ({ message: "Unknown error" }));
-			throw new Error(error.message ?? "Failed to create post");
-		}
-
-		const post = await response.json();
-		window.location.href = `/posts/${post.slug}`;
-	};
-
-	document.addEventListener("DOMContentLoaded", async () => {
-		const categories = await fetchCategories();
-
-		const container = document.getElementById("editor-container");
-		if (!container) return;
-
-		const { render } = await import("solid-js/web");
-		const { default: PostEditor } = await import("@/components/post/post-editor");
-
-		container.innerHTML = "";
-
-		render(
-			() =>
-				PostEditor({
-					categories,
-					onSave: handleSave,
-				}),
-			container
-		);
-	});
-</script>

@@ -1,5 +1,6 @@
 import type { Component } from "solid-js";
-import { For, Show, createSignal } from "solid-js";
+import { For, Show, createSignal, onMount } from "solid-js";
+import { api } from "../../lib/api";
 import { PostPreview } from "./post-preview";
 import { ProjectSelector } from "./project-selector";
 import TagEditor from "./tag-editor";
@@ -74,6 +75,10 @@ const relativeTime = (dateStr: string): string => {
 	return diffMonths === 1 ? "1 month ago" : `${diffMonths} months ago`;
 };
 
+type CategoryNode = Category & { children?: CategoryNode[] };
+
+const flattenCategoryTree = (nodes: CategoryNode[]): Category[] => nodes.flatMap(n => [{ name: n.name, parent: n.parent }, ...flattenCategoryTree(n.children ?? [])]);
+
 const PostEditor: Component<PostEditorProps> = props => {
 	console.log("[PostEditor] Received props.post:", JSON.stringify(props.post, null, 2));
 	console.log("[PostEditor] Received props.categories:", JSON.stringify(props.categories, null, 2));
@@ -87,6 +92,7 @@ const PostEditor: Component<PostEditorProps> = props => {
 	const [tags, setTags] = createSignal<string[]>(props.post?.tags ?? []);
 	const [projectIds, setProjectIds] = createSignal<string[]>(props.post?.project_ids ?? []);
 	const [publishAt, setPublishAt] = createSignal<Date | null>(props.post?.publish_at ? new Date(props.post.publish_at) : null);
+	const [categories, setCategories] = createSignal<Category[]>(props.categories ?? []);
 
 	console.log("[PostEditor] Initial title signal:", title());
 	console.log("[PostEditor] Initial content signal:", content());
@@ -94,6 +100,21 @@ const PostEditor: Component<PostEditorProps> = props => {
 	const [saving, setSaving] = createSignal(false);
 	const [error, setError] = createSignal<string | null>(null);
 	const [activeTab, setActiveTab] = createSignal<"write" | "preview">("write");
+
+	// Fetch categories on mount if not provided
+	onMount(async () => {
+		if (props.categories && props.categories.length > 0) return;
+		try {
+			const response = await api.fetch("/api/blog/categories");
+			if (response.ok) {
+				const data = (await response.json()) as { categories?: CategoryNode[] };
+				const flatCategories = flattenCategoryTree(data.categories ?? []);
+				setCategories(flatCategories);
+			}
+		} catch (e) {
+			console.error("[PostEditor] Failed to fetch categories:", e);
+		}
+	});
 
 	const isEditing = () => !!props.post;
 
@@ -136,9 +157,33 @@ const PostEditor: Component<PostEditorProps> = props => {
 		}
 	};
 
-	const handleSave = async () => {
-		if (!props.onSave) return;
+	const saveNewPost = async (data: PostFormData) => {
+		const response = await api.fetch("/api/blog/post", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				slug: data.slug,
+				title: data.title,
+				content: data.content,
+				description: data.description,
+				format: data.format,
+				category: data.category,
+				tags: data.tags,
+				project_ids: data.project_ids,
+				publish_at: data.publish_at?.toISOString() ?? null,
+			}),
+		});
 
+		if (!response.ok) {
+			const error = (await response.json().catch(() => ({ message: "Unknown error" }))) as { message?: string };
+			throw new Error(error.message ?? "Failed to create post");
+		}
+
+		const post = (await response.json()) as { slug: string };
+		window.location.href = `/posts/${post.slug}`;
+	};
+
+	const handleSave = async () => {
 		setError(null);
 		if (!title().trim()) {
 			setError("Title is required");
@@ -151,7 +196,13 @@ const PostEditor: Component<PostEditorProps> = props => {
 
 		setSaving(true);
 		try {
-			await props.onSave(getFormData());
+			const data = getFormData();
+			if (props.onSave) {
+				await props.onSave(data);
+			} else if (!props.post) {
+				// New post - save internally
+				await saveNewPost(data);
+			}
 		} catch (e) {
 			setError(e instanceof Error ? e.message : "Failed to save post");
 		} finally {
@@ -180,7 +231,7 @@ const PostEditor: Component<PostEditorProps> = props => {
 						<label>Category</label>
 						<select prop:value={category()} onChange={e => setCategory(e.currentTarget.value)}>
 							<option value="root">root</option>
-							<For each={props.categories.filter(c => c.name !== "root")}>{c => <option value={c.name}>{c.parent ? `${c.parent}/${c.name}` : c.name}</option>}</For>
+							<For each={categories().filter(c => c.name !== "root")}>{c => <option value={c.name}>{c.parent ? `${c.parent}/${c.name}` : c.name}</option>}</For>
 						</select>
 					</div>
 
@@ -225,8 +276,8 @@ const PostEditor: Component<PostEditorProps> = props => {
 					)}
 				</Show>
 
-				{/* Actions - only show if onSave is provided (new post page) */}
-				<Show when={props.onSave}>
+				{/* Actions - show for new posts or when onSave is provided */}
+				<Show when={props.onSave || !props.post}>
 					<div class="post-editor__actions">
 						<button type="button" class="btn-primary" onClick={handleSave} disabled={saving()}>
 							{saving() ? "Saving..." : isEditing() ? "Update" : "Create"}
