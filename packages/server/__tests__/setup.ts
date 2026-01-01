@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { Database } from "bun:sqlite";
 import { type DrizzleDB, type PostsCorpus, type Project, type Result, create_corpus, create_memory_backend, err, ok, postsStoreDefinition } from "@blog/schema";
 import * as schema from "@blog/schema/database";
@@ -18,63 +20,36 @@ export const createTestCorpus = (): PostsCorpus => {
 	return create_corpus().with_backend(backend).with_store(postsStoreDefinition).build() as PostsCorpus;
 };
 
-const SCHEMA_SQL = `
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    github_id INTEGER NOT NULL UNIQUE,
-    username TEXT NOT NULL,
-    email TEXT,
-    avatar_url TEXT,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-  );
+/**
+ * Reads and applies all Drizzle migrations to create tables.
+ * This ensures tests use the exact same schema as production.
+ */
+const applyMigrations = (sqliteDb: Database) => {
+	const migrationsDir = join(__dirname, "../../../migrations");
+	const migrationFiles = readdirSync(migrationsDir)
+		.filter(f => f.endsWith(".sql"))
+		.sort();
 
-  CREATE TABLE IF NOT EXISTS blog_posts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    uuid TEXT NOT NULL UNIQUE,
-    author_id INTEGER NOT NULL REFERENCES users(id),
-    slug TEXT NOT NULL,
-    corpus_version TEXT,
-    category TEXT NOT NULL DEFAULT 'root',
-    archived INTEGER NOT NULL DEFAULT 0,
-    publish_at INTEGER,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    project_id TEXT,
-    UNIQUE(author_id, slug)
-  );
-
-  CREATE TABLE IF NOT EXISTS blog_categories (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    owner_id INTEGER NOT NULL REFERENCES users(id),
-    name TEXT NOT NULL,
-    parent TEXT DEFAULT 'root',
-    UNIQUE(owner_id, name)
-  );
-
-  CREATE TABLE IF NOT EXISTS blog_tags (
-    post_id INTEGER NOT NULL REFERENCES blog_posts(id) ON DELETE CASCADE,
-    tag TEXT NOT NULL,
-    PRIMARY KEY (post_id, tag)
-  );
-
-  CREATE TABLE IF NOT EXISTS blog_post_projects (
-    post_id INTEGER NOT NULL REFERENCES blog_posts(id) ON DELETE CASCADE,
-    project_id TEXT NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    PRIMARY KEY (post_id, project_id)
-  );
-
-  CREATE TABLE IF NOT EXISTS access_keys (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    key_hash TEXT NOT NULL UNIQUE,
-    name TEXT NOT NULL,
-    note TEXT,
-    enabled INTEGER NOT NULL DEFAULT 1,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch())
-  );
-`;
+	for (const file of migrationFiles) {
+		const sql = readFileSync(join(migrationsDir, file), "utf-8");
+		// Split by statement breakpoint and execute each statement
+		const statements = sql
+			.split("--> statement-breakpoint")
+			.map(s => s.trim())
+			.filter(Boolean);
+		for (const statement of statements) {
+			try {
+				sqliteDb.exec(statement);
+			} catch (e) {
+				// Ignore "table already exists" errors for idempotency
+				const msg = e instanceof Error ? e.message : String(e);
+				if (!msg.includes("already exists")) {
+					throw e;
+				}
+			}
+		}
+	}
+};
 
 export type TestContext = {
 	sqliteDb: Database;
@@ -86,9 +61,12 @@ export type TestContext = {
 
 export const createTestContext = (): TestContext => {
 	const sqliteDb = new Database(":memory:");
-	sqliteDb.exec(SCHEMA_SQL);
 
-	const db = drizzle(sqliteDb) as unknown as DrizzleDB;
+	// Apply all Drizzle migrations to create tables
+	applyMigrations(sqliteDb);
+
+	const bunDb = drizzle(sqliteDb, { schema });
+	const db = bunDb as unknown as DrizzleDB;
 	const backend = create_memory_backend();
 	const corpus = create_corpus().with_backend(backend).with_store(postsStoreDefinition).build() as PostsCorpus;
 
@@ -97,12 +75,16 @@ export const createTestContext = (): TestContext => {
 		db,
 		corpus,
 		reset: () => {
-			sqliteDb.exec("DELETE FROM blog_post_projects");
-			sqliteDb.exec("DELETE FROM blog_tags");
-			sqliteDb.exec("DELETE FROM blog_posts");
-			sqliteDb.exec("DELETE FROM blog_categories");
-			sqliteDb.exec("DELETE FROM access_keys");
-			sqliteDb.exec("DELETE FROM users");
+			// Clear tables in reverse dependency order using Drizzle
+			bunDb.delete(schema.postProjects).run();
+			bunDb.delete(schema.fetchLinks).run();
+			bunDb.delete(schema.tags).run();
+			bunDb.delete(schema.posts).run();
+			bunDb.delete(schema.categories).run();
+			bunDb.delete(schema.projectsCache).run();
+			bunDb.delete(schema.integrations).run();
+			bunDb.delete(schema.accessKeys).run();
+			bunDb.delete(schema.users).run();
 		},
 		close: () => {
 			sqliteDb.close();
