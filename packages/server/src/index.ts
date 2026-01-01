@@ -3,7 +3,6 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { createContextFromBindings } from "./context";
 import { authMiddleware } from "./middleware/auth";
-import { assetsRouter } from "./routes/assets";
 import { authRouter } from "./routes/auth";
 import { categoriesRouter } from "./routes/categories";
 import { healthRouter } from "./routes/health";
@@ -35,7 +34,6 @@ export const createApiApp = (env: Bindings) => {
 	blogRouter.route("/tags", tagsRouter);
 	blogRouter.route("/categories", categoriesRouter);
 	blogRouter.route("/tokens", tokensRouter);
-	blogRouter.route("/assets", assetsRouter);
 	blogRouter.route("/projects", projectsRouter);
 
 	app.route("/api/blog", blogRouter);

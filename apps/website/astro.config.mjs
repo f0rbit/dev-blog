@@ -16,7 +16,6 @@ export default defineConfig({
 	vite: {
 		resolve: {
 			alias: {
-				"@blog/api": resolve("../../packages/api/src/index.ts"),
 				"@blog/schema": resolve("../../packages/schema/src/index.ts"),
 			},
 		},

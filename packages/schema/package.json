@@ -10,11 +10,11 @@
 			"types": "./src/index.ts",
 			"import": "./src/index.ts"
 		},
-		"./database": {
+		"./tables": {
 			"types": "./src/database.ts",
 			"import": "./src/database.ts"
 		},
-		"./types": {
+		"./validation": {
 			"types": "./src/types.ts",
 			"import": "./src/types.ts"
 		},

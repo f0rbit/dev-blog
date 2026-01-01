@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { type DrizzleDB, type PostsCorpus, type Project, type Result, create_corpus, create_memory_backend, err, ok, postsStoreDefinition } from "@blog/schema";
+import { type DrizzleDB, type PostsCorpus, create_corpus, create_memory_backend, postsStoreDefinition } from "@blog/schema";
 import * as schema from "@blog/schema/database";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 
@@ -210,28 +210,7 @@ export const createMockDevpadVerifyFetch = (config: MockDevpadVerifyConfig) => {
 	};
 };
 
-export type MockDevpadProvider = {
-	setProjects: (projects: Project[]) => void;
-	setError: (error: string | null) => void;
-	fetchProjects: (token: string) => Promise<Result<Project[], string>>;
-};
-
-export const createMockDevpadProvider = (): MockDevpadProvider => {
-	let projects: Project[] = [];
-	let error: string | null = null;
-
-	return {
-		setProjects: p => {
-			projects = p;
-		},
-		setError: e => {
-			error = e;
-		},
-		fetchProjects: async _token => {
-			if (error) return err(error);
-			return ok(projects);
-		},
-	};
-};
+export { createMockDevpadProvider } from "../src/providers/devpad";
+export type { DevpadProvider } from "../src/providers/devpad";
 
 export const generateId = (): string => crypto.randomUUID();

@@ -1,10 +1,12 @@
-import { AccessKeyCreateSchema, AccessKeyUpdateSchema, type ApiError, type AppContext, type DrizzleDB, type Result, err, ok } from "@blog/schema";
-import * as schema from "@blog/schema/database";
+import { AccessKeyCreateSchema, AccessKeyUpdateSchema, type AppContext } from "@blog/schema";
 import { zValidator } from "@hono/zod-validator";
-import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
-import { hexEncode } from "../middleware/auth";
+import { withAuth } from "../middleware/require-auth";
+import { type CreatedToken, type SanitizedToken, createTokenService, generateToken, hashToken, sanitizeToken } from "../services/tokens";
+
+export { generateToken, hashToken, sanitizeToken };
+export type { CreatedToken, SanitizedToken };
 
 type Variables = {
 	user: { id: number };
@@ -15,138 +17,80 @@ const TokenIdSchema = z.object({
 	id: z.coerce.number().int().positive(),
 });
 
-export const generateToken = (): string => crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
-
-export const hashToken = async (token: string): Promise<string> => {
-	const encoder = new TextEncoder();
-	const data = encoder.encode(token);
-	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-	return hexEncode(hashBuffer);
-};
-
-const findToken = async (db: DrizzleDB, userId: number, tokenId: number): Promise<Result<schema.AccessKey, ApiError>> => {
-	const [token] = await db
-		.select()
-		.from(schema.accessKeys)
-		.where(and(eq(schema.accessKeys.user_id, userId), eq(schema.accessKeys.id, tokenId)))
-		.limit(1);
-
-	if (!token) {
-		return err({ code: "NOT_FOUND", message: "Token not found" });
-	}
-
-	return ok(token);
-};
-
-export type SanitizedToken = {
-	id: number;
-	name: string;
-	note: string | null;
-	enabled: boolean;
-	created_at: Date;
-};
-
-export const sanitizeToken = (token: schema.AccessKey): SanitizedToken => ({
-	id: token.id,
-	name: token.name,
-	note: token.note,
-	enabled: token.enabled,
-	created_at: token.created_at,
-});
-
 export const tokensRouter = new Hono<{ Variables: Variables }>();
 
-tokensRouter.get("/", async c => {
-	const user = c.get("user");
-	const ctx = c.get("appContext");
-	const db = ctx.db;
+tokensRouter.get(
+	"/",
+	withAuth(async (c, user, ctx) => {
+		const service = createTokenService({ db: ctx.db });
 
-	const tokens = await db.select().from(schema.accessKeys).where(eq(schema.accessKeys.user_id, user.id));
+		const result = await service.list(user.id);
+		if (!result.ok) {
+			const error = result.error;
+			const message = error.type === "db_error" ? error.message : "Unknown error";
+			return c.json({ code: "DB_ERROR", message }, 500);
+		}
 
-	return c.json({ tokens: tokens.map(sanitizeToken) });
-});
+		return c.json({ tokens: result.value });
+	})
+);
 
-tokensRouter.post("/", zValidator("json", AccessKeyCreateSchema), async c => {
-	const user = c.get("user");
-	const data = c.req.valid("json");
-	const ctx = c.get("appContext");
-	const db = ctx.db;
+tokensRouter.post(
+	"/",
+	zValidator("json", AccessKeyCreateSchema),
+	withAuth(async (c, user, ctx) => {
+		const data = AccessKeyCreateSchema.parse(await c.req.json());
+		const service = createTokenService({ db: ctx.db });
 
-	const plainToken = generateToken();
-	const keyHash = await hashToken(plainToken);
+		const result = await service.create(user.id, data);
+		if (!result.ok) {
+			const error = result.error;
+			const message = error.type === "db_error" ? error.message : "Unknown error";
+			return c.json({ code: "DB_ERROR", message }, 500);
+		}
 
-	const inserted = await db
-		.insert(schema.accessKeys)
-		.values({
-			user_id: user.id,
-			key_hash: keyHash,
-			name: data.name,
-			note: data.note ?? null,
-			enabled: true,
-		})
-		.returning();
+		return c.json(result.value, 201);
+	})
+);
 
-	const created = inserted[0];
-	if (!created) {
-		return c.json({ code: "DB_ERROR", message: "Failed to create token" }, 500);
-	}
+tokensRouter.put(
+	"/:id",
+	zValidator("param", TokenIdSchema),
+	zValidator("json", AccessKeyUpdateSchema),
+	withAuth(async (c, user, ctx) => {
+		const { id } = TokenIdSchema.parse(c.req.param());
+		const data = AccessKeyUpdateSchema.parse(await c.req.json());
+		const service = createTokenService({ db: ctx.db });
 
-	return c.json(
-		{
-			...sanitizeToken(created),
-			token: plainToken,
-		},
-		201
-	);
-});
+		const result = await service.update(user.id, id, data);
+		if (!result.ok) {
+			const error = result.error;
+			if (error.type === "not_found") {
+				return c.json({ code: "NOT_FOUND", message: "Token not found" }, 404);
+			}
+			return c.json({ code: "DB_ERROR", message: error.message }, 500);
+		}
 
-tokensRouter.put("/:id", zValidator("param", TokenIdSchema), zValidator("json", AccessKeyUpdateSchema), async c => {
-	const user = c.get("user");
-	const { id } = c.req.valid("param");
-	const data = c.req.valid("json");
-	const ctx = c.get("appContext");
-	const db = ctx.db;
+		return c.json(result.value);
+	})
+);
 
-	const tokenResult = await findToken(db, user.id, id);
-	if (!tokenResult.ok) {
-		return c.json(tokenResult.error, 404);
-	}
+tokensRouter.delete(
+	"/:id",
+	zValidator("param", TokenIdSchema),
+	withAuth(async (c, user, ctx) => {
+		const { id } = TokenIdSchema.parse(c.req.param());
+		const service = createTokenService({ db: ctx.db });
 
-	const updates: Partial<schema.AccessKeyInsert> = {};
-	if (data.name !== undefined) updates.name = data.name;
-	if (data.note !== undefined) updates.note = data.note;
-	if (data.enabled !== undefined) updates.enabled = data.enabled;
+		const result = await service.delete(user.id, id);
+		if (!result.ok) {
+			const error = result.error;
+			if (error.type === "not_found") {
+				return c.json({ code: "NOT_FOUND", message: "Token not found" }, 404);
+			}
+			return c.json({ code: "DB_ERROR", message: error.message }, 500);
+		}
 
-	if (Object.keys(updates).length === 0) {
-		return c.json(sanitizeToken(tokenResult.value));
-	}
-
-	const updatedRows = await db
-		.update(schema.accessKeys)
-		.set(updates)
-		.where(and(eq(schema.accessKeys.user_id, user.id), eq(schema.accessKeys.id, id)))
-		.returning();
-
-	const updated = updatedRows[0];
-	if (!updated) {
-		return c.json({ code: "DB_ERROR", message: "Failed to update token" }, 500);
-	}
-
-	return c.json(sanitizeToken(updated));
-});
-
-tokensRouter.delete("/:id", zValidator("param", TokenIdSchema), async c => {
-	const user = c.get("user");
-	const { id } = c.req.valid("param");
-	const ctx = c.get("appContext");
-	const db = ctx.db;
-
-	const tokenResult = await findToken(db, user.id, id);
-	if (!tokenResult.ok) {
-		return c.json(tokenResult.error, 404);
-	}
-
-	await db.delete(schema.accessKeys).where(and(eq(schema.accessKeys.user_id, user.id), eq(schema.accessKeys.id, id)));
-
-	return c.body(null, 204);
-});
+		return c.body(null, 204);
+	})
+);

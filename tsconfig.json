@@ -29,9 +29,7 @@
 			"@blog/schema": ["./packages/schema/src/index.ts"],
 			"@blog/schema/*": ["./packages/schema/src/*"],
 			"@blog/server": ["./packages/server/src/index.ts"],
-			"@blog/server/*": ["./packages/server/src/*"],
-			"@blog/api": ["./packages/api/src/index.ts"],
-			"@blog/api/*": ["./packages/api/src/*"]
+			"@blog/server/*": ["./packages/server/src/*"]
 		}
 	},
 	"exclude": ["node_modules", "dist", ".wrangler"]

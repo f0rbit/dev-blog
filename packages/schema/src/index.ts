@@ -90,6 +90,7 @@ export type {
 	PaginatedResponse,
 	Bindings,
 	AppContext,
+	PostsCorpus,
 } from "./types";
 
 export {
@@ -108,8 +109,6 @@ export type {
 	VersionInfo,
 	PostCorpusError,
 } from "./corpus";
-
-export type { PostsCorpus } from "./types";
 
 export {
 	define_store,

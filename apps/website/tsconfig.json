@@ -13,8 +13,6 @@
 		"types": ["@cloudflare/workers-types"],
 		"paths": {
 			"@/*": ["src/*"],
-			"@blog/api": ["../../packages/api/src/index.ts"],
-			"@blog/api/*": ["../../packages/api/src/*"],
 			"@blog/schema": ["../../packages/schema/src/index.ts"],
 			"@blog/schema/*": ["../../packages/schema/src/*"]
 		}

@@ -1,5 +1,6 @@
 import type { AppContext, User } from "@blog/schema";
 import { Hono } from "hono";
+import { withAuth } from "../middleware/require-auth";
 import { createDevpadProvider } from "../providers/devpad";
 import { type ProjectServiceError, createProjectService } from "../services/projects";
 
@@ -19,52 +20,47 @@ const errorMessage = (error: ProjectServiceError): string => {
 	}
 };
 
-const getService = (c: { get: (key: string) => unknown }) => {
-	const appContext = c.get("appContext") as AppContext;
+const getService = (ctx: AppContext) => {
 	const devpadProvider = createDevpadProvider({
-		apiUrl: appContext.devpadApi,
+		apiUrl: ctx.devpadApi,
 	});
 	return createProjectService({
-		corpus: appContext.corpus,
+		corpus: ctx.corpus,
 		devpadProvider,
 	});
 };
 
-projectsRouter.use("*", async (c, next) => {
-	const user = c.get("user");
-	if (!user) {
-		return c.json({ code: "UNAUTHORIZED", message: "Authentication required" }, 401);
-	}
-	return next();
-});
+projectsRouter.get(
+	"/",
+	withAuth(async (c, user, ctx) => {
+		const service = getService(ctx);
 
-projectsRouter.get("/", async c => {
-	const user = c.get("user");
-	const service = getService(c);
+		const result = await service.list(user.id);
 
-	const result = await service.list(user.id);
+		if (!result.ok) {
+			return c.json({ code: "INTERNAL_ERROR", message: result.error.message ?? "Failed to list projects" }, 500);
+		}
 
-	if (!result.ok) {
-		return c.json({ code: "INTERNAL_ERROR", message: result.error.message ?? "Failed to list projects" }, 500);
-	}
+		return c.json({ projects: result.value });
+	})
+);
 
-	return c.json({ projects: result.value });
-});
+projectsRouter.post(
+	"/refresh",
+	withAuth(async (c, user, ctx) => {
+		const jwtToken = c.get("jwtToken") as string | undefined;
 
-projectsRouter.post("/refresh", async c => {
-	const user = c.get("user");
-	const jwtToken = c.get("jwtToken");
+		if (!jwtToken) {
+			return c.json({ code: "UNAUTHORIZED", message: "JWT authentication required for refresh" }, 401);
+		}
 
-	if (!jwtToken) {
-		return c.json({ code: "UNAUTHORIZED", message: "JWT authentication required for refresh" }, 401);
-	}
+		const service = getService(ctx);
+		const result = await service.refresh(user.id, jwtToken);
 
-	const service = getService(c);
-	const result = await service.refresh(user.id, jwtToken);
+		if (!result.ok) {
+			return c.json({ code: "INTERNAL_ERROR", message: errorMessage(result.error) ?? "Failed to refresh projects" }, 500);
+		}
 
-	if (!result.ok) {
-		return c.json({ code: "INTERNAL_ERROR", message: errorMessage(result.error) ?? "Failed to refresh projects" }, 500);
-	}
-
-	return c.json({ projects: result.value });
-});
+		return c.json({ projects: result.value });
+	})
+);
