@@ -16,7 +16,6 @@ export const auth = {
 
 	getAuthHeaders(): Record<string, string> {
 		const token = this.getToken();
-		console.log("[auth.getAuthHeaders] token:", token ? "present" : "missing");
 		if (token) {
 			return { Authorization: `Bearer jwt:${token}` };
 		}

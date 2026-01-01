@@ -26,7 +26,7 @@ try {
 		categories = flattenTree(data.categories ?? []);
 	}
 } catch (e) {
-	console.error("[SSR:new-post] Categories fetch failed:", e);
+	// Categories fetch failed silently
 }
 ---
 

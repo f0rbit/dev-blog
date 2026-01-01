@@ -80,9 +80,6 @@ type CategoryNode = Category & { children?: CategoryNode[] };
 const flattenCategoryTree = (nodes: CategoryNode[]): Category[] => nodes.flatMap(n => [{ name: n.name, parent: n.parent }, ...flattenCategoryTree(n.children ?? [])]);
 
 const PostEditor: Component<PostEditorProps> = props => {
-	console.log("[PostEditor] Received props.post:", JSON.stringify(props.post, null, 2));
-	console.log("[PostEditor] Received props.categories:", JSON.stringify(props.categories, null, 2));
-
 	const [title, setTitle] = createSignal(props.post?.title ?? "");
 	const [slug, setSlug] = createSignal(props.post?.slug ?? "");
 	const [content, setContent] = createSignal(props.post?.content ?? "");
@@ -93,9 +90,6 @@ const PostEditor: Component<PostEditorProps> = props => {
 	const [projectIds, setProjectIds] = createSignal<string[]>(props.post?.project_ids ?? []);
 	const [publishAt, setPublishAt] = createSignal<Date | null>(props.post?.publish_at ? new Date(props.post.publish_at) : null);
 	const [categories, setCategories] = createSignal<Category[]>(props.categories ?? []);
-
-	console.log("[PostEditor] Initial title signal:", title());
-	console.log("[PostEditor] Initial content signal:", content());
 
 	const [saving, setSaving] = createSignal(false);
 	const [error, setError] = createSignal<string | null>(null);

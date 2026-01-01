@@ -21,20 +21,15 @@ let categories: Category[] = [];
 let error: string | null = null;
 
 try {
-	console.log("[SSR:categories] Fetching categories...");
 	const runtime = Astro.locals.runtime;
 	const response = await api.ssr("/api/blog/categories", Astro.request, {}, runtime);
-	console.log("[SSR:categories] Response status:", response.status);
 
 	if (!response.ok) {
-		const errorText = await response.text();
-		console.error("[SSR:categories] Error response:", errorText);
 		throw new Error("Failed to fetch categories");
 	}
 	const data = await response.json();
 	categories = flattenTree(data.categories ?? []);
 } catch (err) {
-	console.error("[SSR:categories] Fetch error:", err);
 	error = "Failed to load categories";
 }
 ---

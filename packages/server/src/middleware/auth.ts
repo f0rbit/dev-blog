@@ -173,82 +173,55 @@ type AuthEnv = { Bindings: Bindings; Variables: Variables };
 
 export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 	const path = new URL(c.req.url).pathname;
-	const rawCookie = c.req.header("Cookie");
-	const jwtCookieValue = getCookie(c, "devpad_jwt");
-	console.log("[AUTH] Request path:", path);
-	console.log("[AUTH] Raw Cookie header:", rawCookie ?? "(none)");
-	console.log("[AUTH] devpad_jwt cookie:", jwtCookieValue ? `${jwtCookieValue.slice(0, 20)}...` : "(none)");
 
-	if (isExemptPath(path)) {
-		console.log("[AUTH] Path is exempt, skipping auth");
-		return next();
-	}
+	if (isExemptPath(path)) return next();
 
 	const ctx = c.get("appContext");
 	const isOptional = isOptionalAuthPath(path);
-	console.log("[AUTH] Optional auth path:", isOptional);
 
 	const authToken = c.req.header("Auth-Token");
 	if (authToken) {
-		console.log("[AUTH] Trying Auth-Token header...");
 		const result = await validateApiToken(ctx.db, authToken);
 		if (result.ok) {
-			console.log("[AUTH] Auth-Token valid, user:", result.value.username);
 			c.set("user", result.value);
 			return next();
 		}
-		console.log("[AUTH] Auth-Token invalid");
 	}
 
 	const authHeader = c.req.header("Authorization");
 	if (authHeader) {
-		console.log("[AUTH] Trying Authorization header...");
 		const jwtToken = extractJWTFromHeader(authHeader);
 		if (jwtToken) {
-			console.log("[AUTH] Found JWT in header, verifying...");
 			const result = await authenticateWithJWT(ctx.db, ctx.devpadApi, jwtToken);
 			if (result.ok) {
-				console.log("[AUTH] JWT valid, user:", result.value.username);
 				c.set("user", result.value);
 				c.set("jwtToken", jwtToken);
 				return next();
 			}
-			console.log("[AUTH] JWT invalid");
 		}
 	}
 
-	// Check for JWT in cookie (for SSR requests)
 	const jwtCookie = getCookie(c, "devpad_jwt");
 	if (jwtCookie) {
-		console.log("[AUTH] Trying devpad_jwt cookie...");
 		const result = await authenticateWithJWT(ctx.db, ctx.devpadApi, jwtCookie);
 		if (result.ok) {
-			console.log("[AUTH] JWT cookie valid, user:", result.value.username);
 			c.set("user", result.value);
 			c.set("jwtToken", jwtCookie);
 			return next();
 		}
-		console.log("[AUTH] JWT cookie invalid");
 	}
 
 	const cookie = c.req.header("Cookie");
 	if (cookie) {
-		console.log("[AUTH] Trying cookie passthrough to devpad...");
 		const result = await authenticateWithCookie(ctx.db, ctx.devpadApi, cookie);
 		if (result.ok) {
-			console.log("[AUTH] Cookie auth valid, user:", result.value.username);
 			c.set("user", result.value);
 			return next();
 		}
-		console.log("[AUTH] Cookie auth invalid");
 	}
 
-	if (isOptional) {
-		console.log("[AUTH] No auth found, but path is optional - continuing");
-		return next();
-	}
+	if (isOptional) return next();
 
-	console.log("[AUTH] No valid auth found, returning 401");
 	return c.json({ code: "UNAUTHORIZED", message: "Authentication required" }, 401);
 });
 

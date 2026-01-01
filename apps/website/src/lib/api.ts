@@ -26,16 +26,10 @@ export const api = {
 	async ssr(path: string, request: Request, options: RequestInit = {}, runtime?: { env?: RuntimeEnv }): Promise<Response> {
 		const url = new URL(path, request.url);
 		const cookie = request.headers.get("cookie") ?? "";
-		console.log("[api.ssr] Path:", path);
-		console.log("[api.ssr] Original request cookie:", cookie || "(none)");
-		console.log("[api.ssr] Runtime env available:", !!runtime?.env);
-		console.log("[api.ssr] API_HANDLER available:", !!runtime?.env?.API_HANDLER);
 
 		// If we have access to the internal API handler, use it directly
 		const apiHandler = runtime?.env?.API_HANDLER;
 		if (apiHandler) {
-			console.log("[api.ssr] Using internal API handler");
-			// Create a new request with the original cookies forwarded
 			const internalRequest = new Request(url.toString(), {
 				...options,
 				headers: {
@@ -46,7 +40,6 @@ export const api = {
 			return apiHandler.fetch(internalRequest);
 		}
 
-		console.log("[api.ssr] Falling back to HTTP fetch");
 		// Fallback to HTTP fetch (for local dev or non-unified deployments)
 		return fetch(url.toString(), {
 			...options,
