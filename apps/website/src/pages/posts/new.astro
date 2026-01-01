@@ -36,44 +36,24 @@ import { api } from "@/lib/api";
 	}
 </style>
 
-<script define:vars={{ API_BASE: api.blog("") }}>
+<script is:inline define:vars={{ API_BASE: api.blog("") }}>
 	const API_URL = API_BASE;
 
-	type Category = {
-		name: string;
-		parent: string | null;
-	};
-
-	type CategoryNode = Category & { children?: CategoryNode[] };
-
-	type PostFormData = {
-		slug: string;
-		title: string;
-		content: string;
-		description?: string;
-		format: "md" | "adoc";
-		category: string;
-		tags: string[];
-		project_ids: string[];
-		publish_at: Date | null;
-	};
-
-	const flattenTree = (nodes: CategoryNode[]): Category[] =>
+	const flattenTree = (nodes) =>
 		nodes.flatMap(n => [{ name: n.name, parent: n.parent }, ...flattenTree(n.children ?? [])]);
 
-	const fetchCategories = async (): Promise<Category[]> => {
+	const fetchCategories = async () => {
 		try {
 			const response = await fetch(`${API_URL}/categories`);
 			if (!response.ok) return [];
 			const data = await response.json();
-			// API returns tree structure, flatten it
 			return flattenTree(data.categories ?? []);
 		} catch {
 			return [];
 		}
 	};
 
-	const handleSave = async (data: PostFormData) => {
+	const handleSave = async (data) => {
 		const response = await fetch(`${API_URL}/post`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
