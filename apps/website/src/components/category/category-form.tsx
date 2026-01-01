@@ -1,12 +1,9 @@
+import type { Category as SchemaCategory } from "@blog/schema";
 import { type Component, For, createEffect, createSignal } from "solid-js";
 import Button from "../ui/button";
 import Input from "../ui/input";
 
-interface Category {
-	id: number;
-	name: string;
-	parent: string | null;
-}
+type Category = Pick<SchemaCategory, "id" | "name" | "parent">;
 
 interface CategoryFormProps {
 	categories: Category[];

@@ -397,20 +397,22 @@ export const createPostService = ({ db, corpus }: Deps) => {
 		const tagsMap = await fetchTagsForPosts(db, postIds);
 		const projectsMap = await fetchProjectIdsForPosts(db, postIds);
 
-		const postsWithContent: Post[] = [];
+		const rowsWithVersion = rows.flatMap(row => (row.corpus_version ? [{ row, version: row.corpus_version }] : []));
 
-		for (const row of rows) {
-			if (!row.corpus_version) continue;
+		const contentResults = await Promise.all(
+			rowsWithVersion.map(async ({ row, version }) => {
+				const path = corpusPath(userId, row.uuid);
+				const contentResult = await getContent(corpus, path, version);
+				return { row, contentResult };
+			})
+		);
 
-			const path = corpusPath(userId, row.uuid);
-			const contentResult = await getContent(corpus, path, row.corpus_version);
-
-			if (!contentResult.ok) continue;
-
+		const postsWithContent = contentResults.flatMap(({ row, contentResult }) => {
+			if (!contentResult.ok) return [];
 			const tagList = tagsMap.get(row.id) ?? [];
 			const projectIds = projectsMap.get(row.id) ?? [];
-			postsWithContent.push(assemblePost(row, contentResult.value, tagList, projectIds));
-		}
+			return [assemblePost(row, contentResult.value, tagList, projectIds)];
+		});
 
 		const totalPages = Math.ceil(totalPosts / params.limit);
 		const currentPage = Math.floor(params.offset / params.limit) + 1;

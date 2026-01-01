@@ -1,58 +1,24 @@
 ---
 import AppLayout from "@/layouts/app-layout.astro";
 import { api } from "@/lib/api";
-
-type Post = {
-	uuid: string;
-	slug: string;
-	title: string;
-	description?: string;
-	category: string;
-	tags: string[];
-	publish_at: string | null;
-	updated_at: string;
-	project_ids: string[];
-};
+import { relativeTime } from "@/lib/date-utils";
+import type { Post } from "@blog/schema";
 
 const formatProjectId = (id: string): string => id.replace(/^proj[-_]/, "").replace(/[-_]/g, " ");
-
-const relativeTime = (dateStr: string): string => {
-	const date = new Date(dateStr);
-	const now = new Date();
-	const diffMs = now.getTime() - date.getTime();
-	const diffSeconds = Math.floor(diffMs / 1000);
-	const diffMinutes = Math.floor(diffSeconds / 60);
-	const diffHours = Math.floor(diffMinutes / 60);
-	const diffDays = Math.floor(diffHours / 24);
-	const diffWeeks = Math.floor(diffDays / 7);
-	const diffMonths = Math.floor(diffDays / 30);
-
-	if (diffSeconds < 60) return "just now";
-	if (diffMinutes < 60) return diffMinutes === 1 ? "1 minute ago" : `${diffMinutes} minutes ago`;
-	if (diffHours < 24) return diffHours === 1 ? "1 hour ago" : `${diffHours} hours ago`;
-	if (diffDays < 7) return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`;
-	if (diffWeeks < 4) return diffWeeks === 1 ? "1 week ago" : `${diffWeeks} weeks ago`;
-	return diffMonths === 1 ? "1 month ago" : `${diffMonths} months ago`;
-};
 
 let posts: Post[] = [];
 let error: string | null = null;
 
 try {
-	console.log("[SSR:posts] Fetching posts...");
 	const runtime = Astro.locals.runtime;
 	const response = await api.ssr("/api/blog/posts?limit=100", Astro.request, {}, runtime);
-	console.log("[SSR:posts] Response status:", response.status);
 
 	if (!response.ok) {
-		const errorText = await response.text();
-		console.error("[SSR:posts] Error response:", errorText);
 		throw new Error("Failed to fetch posts");
 	}
 	const data = await response.json();
 	posts = data.posts ?? [];
 } catch (err) {
-	console.error("[SSR:posts] Fetch error:", err);
 	error = "Failed to load posts";
 }
 ---

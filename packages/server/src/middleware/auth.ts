@@ -28,22 +28,24 @@ type DevpadUser = {
 	avatar_url: string | null;
 };
 
-const hexEncode = (buffer: ArrayBuffer): string =>
+type UserRow = typeof users.$inferSelect;
+
+export const hexEncode = (buffer: ArrayBuffer): string =>
 	Array.from(new Uint8Array(buffer))
 		.map(b => b.toString(16).padStart(2, "0"))
 		.join("");
 
-const hashToken = async (token: string): Promise<string> => {
+export const hashToken = async (token: string): Promise<string> => {
 	const encoder = new TextEncoder();
 	const data = encoder.encode(token);
 	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
 	return hexEncode(hashBuffer);
 };
 
-const isExemptPath = (path: string): boolean => EXEMPT_PATHS.some(exempt => path === exempt || path.startsWith(`${exempt}/`));
-const isOptionalAuthPath = (path: string): boolean => OPTIONAL_AUTH_PATHS.some(p => path === p || path.startsWith(`${p}/`));
+export const isExemptPath = (path: string): boolean => EXEMPT_PATHS.some(exempt => path === exempt || path.startsWith(`${exempt}/`));
+export const isOptionalAuthPath = (path: string): boolean => OPTIONAL_AUTH_PATHS.some(p => path === p || path.startsWith(`${p}/`));
 
-const rowToUser = (row: typeof users.$inferSelect): User => ({
+export const rowToUser = (row: UserRow): User => ({
 	id: row.id,
 	github_id: row.github_id,
 	username: row.username,
@@ -125,9 +127,13 @@ const ensureUser = async (db: DrizzleDB, devpadUser: DevpadUser): Promise<Result
 	return ok(rowToUser(userRow));
 };
 
-const extractJWTFromHeader = (authHeader: string): string | null => {
-	if (!authHeader.startsWith("Bearer jwt:")) return null;
-	return authHeader.slice("Bearer jwt:".length);
+const JWT_PREFIX = "Bearer jwt:";
+
+export const extractJWTFromHeader = (authHeader: string): Result<string, string> => {
+	if (!authHeader.startsWith(JWT_PREFIX)) return err("missing_jwt_prefix");
+	const token = authHeader.slice(JWT_PREFIX.length);
+	if (token.length === 0) return err("empty_jwt_token");
+	return ok(token);
 };
 
 const verifyWithDevpadJWT = async (devpadApi: string, jwtToken: string): Promise<Result<DevpadUser, string>> => {
@@ -166,86 +172,62 @@ const authenticateWithJWT = async (db: DrizzleDB, devpadApi: string, jwtToken: s
 type Variables = {
 	user: User;
 	appContext: AppContext;
+	jwtToken?: string;
 };
 
 type AuthEnv = { Bindings: Bindings; Variables: Variables };
 
 export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 	const path = new URL(c.req.url).pathname;
-	const rawCookie = c.req.header("Cookie");
-	const jwtCookieValue = getCookie(c, "devpad_jwt");
-	console.log("[AUTH] Request path:", path);
-	console.log("[AUTH] Raw Cookie header:", rawCookie ?? "(none)");
-	console.log("[AUTH] devpad_jwt cookie:", jwtCookieValue ? `${jwtCookieValue.slice(0, 20)}...` : "(none)");
 
-	if (isExemptPath(path)) {
-		console.log("[AUTH] Path is exempt, skipping auth");
-		return next();
-	}
+	if (isExemptPath(path)) return next();
 
 	const ctx = c.get("appContext");
 	const isOptional = isOptionalAuthPath(path);
-	console.log("[AUTH] Optional auth path:", isOptional);
 
 	const authToken = c.req.header("Auth-Token");
 	if (authToken) {
-		console.log("[AUTH] Trying Auth-Token header...");
 		const result = await validateApiToken(ctx.db, authToken);
 		if (result.ok) {
-			console.log("[AUTH] Auth-Token valid, user:", result.value.username);
 			c.set("user", result.value);
 			return next();
 		}
-		console.log("[AUTH] Auth-Token invalid");
 	}
 
 	const authHeader = c.req.header("Authorization");
 	if (authHeader) {
-		console.log("[AUTH] Trying Authorization header...");
-		const jwtToken = extractJWTFromHeader(authHeader);
-		if (jwtToken) {
-			console.log("[AUTH] Found JWT in header, verifying...");
-			const result = await authenticateWithJWT(ctx.db, ctx.devpadApi, jwtToken);
+		const jwtResult = extractJWTFromHeader(authHeader);
+		if (jwtResult.ok) {
+			const result = await authenticateWithJWT(ctx.db, ctx.devpadApi, jwtResult.value);
 			if (result.ok) {
-				console.log("[AUTH] JWT valid, user:", result.value.username);
 				c.set("user", result.value);
+				c.set("jwtToken", jwtResult.value);
 				return next();
 			}
-			console.log("[AUTH] JWT invalid");
 		}
 	}
 
-	// Check for JWT in cookie (for SSR requests)
 	const jwtCookie = getCookie(c, "devpad_jwt");
 	if (jwtCookie) {
-		console.log("[AUTH] Trying devpad_jwt cookie...");
 		const result = await authenticateWithJWT(ctx.db, ctx.devpadApi, jwtCookie);
 		if (result.ok) {
-			console.log("[AUTH] JWT cookie valid, user:", result.value.username);
 			c.set("user", result.value);
+			c.set("jwtToken", jwtCookie);
 			return next();
 		}
-		console.log("[AUTH] JWT cookie invalid");
 	}
 
 	const cookie = c.req.header("Cookie");
 	if (cookie) {
-		console.log("[AUTH] Trying cookie passthrough to devpad...");
 		const result = await authenticateWithCookie(ctx.db, ctx.devpadApi, cookie);
 		if (result.ok) {
-			console.log("[AUTH] Cookie auth valid, user:", result.value.username);
 			c.set("user", result.value);
 			return next();
 		}
-		console.log("[AUTH] Cookie auth invalid");
 	}
 
-	if (isOptional) {
-		console.log("[AUTH] No auth found, but path is optional - continuing");
-		return next();
-	}
+	if (isOptional) return next();
 
-	console.log("[AUTH] No valid auth found, returning 401");
 	return c.json({ code: "UNAUTHORIZED", message: "Authentication required" }, 401);
 });
 

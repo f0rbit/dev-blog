@@ -1,4 +1,4 @@
-import { type ApiError, type PaginatedResponse, type Post, type PostCreate, type PostListParams, type PostUpdate, type PostsResponse, type Result, type Tag, err, ok } from "@blog/schema";
+import { type ApiError, type Post, type PostCreate, type PostListParams, type PostUpdate, type PostsResponse, type Result, err, ok } from "@blog/schema";
 
 // Asset type for file uploads (to be added to schema if needed)
 type Asset = {
@@ -50,60 +50,60 @@ export type BlogClient = ReturnType<typeof createClient>;
 
 export const createClient = (config: ClientConfig) => ({
 	posts: {
-		list: (query?: Partial<PostListParams>): Promise<FetchResult<PostsResponse>> => request(config, `/api/posts${buildQueryString(query ?? {})}`),
+		list: (query?: Partial<PostListParams>): Promise<FetchResult<PostsResponse>> => request(config, `/api/blog/posts${buildQueryString(query ?? {})}`),
 
-		get: (uuid: string): Promise<FetchResult<Post>> => request(config, `/api/post/${uuid}`),
+		get: (uuid: string): Promise<FetchResult<Post>> => request(config, `/api/blog/post/${uuid}`),
 
-		getBySlug: (slug: string): Promise<FetchResult<Post>> => request(config, `/api/post/${slug}`),
+		getBySlug: (slug: string): Promise<FetchResult<Post>> => request(config, `/api/blog/post/${slug}`),
 
 		create: (data: PostCreate): Promise<FetchResult<Post>> =>
-			request(config, "/api/post", {
+			request(config, "/api/blog/post", {
 				method: "POST",
 				body: JSON.stringify(data),
 			}),
 
 		update: (uuid: string, data: PostUpdate): Promise<FetchResult<Post>> =>
-			request(config, `/api/post/${uuid}`, {
+			request(config, `/api/blog/post/${uuid}`, {
 				method: "PUT",
 				body: JSON.stringify(data),
 			}),
 
-		delete: (uuid: string): Promise<FetchResult<void>> => request(config, `/api/post/${uuid}`, { method: "DELETE" }),
+		delete: (uuid: string): Promise<FetchResult<void>> => request(config, `/api/blog/post/${uuid}`, { method: "DELETE" }),
 
-		listVersions: (uuid: string): Promise<FetchResult<{ versions: { hash: string; parent: string | null; created_at: string }[] }>> => request(config, `/api/post/${uuid}/versions`),
+		listVersions: (uuid: string): Promise<FetchResult<{ versions: { hash: string; parent: string | null; created_at: string }[] }>> => request(config, `/api/blog/post/${uuid}/versions`),
 
-		getVersion: (uuid: string, hash: string): Promise<FetchResult<{ title: string; content: string; description?: string; format: "md" | "adoc" }>> => request(config, `/api/post/${uuid}/version/${hash}`),
+		getVersion: (uuid: string, hash: string): Promise<FetchResult<{ title: string; content: string; description?: string; format: "md" | "adoc" }>> => request(config, `/api/blog/post/${uuid}/version/${hash}`),
 
-		restoreVersion: (uuid: string, hash: string): Promise<FetchResult<Post>> => request(config, `/api/post/${uuid}/restore/${hash}`, { method: "POST" }),
+		restoreVersion: (uuid: string, hash: string): Promise<FetchResult<Post>> => request(config, `/api/blog/post/${uuid}/restore/${hash}`, { method: "POST" }),
 	},
 
 	tags: {
-		list: (): Promise<FetchResult<{ tags: { tag: string; count: number }[] }>> => request(config, "/api/tags"),
+		list: (): Promise<FetchResult<{ tags: { tag: string; count: number }[] }>> => request(config, "/api/blog/tags"),
 
-		getForPost: (uuid: string): Promise<FetchResult<{ tags: string[] }>> => request(config, `/api/posts/${uuid}/tags`),
+		getForPost: (uuid: string): Promise<FetchResult<{ tags: string[] }>> => request(config, `/api/blog/posts/${uuid}/tags`),
 
 		setForPost: (uuid: string, tags: string[]): Promise<FetchResult<{ tags: string[] }>> =>
-			request(config, `/api/posts/${uuid}/tags`, {
+			request(config, `/api/blog/posts/${uuid}/tags`, {
 				method: "PUT",
 				body: JSON.stringify({ tags }),
 			}),
 
 		addToPost: (uuid: string, tags: string[]): Promise<FetchResult<{ tags: string[] }>> =>
-			request(config, `/api/posts/${uuid}/tags`, {
+			request(config, `/api/blog/posts/${uuid}/tags`, {
 				method: "POST",
 				body: JSON.stringify({ tags }),
 			}),
 
-		removeFromPost: (uuid: string, tag: string): Promise<FetchResult<void>> => request(config, `/api/posts/${uuid}/tags/${tag}`, { method: "DELETE" }),
+		removeFromPost: (uuid: string, tag: string): Promise<FetchResult<void>> => request(config, `/api/blog/posts/${uuid}/tags/${tag}`, { method: "DELETE" }),
 	},
 
 	assets: {
-		list: (): Promise<FetchResult<{ items: Asset[] }>> => request(config, "/api/assets"),
+		list: (): Promise<FetchResult<{ items: Asset[] }>> => request(config, "/api/blog/assets"),
 
-		get: (id: string): Promise<FetchResult<Asset>> => request(config, `/api/assets/${id}`),
+		get: (id: string): Promise<FetchResult<Asset>> => request(config, `/api/blog/assets/${id}`),
 
 		upload: async (file: Blob, filename: string, postId?: string): Promise<FetchResult<Asset>> => {
-			const url = `${config.baseUrl}/api/assets${buildQueryString({ filename, postId })}`;
+			const url = `${config.baseUrl}/api/blog/assets${buildQueryString({ filename, postId })}`;
 			const headers: Record<string, string> = {
 				"Content-Type": file.type || "application/octet-stream",
 				...config.headers,
@@ -127,9 +127,9 @@ export const createClient = (config: ClientConfig) => ({
 			return ok(data);
 		},
 
-		downloadUrl: (id: string): string => `${config.baseUrl}/api/assets/${id}/download`,
+		downloadUrl: (id: string): string => `${config.baseUrl}/api/blog/assets/${id}/download`,
 
-		delete: (id: string): Promise<FetchResult<{ success: boolean }>> => request(config, `/api/assets/${id}`, { method: "DELETE" }),
+		delete: (id: string): Promise<FetchResult<{ success: boolean }>> => request(config, `/api/blog/assets/${id}`, { method: "DELETE" }),
 	},
 
 	health: {

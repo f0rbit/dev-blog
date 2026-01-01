@@ -2,7 +2,13 @@
 	"extends": "../../tsconfig.json",
 	"compilerOptions": {
 		"outDir": "./dist",
-		"rootDir": "./src"
+		"noEmit": true,
+		"baseUrl": ".",
+		"paths": {
+			"@blog/schema": ["../schema/src/index.ts"],
+			"@blog/schema/*": ["../schema/src/*"]
+		}
 	},
-	"include": ["src/**/*"]
+	"include": ["src/**/*.ts"],
+	"exclude": ["node_modules", "dist"]
 }

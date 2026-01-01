@@ -17,6 +17,7 @@
 		"build:client": "bun run --filter '@blog/website' build",
 		"deploy": "bun run build && bunx wrangler deploy",
 		"deploy:preview": "bun run build && bunx wrangler deploy --env preview",
+		"typecheck": "tsc --noEmit -p packages/schema && tsc --noEmit -p packages/server && tsc --noEmit -p packages/api",
 		"lint": "biome check .",
 		"lint:fix": "biome check --fix .",
 		"format": "biome format --write ."

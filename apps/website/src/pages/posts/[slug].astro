@@ -29,45 +29,28 @@ type Post = {
 
 const flattenTree = (nodes: CategoryNode[]): Category[] => nodes.flatMap(n => [{ name: n.name, parent: n.parent }, ...flattenTree(n.children ?? [])]);
 
-// Fetch post and categories server-side
 let post: Post | null = null;
 let categories: Category[] = [];
 let error: string | null = null;
-
-console.log("[SSR] Fetching post with slug:", slug);
-console.log("[SSR] API URL:", api.blog(`/post/${slug}`));
 
 const runtime = Astro.locals.runtime;
 
 try {
 	const [postRes, catRes] = await Promise.all([api.ssr(`/api/blog/post/${slug}`, Astro.request, {}, runtime), api.ssr("/api/blog/categories", Astro.request, {}, runtime)]);
 
-	console.log("[SSR] Post response status:", postRes.status);
-	console.log("[SSR] Categories response status:", catRes.status);
-
 	if (postRes.ok) {
 		post = await postRes.json();
-		console.log("[SSR] Post data:", JSON.stringify(post, null, 2));
 	} else {
-		const errorText = await postRes.text();
-		console.log("[SSR] Post fetch failed:", errorText);
 		error = "Post not found";
 	}
 
 	if (catRes.ok) {
 		const catData = await catRes.json();
-		console.log("[SSR] Raw categories:", JSON.stringify(catData, null, 2));
 		categories = flattenTree(catData.categories ?? []);
-		console.log("[SSR] Flattened categories:", JSON.stringify(categories, null, 2));
 	}
 } catch (e) {
-	console.log("[SSR] Fetch error:", e);
 	error = "Failed to load post";
 }
-
-console.log("[SSR] Final post:", post?.title);
-console.log("[SSR] Final categories count:", categories.length);
-console.log("[SSR] Final error:", error);
 ---
 
 <AppLayout title="Edit Post">

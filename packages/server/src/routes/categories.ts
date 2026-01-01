@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 
-interface CategoryNode {
+export interface CategoryNode {
 	name: string;
 	parent: string | null;
 	children: CategoryNode[];
@@ -24,7 +24,9 @@ const CategoryUpdateSchema = z.object({
 	name: z.string().min(1),
 });
 
-const buildCategoryTree = (categories: Category[]): CategoryNode[] => {
+type CategoryLike = { name: string; parent: string | null };
+
+export const buildCategoryTree = <T extends CategoryLike>(categories: T[]): CategoryNode[] => {
 	const nodeMap = new Map<string, CategoryNode>();
 
 	for (const cat of categories) {

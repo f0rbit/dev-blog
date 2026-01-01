@@ -1,6 +1,7 @@
 import type { Component } from "solid-js";
 import { For, Show, createSignal, onMount } from "solid-js";
 import { api } from "../../lib/api";
+import { relativeTime } from "../../lib/date-utils";
 import { PostPreview } from "./post-preview";
 import { ProjectSelector } from "./project-selector";
 import TagEditor from "./tag-editor";
@@ -56,33 +57,11 @@ const formatDateForInput = (date: Date | null): string => {
 	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
-const relativeTime = (dateStr: string): string => {
-	const date = new Date(dateStr);
-	const now = new Date();
-	const diffMs = now.getTime() - date.getTime();
-	const diffSeconds = Math.floor(diffMs / 1000);
-	const diffMinutes = Math.floor(diffSeconds / 60);
-	const diffHours = Math.floor(diffMinutes / 60);
-	const diffDays = Math.floor(diffHours / 24);
-	const diffWeeks = Math.floor(diffDays / 7);
-	const diffMonths = Math.floor(diffDays / 30);
-
-	if (diffSeconds < 60) return "just now";
-	if (diffMinutes < 60) return diffMinutes === 1 ? "1 minute ago" : `${diffMinutes} minutes ago`;
-	if (diffHours < 24) return diffHours === 1 ? "1 hour ago" : `${diffHours} hours ago`;
-	if (diffDays < 7) return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`;
-	if (diffWeeks < 4) return diffWeeks === 1 ? "1 week ago" : `${diffWeeks} weeks ago`;
-	return diffMonths === 1 ? "1 month ago" : `${diffMonths} months ago`;
-};
-
 type CategoryNode = Category & { children?: CategoryNode[] };
 
 const flattenCategoryTree = (nodes: CategoryNode[]): Category[] => nodes.flatMap(n => [{ name: n.name, parent: n.parent }, ...flattenCategoryTree(n.children ?? [])]);
 
 const PostEditor: Component<PostEditorProps> = props => {
-	console.log("[PostEditor] Received props.post:", JSON.stringify(props.post, null, 2));
-	console.log("[PostEditor] Received props.categories:", JSON.stringify(props.categories, null, 2));
-
 	const [title, setTitle] = createSignal(props.post?.title ?? "");
 	const [slug, setSlug] = createSignal(props.post?.slug ?? "");
 	const [content, setContent] = createSignal(props.post?.content ?? "");
@@ -93,9 +72,6 @@ const PostEditor: Component<PostEditorProps> = props => {
 	const [projectIds, setProjectIds] = createSignal<string[]>(props.post?.project_ids ?? []);
 	const [publishAt, setPublishAt] = createSignal<Date | null>(props.post?.publish_at ? new Date(props.post.publish_at) : null);
 	const [categories, setCategories] = createSignal<Category[]>(props.categories ?? []);
-
-	console.log("[PostEditor] Initial title signal:", title());
-	console.log("[PostEditor] Initial content signal:", content());
 
 	const [saving, setSaving] = createSignal(false);
 	const [error, setError] = createSignal<string | null>(null);

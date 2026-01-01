@@ -32,15 +32,11 @@ export const createApiApp = (env: Bindings) => {
 
 	const blogRouter = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 	blogRouter.route("/posts", postsRouter);
-	blogRouter.route("/post", postsRouter);
 	blogRouter.route("/tags", tagsRouter);
 	blogRouter.route("/categories", categoriesRouter);
-	blogRouter.route("/category", categoriesRouter);
 	blogRouter.route("/tokens", tokensRouter);
-	blogRouter.route("/token", tokensRouter);
 	blogRouter.route("/assets", assetsRouter);
 	blogRouter.route("/projects", projectsRouter);
-	blogRouter.route("/project", projectsRouter);
 
 	app.route("/api/blog", blogRouter);
 	app.route("/health", healthRouter);

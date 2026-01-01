@@ -1,50 +1,35 @@
 import { api } from "@/lib/api";
-import { type Component, For, Show, createResource, createSignal } from "solid-js";
+import type { AccessKey, User as SchemaUser } from "@blog/schema";
+import { type Component, For, Show, createSignal } from "solid-js";
 import Button from "../ui/button";
 import { DevpadConnection } from "./devpad-connection";
 import TokenForm from "./token-form";
 import TokenList from "./token-list";
 
-interface User {
-	id: number;
-	github_id: number;
-	username: string;
-	email: string | null;
-	avatar_url: string | null;
+type User = Omit<SchemaUser, "created_at" | "updated_at"> & {
 	created_at: string;
 	updated_at: string;
-}
+};
 
-interface Token {
-	id: number;
-	name: string;
-	note?: string;
-	enabled: boolean;
+type Token = {
+	id: AccessKey["id"];
+	name: AccessKey["name"];
+	note: AccessKey["note"];
+	enabled: AccessKey["enabled"];
 	created_at: string;
-}
+};
 
-interface Integration {
+interface IntegrationDisplay {
 	id: string;
 	name: string;
 	connected: boolean;
 	username?: string;
 }
 
-const fetchUser = async (): Promise<User | null> => {
-	if (typeof window === "undefined") return null;
-	const res = await api.fetch("/auth/status");
-	if (!res.ok) return null;
-	const data = (await res.json()) as { authenticated: boolean; user: User | null };
-	return data.authenticated ? data.user : null;
-};
-
-const fetchTokens = async (): Promise<Token[]> => {
-	if (typeof window === "undefined") return [];
-	const res = await api.fetch("/api/blog/tokens");
-	if (!res.ok) throw new Error("Failed to fetch tokens");
-	const data = (await res.json()) as { tokens?: Token[] };
-	return data.tokens ?? [];
-};
+interface SettingsPageProps {
+	initialUser?: User | null;
+	initialTokens?: Token[];
+}
 
 const formatDate = (dateStr: string): string => {
 	const date = new Date(dateStr);
@@ -55,22 +40,47 @@ const formatDate = (dateStr: string): string => {
 	});
 };
 
-const integrations: Integration[] = [
+const integrations: IntegrationDisplay[] = [
 	{ id: "devto", name: "DEV.to", connected: false },
 	{ id: "medium", name: "Medium", connected: false },
 	{ id: "github", name: "GitHub", connected: false },
 	{ id: "hashnode", name: "Hashnode", connected: false },
 ];
 
-const SettingsPage: Component = () => {
-	const [user] = createResource(fetchUser);
-	const [tokens, { refetch }] = createResource(fetchTokens);
-	const [showModal, setShowModal] = createSignal(false);
+const SettingsPage: Component<SettingsPageProps> = props => {
+	const [user] = createSignal<User | null>(props.initialUser ?? null);
+
+	const [tokens, setTokens] = createSignal<Token[]>(props.initialTokens ?? []);
+	const [tokensLoading, setTokensLoading] = createSignal(false);
 	const [tokensError, setTokensError] = createSignal<string | null>(null);
+
+	const [showModal, setShowModal] = createSignal(false);
+
+	const fetchTokens = async () => {
+		try {
+			const res = await api.fetch("/api/blog/tokens");
+			if (!res.ok) {
+				setTokensError("Failed to fetch tokens");
+				return;
+			}
+			const data = (await res.json()) as { tokens?: Token[] };
+			setTokens(data.tokens ?? []);
+		} catch {
+			setTokensError("Failed to fetch tokens");
+		} finally {
+			setTokensLoading(false);
+		}
+	};
+
+	const refetchTokens = () => {
+		setTokensLoading(true);
+		setTokensError(null);
+		fetchTokens();
+	};
 
 	const handleToggle = async (id: number, enabled: boolean) => {
 		setTokensError(null);
-		const res = await api.fetch(`/api/blog/token/${id}`, {
+		const res = await api.fetch(`/api/blog/tokens/${id}`, {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ enabled }),
@@ -81,12 +91,12 @@ const SettingsPage: Component = () => {
 			return;
 		}
 
-		refetch();
+		refetchTokens();
 	};
 
 	const handleDelete = async (id: number) => {
 		setTokensError(null);
-		const res = await api.fetch(`/api/blog/token/${id}`, {
+		const res = await api.fetch(`/api/blog/tokens/${id}`, {
 			method: "DELETE",
 		});
 
@@ -95,11 +105,11 @@ const SettingsPage: Component = () => {
 			return;
 		}
 
-		refetch();
+		refetchTokens();
 	};
 
 	const handleCreate = async (data: { name: string; note?: string }): Promise<{ key: string }> => {
-		const res = await api.fetch("/api/blog/token", {
+		const res = await api.fetch("/api/blog/tokens", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(data),
@@ -110,11 +120,11 @@ const SettingsPage: Component = () => {
 		}
 
 		const result = (await res.json()) as { key: string };
-		refetch();
+		refetchTokens();
 		return result;
 	};
 
-	const handleIntegrationClick = (integration: Integration) => {
+	const handleIntegrationClick = (integration: IntegrationDisplay) => {
 		alert(`${integration.name} integration coming soon!`);
 	};
 
@@ -123,13 +133,7 @@ const SettingsPage: Component = () => {
 			<section class="settings-section">
 				<h3 class="settings-section__title">Profile</h3>
 				<div class="settings-section__content">
-					<Show when={user.loading}>
-						<p class="muted text-sm">Loading profile...</p>
-					</Show>
-					<Show when={user.error}>
-						<p class="muted text-sm">Unable to load profile</p>
-					</Show>
-					<Show when={user()} keyed>
+					<Show when={user()} keyed fallback={<p class="muted text-sm">Not signed in</p>}>
 						{userData => (
 							<>
 								<div class="profile-row">
@@ -156,9 +160,6 @@ const SettingsPage: Component = () => {
 								</div>
 							</>
 						)}
-					</Show>
-					<Show when={!user.loading && !user.error && !user()}>
-						<p class="muted text-sm">Not signed in</p>
 					</Show>
 				</div>
 			</section>
@@ -210,14 +211,8 @@ const SettingsPage: Component = () => {
 						</div>
 					</Show>
 
-					<Show when={tokens.loading}>
+					<Show when={tokensLoading()}>
 						<p class="muted text-sm">Loading tokens...</p>
-					</Show>
-
-					<Show when={tokens.error}>
-						<div class="form-error">
-							<p class="text-sm">Failed to load tokens</p>
-						</div>
 					</Show>
 
 					<Show when={tokens()} keyed>

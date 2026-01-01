@@ -100,14 +100,6 @@ export const fetchLinks = sqliteTable(
 	table => [unique("fetch_links_integration_identifier_unique").on(table.integration_id, table.identifier)]
 );
 
-export const devpadTokens = sqliteTable("blog_devpad_tokens", {
-	user_id: integer("user_id")
-		.primaryKey()
-		.references(() => users.id),
-	token_encrypted: text("token_encrypted").notNull(),
-	created_at: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-});
-
 export const projectsCache = sqliteTable("blog_projects_cache", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
 	user_id: integer("user_id")
@@ -153,9 +145,6 @@ export type IntegrationInsert = typeof integrations.$inferInsert;
 
 export type FetchLink = typeof fetchLinks.$inferSelect;
 export type FetchLinkInsert = typeof fetchLinks.$inferInsert;
-
-export type DevpadToken = typeof devpadTokens.$inferSelect;
-export type DevpadTokenInsert = typeof devpadTokens.$inferInsert;
 
 export type ProjectCache = typeof projectsCache.$inferSelect;
 export type ProjectCacheInsert = typeof projectsCache.$inferInsert;

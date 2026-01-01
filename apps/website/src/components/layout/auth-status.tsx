@@ -1,6 +1,4 @@
-import { Show, createSignal, onMount } from "solid-js";
-import { api } from "../../lib/api";
-import { auth } from "../../lib/auth";
+import { Show, createSignal } from "solid-js";
 
 type User = {
 	id: number;
@@ -8,47 +6,32 @@ type User = {
 	avatar_url: string | null;
 };
 
-const AuthStatus = () => {
-	const [user, setUser] = createSignal<User | null>(null);
-	const [loading, setLoading] = createSignal(true);
+interface Props {
+	initialUser?: User | null;
+	initialAuthenticated?: boolean;
+}
 
-	onMount(async () => {
-		console.log("[AuthStatus] Starting auth check...");
-		try {
-			const response = await api.fetch("/auth/status");
-			console.log("[AuthStatus] Response status:", response.status);
-			const data = (await response.json()) as { authenticated: boolean; user: User | null };
-			console.log("[AuthStatus] Response data:", { authenticated: data.authenticated, user: data.user });
-			if (response.ok && data.authenticated) {
-				setUser(data.user);
-			}
-		} catch (e) {
-			console.error("Failed to check auth status:", e);
-		} finally {
-			setLoading(false);
-		}
-	});
+const AuthStatus = (props: Props) => {
+	const [user] = createSignal<User | null>(props.initialUser ?? null);
 
 	return (
 		<div class="user-info">
-			<Show when={!loading()} fallback={<span class="loading">...</span>}>
-				<Show
-					when={user()}
-					fallback={
-						<a href="/auth/login" class="auth-btn login-btn">
-							Login
+			<Show
+				when={user()}
+				fallback={
+					<a href="/auth/login" class="auth-btn login-btn">
+						Login
+					</a>
+				}
+			>
+				{u => (
+					<>
+						<span class="username">{u().username}</span>
+						<a href="/auth/logout" class="auth-btn logout-btn">
+							Logout
 						</a>
-					}
-				>
-					{u => (
-						<>
-							<span class="username">{u().username}</span>
-							<a href="/auth/logout" class="auth-btn logout-btn">
-								Logout
-							</a>
-						</>
-					)}
-				</Show>
+					</>
+				)}
 			</Show>
 		</div>
 	);

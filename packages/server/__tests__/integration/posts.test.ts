@@ -1,113 +1,16 @@
-import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { type DrizzleDB, type PostCreate, type PostUpdate, type PostsCorpus, categories, create_corpus, create_memory_backend, postsStoreDefinition, tags, users } from "@blog/schema";
+import { type PostCreate, type PostUpdate, tags } from "@blog/schema";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-
-const SCHEMA_SQL = `
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    github_id INTEGER NOT NULL UNIQUE,
-    username TEXT NOT NULL,
-    email TEXT,
-    avatar_url TEXT,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-  );
-
-  CREATE TABLE IF NOT EXISTS blog_posts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    uuid TEXT NOT NULL UNIQUE,
-    author_id INTEGER NOT NULL REFERENCES users(id),
-    slug TEXT NOT NULL,
-    corpus_version TEXT,
-    category TEXT NOT NULL DEFAULT 'root',
-    archived INTEGER NOT NULL DEFAULT 0,
-    publish_at INTEGER,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    project_id TEXT,
-    UNIQUE(author_id, slug)
-  );
-
-  CREATE TABLE IF NOT EXISTS blog_categories (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    owner_id INTEGER NOT NULL REFERENCES users(id),
-    name TEXT NOT NULL,
-    parent TEXT DEFAULT 'root',
-    UNIQUE(owner_id, name)
-  );
-
-  CREATE TABLE IF NOT EXISTS blog_tags (
-    post_id INTEGER NOT NULL REFERENCES blog_posts(id) ON DELETE CASCADE,
-    tag TEXT NOT NULL,
-    PRIMARY KEY (post_id, tag)
-  );
-
-  CREATE TABLE IF NOT EXISTS blog_post_projects (
-    post_id INTEGER NOT NULL REFERENCES blog_posts(id) ON DELETE CASCADE,
-    project_id TEXT NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    PRIMARY KEY (post_id, project_id)
-  );
-`;
-
-const createTestContext = () => {
-	const sqliteDb = new Database(":memory:");
-	sqliteDb.exec(SCHEMA_SQL);
-
-	const db = drizzle(sqliteDb) as DrizzleDB;
-	const backend = create_memory_backend();
-	const corpus = create_corpus().with_backend(backend).with_store(postsStoreDefinition).build() as PostsCorpus;
-
-	return {
-		sqliteDb,
-		db,
-		corpus,
-		reset: () => {
-			sqliteDb.exec("DELETE FROM blog_post_projects");
-			sqliteDb.exec("DELETE FROM blog_tags");
-			sqliteDb.exec("DELETE FROM blog_posts");
-			sqliteDb.exec("DELETE FROM blog_categories");
-			sqliteDb.exec("DELETE FROM users");
-		},
-		close: () => {
-			sqliteDb.close();
-		},
-	};
-};
-
 import { type PostService, createPostService } from "../../src/services/posts";
+import { createTestCategory, createTestContext, createTestUser } from "../setup";
 
-const createTestUser = async (ctx: ReturnType<typeof createTestContext>, suffix = "") => {
-	const now = new Date();
-	const githubId = 12345 + Math.floor(Math.random() * 100000);
-	const [user] = await ctx.db
-		.insert(users)
-		.values({
-			github_id: githubId,
-			username: `testuser${suffix}`,
-			email: `test${suffix}@example.com`,
-			avatar_url: "https://github.com/ghost.png",
-			created_at: now,
-			updated_at: now,
-		})
-		.returning();
-	if (!user) throw new Error("Failed to create test user");
-	return user;
-};
-
-const createTestCategory = async (ctx: ReturnType<typeof createTestContext>, userId: number, name: string, parent = "root") => {
-	const [category] = await ctx.db
-		.insert(categories)
-		.values({
-			owner_id: userId,
-			name,
-			parent,
-		})
-		.returning();
-	if (!category) throw new Error("Failed to create test category");
-	return category;
-};
+/** Helper to build PostCreate with defaults for required fields */
+const post = (overrides: Partial<PostCreate> & Pick<PostCreate, "slug" | "title" | "content">): PostCreate => ({
+	format: "md",
+	category: "root",
+	tags: [],
+	...overrides,
+});
 
 describe("PostService", () => {
 	let ctx: ReturnType<typeof createTestContext>;
@@ -127,12 +30,7 @@ describe("PostService", () => {
 
 	describe("create", () => {
 		it("creates post with UUID", async () => {
-			const input: PostCreate = {
-				slug: "my-first-post",
-				title: "My First Post",
-				content: "Hello world!",
-				format: "md",
-			};
+			const input = post({ slug: "my-first-post", title: "My First Post", content: "Hello world!" });
 
 			const result = await service.create(userId, input);
 
@@ -146,12 +44,7 @@ describe("PostService", () => {
 		});
 
 		it("stores content in Corpus", async () => {
-			const input: PostCreate = {
-				slug: "test-post",
-				title: "Test",
-				content: "Content",
-				format: "md",
-			};
+			const input = post({ slug: "test-post", title: "Test", content: "Content" });
 
 			const result = await service.create(userId, input);
 			expect(result.ok).toBe(true);
@@ -163,12 +56,7 @@ describe("PostService", () => {
 		});
 
 		it("handles slug conflicts", async () => {
-			const input: PostCreate = {
-				slug: "duplicate-slug",
-				title: "First Post",
-				content: "Content",
-				format: "md",
-			};
+			const input = post({ slug: "duplicate-slug", title: "First Post", content: "Content" });
 
 			const first = await service.create(userId, input);
 			expect(first.ok).toBe(true);
@@ -184,13 +72,7 @@ describe("PostService", () => {
 		});
 
 		it("creates with tags", async () => {
-			const input: PostCreate = {
-				slug: "tagged-post",
-				title: "Tagged",
-				content: "Content",
-				format: "md",
-				tags: ["typescript", "testing", "vitest"],
-			};
+			const input = post({ slug: "tagged-post", title: "Tagged", content: "Content", tags: ["typescript", "testing", "vitest"] });
 
 			const result = await service.create(userId, input);
 			expect(result.ok).toBe(true);
@@ -200,13 +82,7 @@ describe("PostService", () => {
 		});
 
 		it("creates as draft when publish_at is null", async () => {
-			const input: PostCreate = {
-				slug: "draft-post",
-				title: "Draft",
-				content: "WIP",
-				format: "md",
-				publish_at: null,
-			};
+			const input = post({ slug: "draft-post", title: "Draft", content: "WIP", publish_at: null });
 
 			const result = await service.create(userId, input);
 			expect(result.ok).toBe(true);
@@ -217,13 +93,7 @@ describe("PostService", () => {
 
 		it("creates as published with past publish_at", async () => {
 			const pastDate = new Date("2020-01-01");
-			const input: PostCreate = {
-				slug: "published-post",
-				title: "Published",
-				content: "Content",
-				format: "md",
-				publish_at: pastDate,
-			};
+			const input = post({ slug: "published-post", title: "Published", content: "Content", publish_at: pastDate });
 
 			const result = await service.create(userId, input);
 			expect(result.ok).toBe(true);
@@ -234,13 +104,7 @@ describe("PostService", () => {
 
 		it("creates as scheduled with future publish_at", async () => {
 			const futureDate = new Date("2099-12-31");
-			const input: PostCreate = {
-				slug: "scheduled-post",
-				title: "Scheduled",
-				content: "Content",
-				format: "md",
-				publish_at: futureDate,
-			};
+			const input = post({ slug: "scheduled-post", title: "Scheduled", content: "Content", publish_at: futureDate });
 
 			const result = await service.create(userId, input);
 			expect(result.ok).toBe(true);
@@ -250,13 +114,7 @@ describe("PostService", () => {
 		});
 
 		it("creates with category", async () => {
-			const input: PostCreate = {
-				slug: "categorized",
-				title: "Categorized Post",
-				content: "Content",
-				format: "md",
-				category: "tutorials",
-			};
+			const input = post({ slug: "categorized", title: "Categorized Post", content: "Content", category: "tutorials" });
 
 			const result = await service.create(userId, input);
 			expect(result.ok).toBe(true);
@@ -266,13 +124,7 @@ describe("PostService", () => {
 		});
 
 		it("creates with project_ids", async () => {
-			const input: PostCreate = {
-				slug: "project-post",
-				title: "Project Post",
-				content: "Content",
-				format: "md",
-				project_ids: ["proj-123"],
-			};
+			const input = post({ slug: "project-post", title: "Project Post", content: "Content", project_ids: ["proj-123"] });
 
 			const result = await service.create(userId, input);
 			expect(result.ok).toBe(true);
@@ -282,12 +134,7 @@ describe("PostService", () => {
 		});
 
 		it("creates with adoc format", async () => {
-			const input: PostCreate = {
-				slug: "asciidoc-post",
-				title: "Asciidoc Post",
-				content: "= Title\n\nContent",
-				format: "adoc",
-			};
+			const input = post({ slug: "asciidoc-post", title: "Asciidoc Post", content: "= Title\n\nContent", format: "adoc" });
 
 			const result = await service.create(userId, input);
 			expect(result.ok).toBe(true);
@@ -297,12 +144,7 @@ describe("PostService", () => {
 		});
 
 		it("defaults category to root", async () => {
-			const input: PostCreate = {
-				slug: "no-category",
-				title: "No Category",
-				content: "Content",
-				format: "md",
-			};
+			const input = post({ slug: "no-category", title: "No Category", content: "Content" });
 
 			const result = await service.create(userId, input);
 			expect(result.ok).toBe(true);
@@ -312,14 +154,9 @@ describe("PostService", () => {
 		});
 
 		it("allows same slug for different users", async () => {
-			const user2 = await createTestUser(ctx, "2");
+			const user2 = await createTestUser(ctx, { username: "testuser2" });
 
-			const input: PostCreate = {
-				slug: "same-slug",
-				title: "Post",
-				content: "Content",
-				format: "md",
-			};
+			const input = post({ slug: "same-slug", title: "Post", content: "Content" });
 
 			const first = await service.create(userId, input);
 			const second = await service.create(user2.id, input);
@@ -333,13 +170,15 @@ describe("PostService", () => {
 		let postUuid: string;
 
 		beforeEach(async () => {
-			const createResult = await service.create(userId, {
-				slug: "update-test",
-				title: "Original Title",
-				content: "Original content",
-				format: "md",
-				tags: ["original"],
-			});
+			const createResult = await service.create(
+				userId,
+				post({
+					slug: "update-test",
+					title: "Original Title",
+					content: "Original content",
+					tags: ["original"],
+				})
+			);
 			expect(createResult.ok).toBe(true);
 			if (createResult.ok) {
 				postUuid = createResult.value.uuid;
@@ -408,12 +247,14 @@ describe("PostService", () => {
 		});
 
 		it("returns slug conflict error for existing slug", async () => {
-			await service.create(userId, {
-				slug: "existing-slug",
-				title: "Existing",
-				content: "Content",
-				format: "md",
-			});
+			await service.create(
+				userId,
+				post({
+					slug: "existing-slug",
+					title: "Existing",
+					content: "Content",
+				})
+			);
 
 			const input: PostUpdate = {
 				slug: "existing-slug",
@@ -484,7 +325,7 @@ describe("PostService", () => {
 		});
 
 		it("cannot update another users post", async () => {
-			const user2 = await createTestUser(ctx, "2");
+			const user2 = await createTestUser(ctx, { username: "testuser2" });
 			const result = await service.update(user2.id, postUuid, { title: "Hack" });
 			expect(result.ok).toBe(false);
 		});
@@ -518,12 +359,14 @@ describe("PostService", () => {
 		let postUuid: string;
 
 		beforeEach(async () => {
-			const createResult = await service.create(userId, {
-				slug: "versioned-post",
-				title: "V1",
-				content: "First version",
-				format: "md",
-			});
+			const createResult = await service.create(
+				userId,
+				post({
+					slug: "versioned-post",
+					title: "V1",
+					content: "First version",
+				})
+			);
 			expect(createResult.ok).toBe(true);
 			if (createResult.ok) {
 				postUuid = createResult.value.uuid;
@@ -638,53 +481,12 @@ describe("PostService", () => {
 
 	describe("publishing", () => {
 		beforeEach(async () => {
-			await service.create(userId, {
-				slug: "draft-1",
-				title: "Draft 1",
-				content: "Draft content",
-				format: "md",
-				publish_at: null,
-			});
-
-			await service.create(userId, {
-				slug: "draft-2",
-				title: "Draft 2",
-				content: "Draft content",
-				format: "md",
-				publish_at: null,
-			});
-
-			await service.create(userId, {
-				slug: "published-1",
-				title: "Published 1",
-				content: "Published content",
-				format: "md",
-				publish_at: new Date("2020-01-01"),
-			});
-
-			await service.create(userId, {
-				slug: "published-2",
-				title: "Published 2",
-				content: "Published content",
-				format: "md",
-				publish_at: new Date("2020-06-01"),
-			});
-
-			await service.create(userId, {
-				slug: "scheduled-1",
-				title: "Scheduled 1",
-				content: "Scheduled content",
-				format: "md",
-				publish_at: new Date("2099-12-01"),
-			});
-
-			await service.create(userId, {
-				slug: "scheduled-2",
-				title: "Scheduled 2",
-				content: "Scheduled content",
-				format: "md",
-				publish_at: new Date("2099-12-31"),
-			});
+			await service.create(userId, post({ slug: "draft-1", title: "Draft 1", content: "Draft content", publish_at: null }));
+			await service.create(userId, post({ slug: "draft-2", title: "Draft 2", content: "Draft content", publish_at: null }));
+			await service.create(userId, post({ slug: "published-1", title: "Published 1", content: "Published content", publish_at: new Date("2020-01-01") }));
+			await service.create(userId, post({ slug: "published-2", title: "Published 2", content: "Published content", publish_at: new Date("2020-06-01") }));
+			await service.create(userId, post({ slug: "scheduled-1", title: "Scheduled 1", content: "Scheduled content", publish_at: new Date("2099-12-01") }));
+			await service.create(userId, post({ slug: "scheduled-2", title: "Scheduled 2", content: "Scheduled content", publish_at: new Date("2099-12-31") }));
 		});
 
 		it("filters by status=draft (null publish_at)", async () => {
@@ -700,8 +502,8 @@ describe("PostService", () => {
 			if (!result.ok) return;
 
 			expect(result.value.posts.length).toBe(2);
-			for (const post of result.value.posts) {
-				expect(post.publish_at).toBeNull();
+			for (const p of result.value.posts) {
+				expect(p.publish_at).toBeNull();
 			}
 		});
 
@@ -718,10 +520,10 @@ describe("PostService", () => {
 			if (!result.ok) return;
 
 			expect(result.value.posts.length).toBe(2);
-			for (const post of result.value.posts) {
-				expect(post.publish_at).not.toBeNull();
-				if (post.publish_at) {
-					expect(post.publish_at.getTime()).toBeLessThanOrEqual(Date.now());
+			for (const p of result.value.posts) {
+				expect(p.publish_at).not.toBeNull();
+				if (p.publish_at) {
+					expect(p.publish_at.getTime()).toBeLessThanOrEqual(Date.now());
 				}
 			}
 		});
@@ -739,10 +541,10 @@ describe("PostService", () => {
 			if (!result.ok) return;
 
 			expect(result.value.posts.length).toBe(2);
-			for (const post of result.value.posts) {
-				expect(post.publish_at).not.toBeNull();
-				if (post.publish_at) {
-					expect(post.publish_at.getTime()).toBeGreaterThan(Date.now());
+			for (const p of result.value.posts) {
+				expect(p.publish_at).not.toBeNull();
+				if (p.publish_at) {
+					expect(p.publish_at.getTime()).toBeGreaterThan(Date.now());
 				}
 			}
 		});
@@ -820,62 +622,13 @@ describe("PostService", () => {
 			await createTestCategory(ctx, userId, "backend", "tech");
 			await createTestCategory(ctx, userId, "lifestyle", "root");
 
-			await service.create(userId, {
-				slug: "post-root",
-				title: "Root Post",
-				content: "Content",
-				format: "md",
-				category: "root",
-				tags: ["general"],
-				project_ids: ["proj-a"],
-			});
+			await service.create(userId, post({ slug: "post-root", title: "Root Post", content: "Content", category: "root", tags: ["general"], project_ids: ["proj-a"] }));
+			await service.create(userId, post({ slug: "post-tech", title: "Tech Post", content: "Content", category: "tech", tags: ["coding"], project_ids: ["proj-a"] }));
+			await service.create(userId, post({ slug: "post-frontend", title: "Frontend Post", content: "Content", category: "frontend", tags: ["react", "coding"], project_ids: ["proj-b"] }));
+			await service.create(userId, post({ slug: "post-backend", title: "Backend Post", content: "Content", category: "backend", tags: ["nodejs", "coding"], project_ids: ["proj-b"] }));
+			await service.create(userId, post({ slug: "post-lifestyle", title: "Lifestyle Post", content: "Content", category: "lifestyle", tags: ["travel"] }));
 
-			await service.create(userId, {
-				slug: "post-tech",
-				title: "Tech Post",
-				content: "Content",
-				format: "md",
-				category: "tech",
-				tags: ["coding"],
-				project_ids: ["proj-a"],
-			});
-
-			await service.create(userId, {
-				slug: "post-frontend",
-				title: "Frontend Post",
-				content: "Content",
-				format: "md",
-				category: "frontend",
-				tags: ["react", "coding"],
-				project_ids: ["proj-b"],
-			});
-
-			await service.create(userId, {
-				slug: "post-backend",
-				title: "Backend Post",
-				content: "Content",
-				format: "md",
-				category: "backend",
-				tags: ["nodejs", "coding"],
-				project_ids: ["proj-b"],
-			});
-
-			await service.create(userId, {
-				slug: "post-lifestyle",
-				title: "Lifestyle Post",
-				content: "Content",
-				format: "md",
-				category: "lifestyle",
-				tags: ["travel"],
-			});
-
-			const archivedResult = await service.create(userId, {
-				slug: "post-archived",
-				title: "Archived Post",
-				content: "Content",
-				format: "md",
-				category: "tech",
-			});
+			const archivedResult = await service.create(userId, post({ slug: "post-archived", title: "Archived Post", content: "Content", category: "tech" }));
 			if (archivedResult.ok) {
 				await service.update(userId, archivedResult.value.uuid, { archived: true });
 			}
@@ -915,8 +668,8 @@ describe("PostService", () => {
 			if (!result.ok) return;
 
 			expect(result.value.posts.length).toBe(3);
-			for (const post of result.value.posts) {
-				expect(post.tags).toContain("coding");
+			for (const p of result.value.posts) {
+				expect(p.tags).toContain("coding");
 			}
 		});
 
@@ -934,8 +687,8 @@ describe("PostService", () => {
 			if (!result.ok) return;
 
 			expect(result.value.posts.length).toBe(2);
-			for (const post of result.value.posts) {
-				expect(post.project_ids).toContain("proj-b");
+			for (const p of result.value.posts) {
+				expect(p.project_ids).toContain("proj-b");
 			}
 		});
 
@@ -952,8 +705,8 @@ describe("PostService", () => {
 			if (!result.ok) return;
 
 			expect(result.value.posts.length).toBe(5);
-			for (const post of result.value.posts) {
-				expect(post.archived).toBe(false);
+			for (const p of result.value.posts) {
+				expect(p.archived).toBe(false);
 			}
 		});
 
@@ -1046,13 +799,15 @@ describe("PostService", () => {
 		let postUuid: string;
 
 		beforeEach(async () => {
-			const createResult = await service.create(userId, {
-				slug: "delete-test",
-				title: "Delete Me",
-				content: "Content",
-				format: "md",
-				tags: ["tag1", "tag2"],
-			});
+			const createResult = await service.create(
+				userId,
+				post({
+					slug: "delete-test",
+					title: "Delete Me",
+					content: "Content",
+					tags: ["tag1", "tag2"],
+				})
+			);
 			expect(createResult.ok).toBe(true);
 			if (createResult.ok) {
 				postUuid = createResult.value.uuid;
@@ -1088,7 +843,7 @@ describe("PostService", () => {
 		});
 
 		it("cannot delete another users post", async () => {
-			const user2 = await createTestUser(ctx, "2");
+			const user2 = await createTestUser(ctx, { username: "testuser2" });
 			const result = await service.delete(user2.id, postUuid);
 			expect(result.ok).toBe(false);
 
@@ -1099,12 +854,7 @@ describe("PostService", () => {
 
 	describe("getBySlug", () => {
 		it("retrieves post by slug", async () => {
-			await service.create(userId, {
-				slug: "find-me",
-				title: "Find Me",
-				content: "Content",
-				format: "md",
-			});
+			await service.create(userId, post({ slug: "find-me", title: "Find Me", content: "Content" }));
 
 			const result = await service.getBySlug(userId, "find-me");
 			expect(result.ok).toBe(true);
@@ -1123,14 +873,9 @@ describe("PostService", () => {
 		});
 
 		it("cannot find another users post", async () => {
-			await service.create(userId, {
-				slug: "private-post",
-				title: "Private",
-				content: "Content",
-				format: "md",
-			});
+			await service.create(userId, post({ slug: "private-post", title: "Private", content: "Content" }));
 
-			const user2 = await createTestUser(ctx, "2");
+			const user2 = await createTestUser(ctx, { username: "testuser2" });
 			const result = await service.getBySlug(user2.id, "private-post");
 			expect(result.ok).toBe(false);
 		});
@@ -1138,12 +883,7 @@ describe("PostService", () => {
 
 	describe("getByUuid", () => {
 		it("retrieves post by uuid", async () => {
-			const createResult = await service.create(userId, {
-				slug: "uuid-test",
-				title: "UUID Test",
-				content: "Content",
-				format: "md",
-			});
+			const createResult = await service.create(userId, post({ slug: "uuid-test", title: "UUID Test", content: "Content" }));
 			expect(createResult.ok).toBe(true);
 			if (!createResult.ok) return;
 
@@ -1166,13 +906,15 @@ describe("PostService", () => {
 
 	describe("project associations", () => {
 		it("creates post with multiple project_ids", async () => {
-			const result = await service.create(userId, {
-				slug: "multi-project",
-				title: "Multi Project Post",
-				content: "Content",
-				format: "md",
-				project_ids: ["proj-a", "proj-b", "proj-c"],
-			});
+			const result = await service.create(
+				userId,
+				post({
+					slug: "multi-project",
+					title: "Multi Project Post",
+					content: "Content",
+					project_ids: ["proj-a", "proj-b", "proj-c"],
+				})
+			);
 
 			expect(result.ok).toBe(true);
 			if (!result.ok) return;
@@ -1180,12 +922,14 @@ describe("PostService", () => {
 		});
 
 		it("creates post with no projects", async () => {
-			const result = await service.create(userId, {
-				slug: "no-project",
-				title: "No Project Post",
-				content: "Content",
-				format: "md",
-			});
+			const result = await service.create(
+				userId,
+				post({
+					slug: "no-project",
+					title: "No Project Post",
+					content: "Content",
+				})
+			);
 
 			expect(result.ok).toBe(true);
 			if (!result.ok) return;
@@ -1193,13 +937,15 @@ describe("PostService", () => {
 		});
 
 		it("updates project associations", async () => {
-			const createResult = await service.create(userId, {
-				slug: "update-projects",
-				title: "Post",
-				content: "Content",
-				format: "md",
-				project_ids: ["proj-a"],
-			});
+			const createResult = await service.create(
+				userId,
+				post({
+					slug: "update-projects",
+					title: "Post",
+					content: "Content",
+					project_ids: ["proj-a"],
+				})
+			);
 			expect(createResult.ok).toBe(true);
 			if (!createResult.ok) return;
 
@@ -1212,13 +958,15 @@ describe("PostService", () => {
 		});
 
 		it("clears all project associations", async () => {
-			const createResult = await service.create(userId, {
-				slug: "clear-projects",
-				title: "Post",
-				content: "Content",
-				format: "md",
-				project_ids: ["proj-a", "proj-b"],
-			});
+			const createResult = await service.create(
+				userId,
+				post({
+					slug: "clear-projects",
+					title: "Post",
+					content: "Content",
+					project_ids: ["proj-a", "proj-b"],
+				})
+			);
 			expect(createResult.ok).toBe(true);
 			if (!createResult.ok) return;
 
@@ -1231,27 +979,9 @@ describe("PostService", () => {
 		});
 
 		it("filters posts by project", async () => {
-			await service.create(userId, {
-				slug: "proj-a-only",
-				title: "A Only",
-				content: "Content",
-				format: "md",
-				project_ids: ["proj-a"],
-			});
-			await service.create(userId, {
-				slug: "proj-a-and-b",
-				title: "A and B",
-				content: "Content",
-				format: "md",
-				project_ids: ["proj-a", "proj-b"],
-			});
-			await service.create(userId, {
-				slug: "proj-b-only",
-				title: "B Only",
-				content: "Content",
-				format: "md",
-				project_ids: ["proj-b"],
-			});
+			await service.create(userId, post({ slug: "proj-a-only", title: "A Only", content: "Content", project_ids: ["proj-a"] }));
+			await service.create(userId, post({ slug: "proj-a-and-b", title: "A and B", content: "Content", project_ids: ["proj-a", "proj-b"] }));
+			await service.create(userId, post({ slug: "proj-b-only", title: "B Only", content: "Content", project_ids: ["proj-b"] }));
 
 			const resultA = await service.list(userId, {
 				project: "proj-a",
@@ -1279,13 +1009,15 @@ describe("PostService", () => {
 		});
 
 		it("preserves project_ids when fetching by uuid", async () => {
-			const createResult = await service.create(userId, {
-				slug: "fetch-projects",
-				title: "Post",
-				content: "Content",
-				format: "md",
-				project_ids: ["proj-x", "proj-y"],
-			});
+			const createResult = await service.create(
+				userId,
+				post({
+					slug: "fetch-projects",
+					title: "Post",
+					content: "Content",
+					project_ids: ["proj-x", "proj-y"],
+				})
+			);
 			expect(createResult.ok).toBe(true);
 			if (!createResult.ok) return;
 
@@ -1296,13 +1028,15 @@ describe("PostService", () => {
 		});
 
 		it("preserves project_ids when fetching by slug", async () => {
-			const createResult = await service.create(userId, {
-				slug: "fetch-projects-slug",
-				title: "Post",
-				content: "Content",
-				format: "md",
-				project_ids: ["proj-m", "proj-n"],
-			});
+			const createResult = await service.create(
+				userId,
+				post({
+					slug: "fetch-projects-slug",
+					title: "Post",
+					content: "Content",
+					project_ids: ["proj-m", "proj-n"],
+				})
+			);
 			expect(createResult.ok).toBe(true);
 			if (!createResult.ok) return;
 

@@ -14,9 +14,9 @@ const ProjectsResponseSchema = z.array(ProjectSchema);
 export const createDevpadProvider = (config: DevpadProviderConfig): DevpadProvider => {
 	const fetchProjects = async (token: string): Promise<Result<Project[], string>> => {
 		try {
-			const response = await fetch(`${config.apiUrl}/projects`, {
+			const response = await fetch(`${config.apiUrl}/api/v0/projects`, {
 				headers: {
-					Authorization: `Bearer ${token}`,
+					Authorization: `Bearer jwt:${token}`,
 					"Content-Type": "application/json",
 				},
 			});
