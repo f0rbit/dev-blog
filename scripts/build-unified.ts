@@ -1,6 +1,6 @@
-import { $ } from "bun";
-import { cpSync, mkdirSync, writeFileSync, existsSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { $ } from "bun";
 
 const ROOT_DIR = process.cwd();
 const DIST_DIR = join(ROOT_DIR, "dist");
