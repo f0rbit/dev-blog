@@ -1,23 +1,30 @@
 import type { Bindings } from "@blog/schema";
-import { Hono } from "hono";
 import { createApiApp } from "./index";
 
 type AstroHandler = {
 	fetch: (request: Request, env: Bindings, ctx: ExecutionContext) => Promise<Response>;
 };
 
-export const createUnifiedApp = (env: Bindings, astroHandler: AstroHandler) => {
-	const app = new Hono<{ Bindings: Bindings }>();
+// API route prefixes that should be handled by Hono
+const API_PREFIXES = ["/api/", "/health", "/auth/"];
 
+export const createUnifiedApp = (env: Bindings, astroHandler: AstroHandler) => {
 	const apiApp = createApiApp(env);
 
-	app.route("/", apiApp);
+	return {
+		async fetch(request: Request, _env: Bindings, ctx: ExecutionContext): Promise<Response> {
+			const url = new URL(request.url);
+			const path = url.pathname;
 
-	app.all("*", async c => {
-		return astroHandler.fetch(c.req.raw, env, c.executionCtx);
-	});
+			// Route API paths to Hono
+			if (API_PREFIXES.some(prefix => path.startsWith(prefix) || path === prefix.replace(/\/$/, ""))) {
+				return apiApp.fetch(request, env, ctx);
+			}
 
-	return app;
+			// Everything else goes to Astro SSR
+			return astroHandler.fetch(request, env, ctx);
+		},
+	};
 };
 
 export type UnifiedApp = ReturnType<typeof createUnifiedApp>;

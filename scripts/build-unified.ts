@@ -64,6 +64,15 @@ export default {
 		cpSync(routesJson, join(DIST_DIR, "_routes.json"));
 	}
 
+	// Step 7: Create .assetsignore to exclude worker files from static assets
+	const assetsIgnore = `# Exclude worker code from static assets
+_worker.js
+_astro-worker
+server
+_routes.json
+`;
+	writeFileSync(join(DIST_DIR, ".assetsignore"), assetsIgnore);
+
 	console.log("\nBuild complete!");
 	console.log("   Worker entry:  dist/_worker.js");
 	console.log("   Server code:   dist/server/");
