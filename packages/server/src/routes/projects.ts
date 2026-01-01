@@ -45,7 +45,7 @@ projectsRouter.get("/", async c => {
 	const result = await service.list(user.id);
 
 	if (!result.ok) {
-		return c.json({ error: result.error.message ?? result.error.type }, 500);
+		return c.json({ code: "INTERNAL_ERROR", message: result.error.message ?? "Failed to list projects" }, 500);
 	}
 
 	return c.json({ projects: result.value });
@@ -63,7 +63,7 @@ projectsRouter.post("/refresh", async c => {
 	const result = await service.refresh(user.id, jwtToken);
 
 	if (!result.ok) {
-		return c.json({ error: errorMessage(result.error) }, 500);
+		return c.json({ code: "INTERNAL_ERROR", message: errorMessage(result.error) ?? "Failed to refresh projects" }, 500);
 	}
 
 	return c.json({ projects: result.value });

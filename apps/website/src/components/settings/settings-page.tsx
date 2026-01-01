@@ -1,30 +1,25 @@
 import { api } from "@/lib/api";
+import type { AccessKey, User as SchemaUser } from "@blog/schema";
 import { type Component, For, Show, createSignal } from "solid-js";
 import Button from "../ui/button";
 import { DevpadConnection } from "./devpad-connection";
 import TokenForm from "./token-form";
 import TokenList from "./token-list";
 
-interface User {
-	id: number;
-	github_id: number;
-	username: string;
-	email: string | null;
-	avatar_url: string | null;
+type User = Omit<SchemaUser, "created_at" | "updated_at"> & {
 	created_at: string;
 	updated_at: string;
-}
+};
 
-interface Token {
-	id: number;
-	name: string;
-	note?: string;
-	enabled: boolean;
+type Token = {
+	id: AccessKey["id"];
+	name: AccessKey["name"];
+	note: AccessKey["note"];
+	enabled: AccessKey["enabled"];
 	created_at: string;
-}
+};
 
-// Placeholder for future integrations feature
-interface Integration {
+interface IntegrationDisplay {
 	id: string;
 	name: string;
 	connected: boolean;
@@ -45,7 +40,7 @@ const formatDate = (dateStr: string): string => {
 	});
 };
 
-const integrations: Integration[] = [
+const integrations: IntegrationDisplay[] = [
 	{ id: "devto", name: "DEV.to", connected: false },
 	{ id: "medium", name: "Medium", connected: false },
 	{ id: "github", name: "GitHub", connected: false },
@@ -85,7 +80,7 @@ const SettingsPage: Component<SettingsPageProps> = props => {
 
 	const handleToggle = async (id: number, enabled: boolean) => {
 		setTokensError(null);
-		const res = await api.fetch(`/api/blog/token/${id}`, {
+		const res = await api.fetch(`/api/blog/tokens/${id}`, {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ enabled }),
@@ -101,7 +96,7 @@ const SettingsPage: Component<SettingsPageProps> = props => {
 
 	const handleDelete = async (id: number) => {
 		setTokensError(null);
-		const res = await api.fetch(`/api/blog/token/${id}`, {
+		const res = await api.fetch(`/api/blog/tokens/${id}`, {
 			method: "DELETE",
 		});
 
@@ -114,7 +109,7 @@ const SettingsPage: Component<SettingsPageProps> = props => {
 	};
 
 	const handleCreate = async (data: { name: string; note?: string }): Promise<{ key: string }> => {
-		const res = await api.fetch("/api/blog/token", {
+		const res = await api.fetch("/api/blog/tokens", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(data),
@@ -129,7 +124,7 @@ const SettingsPage: Component<SettingsPageProps> = props => {
 		return result;
 	};
 
-	const handleIntegrationClick = (integration: Integration) => {
+	const handleIntegrationClick = (integration: IntegrationDisplay) => {
 		alert(`${integration.name} integration coming soon!`);
 	};
 

@@ -1,3 +1,4 @@
+import type { Category as SchemaCategory } from "@blog/schema";
 import { type Component, For, Show, createMemo } from "solid-js";
 
 const IconPlus: Component<{ size?: number }> = props => (
@@ -13,11 +14,7 @@ const IconMinus: Component<{ size?: number }> = props => (
 	</svg>
 );
 
-interface Category {
-	id: number;
-	name: string;
-	parent: string | null;
-}
+type Category = Pick<SchemaCategory, "id" | "name" | "parent">;
 
 interface CategoryTreeProps {
 	categories: Category[];

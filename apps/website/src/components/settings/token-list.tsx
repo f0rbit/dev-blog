@@ -1,13 +1,14 @@
+import type { AccessKey } from "@blog/schema";
 import { type Component, For, Show } from "solid-js";
 import Button from "../ui/button";
 
-interface Token {
-	id: number;
-	name: string;
-	note?: string;
-	enabled: boolean;
+type Token = {
+	id: AccessKey["id"];
+	name: AccessKey["name"];
+	note: AccessKey["note"];
+	enabled: AccessKey["enabled"];
 	created_at: string;
-}
+};
 
 interface TokenListProps {
 	tokens: Token[];

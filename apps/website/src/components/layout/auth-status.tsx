@@ -12,7 +12,7 @@ interface Props {
 }
 
 const AuthStatus = (props: Props) => {
-	const [user, setUser] = createSignal<User | null>(props.initialUser ?? null);
+	const [user] = createSignal<User | null>(props.initialUser ?? null);
 
 	return (
 		<div class="user-info">

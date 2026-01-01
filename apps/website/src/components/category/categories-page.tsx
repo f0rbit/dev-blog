@@ -1,13 +1,10 @@
 import { api } from "@/lib/api";
+import type { Category as SchemaCategory } from "@blog/schema";
 import { type Component, Show, createResource, createSignal } from "solid-js";
 import CategoryForm from "./category-form";
 import CategoryTree from "./category-tree";
 
-interface Category {
-	id: number;
-	name: string;
-	parent: string | null;
-}
+type Category = Pick<SchemaCategory, "id" | "name" | "parent">;
 
 interface CategoryNode {
 	name: string;
@@ -54,7 +51,7 @@ const CategoriesPage: Component<Props> = props => {
 
 	const handleDelete = async (name: string) => {
 		setError(null);
-		const res = await api.fetch(`/api/blog/category/${encodeURIComponent(name)}`, {
+		const res = await api.fetch(`/api/blog/categories/${encodeURIComponent(name)}`, {
 			method: "DELETE",
 		});
 
@@ -68,7 +65,7 @@ const CategoriesPage: Component<Props> = props => {
 
 	const handleCreate = async (data: { name: string; parent: string }) => {
 		setError(null);
-		const res = await api.fetch("/api/blog/category", {
+		const res = await api.fetch("/api/blog/categories", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(data),

@@ -139,15 +139,11 @@ const createDevApp = (appContext: AppContext) => {
 
 	// Mount API routes
 	app.route("/posts", postsRouter);
-	app.route("/post", postsRouter);
 	app.route("/tags", tagsRouter);
 	app.route("/categories", categoriesRouter);
-	app.route("/category", categoriesRouter);
 	app.route("/tokens", tokensRouter);
-	app.route("/token", tokensRouter);
 	app.route("/assets", assetsRouter);
 	app.route("/projects", projectsRouter);
-	app.route("/project", projectsRouter);
 
 	app.notFound(c => c.json({ code: "NOT_FOUND", message: "Resource not found" }, 404));
 
