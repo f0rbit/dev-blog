@@ -9,16 +9,6 @@ type Variables = {
 
 export const authRouter = new Hono<{ Variables: Variables }>();
 
-authRouter.get("/user", c => {
-	const user = c.get("user");
-
-	if (!user) {
-		return c.json({ code: "UNAUTHORIZED", message: "Not authenticated" }, 401);
-	}
-
-	return c.json({ user });
-});
-
 authRouter.get("/login", c => {
 	const ctx = c.get("appContext");
 	const origin = new URL(c.req.url).origin;
@@ -90,13 +80,6 @@ authRouter.get("/status", c => {
 
 	return c.json({
 		authenticated: !!user,
-		user: user
-			? {
-					id: user.id,
-					username: user.username,
-					email: user.email,
-					avatar_url: user.avatar_url,
-				}
-			: null,
+		user: user ?? null,
 	});
 });

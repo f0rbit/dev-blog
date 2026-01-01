@@ -35,8 +35,7 @@ const fetchUser = async (): Promise<User | null> => {
 	const res = await api.fetch("/auth/status");
 	if (!res.ok) return null;
 	const data = (await res.json()) as { authenticated: boolean; user: User | null };
-	if (!data.authenticated) return null;
-	return data.user ?? null;
+	return data.authenticated ? data.user : null;
 };
 
 const fetchTokens = async (): Promise<Token[]> => {

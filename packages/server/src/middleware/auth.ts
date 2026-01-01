@@ -4,7 +4,7 @@ import { getCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 
-const EXEMPT_PATHS = ["/health", "/auth/user", "/auth/login", "/auth/logout", "/auth/callback"];
+const EXEMPT_PATHS = ["/health", "/auth/login", "/auth/logout", "/auth/callback"];
 const OPTIONAL_AUTH_PATHS = ["/auth/status"];
 
 const DevpadVerifyResponseSchema = z.object({
