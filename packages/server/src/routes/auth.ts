@@ -42,9 +42,9 @@ authRouter.get("/callback", c => {
 	setCookie(c, "devpad_jwt", token, {
 		httpOnly: true,
 		secure: true,
-		sameSite: "None",
+		sameSite: "Lax",
 		path: "/",
-		maxAge: 60 * 60 * 24,
+		maxAge: 60 * 60 * 24 * 7, // 7 days
 	});
 
 	const escapedToken = token.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
