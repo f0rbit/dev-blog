@@ -15,21 +15,24 @@ interface CategoryNode {
 	children?: CategoryNode[];
 }
 
+interface Props {
+	initialCategories?: Category[];
+}
+
 const flattenTree = (nodes: CategoryNode[], id = 1): Category[] => nodes.flatMap((n, i) => [{ id: id + i, name: n.name, parent: n.parent }, ...flattenTree(n.children ?? [], id + i + 100)]);
 
 const fetchCategories = async (): Promise<Category[]> => {
-	// Skip fetch during SSR - will run on client hydration
 	if (typeof window === "undefined") {
 		return [];
 	}
 	const res = await api.fetch("/api/blog/categories");
 	if (!res.ok) throw new Error("Failed to fetch categories");
-	const data = await res.json();
+	const data = (await res.json()) as { categories?: CategoryNode[] };
 	return flattenTree(data.categories ?? []);
 };
 
-const CategoriesPage: Component = () => {
-	const [categories, { refetch }] = createResource(fetchCategories);
+const CategoriesPage: Component<Props> = props => {
+	const [categories, { refetch }] = createResource(() => (props.initialCategories && props.initialCategories.length > 0 ? null : true), fetchCategories, { initialValue: props.initialCategories ?? [] });
 	const [error, setError] = createSignal<string | null>(null);
 	const [defaultParent, setDefaultParent] = createSignal("root");
 	const [formHighlighted, setFormHighlighted] = createSignal(false);

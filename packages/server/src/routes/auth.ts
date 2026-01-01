@@ -34,11 +34,13 @@ authRouter.get("/login", c => {
 
 authRouter.get("/callback", c => {
 	const token = c.req.query("token");
+	console.log("[AUTH] Callback received, token present:", !!token);
 
 	if (!token) {
 		return c.json({ code: "INVALID_CALLBACK", message: "No token provided" }, 400);
 	}
 
+	console.log("[AUTH] Setting devpad_jwt cookie...");
 	setCookie(c, "devpad_jwt", token, {
 		httpOnly: true,
 		secure: true,

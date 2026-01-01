@@ -13,13 +13,14 @@ const AuthStatus = () => {
 	const [loading, setLoading] = createSignal(true);
 
 	onMount(async () => {
+		console.log("[AuthStatus] Starting auth check...");
 		try {
 			const response = await api.fetch("/auth/status");
-			if (response.ok) {
-				const data = await response.json();
-				if (data.authenticated) {
-					setUser(data.user);
-				}
+			console.log("[AuthStatus] Response status:", response.status);
+			const data = (await response.json()) as { authenticated: boolean; user: User | null };
+			console.log("[AuthStatus] Response data:", { authenticated: data.authenticated, user: data.user });
+			if (response.ok && data.authenticated) {
+				setUser(data.user);
 			}
 		} catch (e) {
 			console.error("Failed to check auth status:", e);

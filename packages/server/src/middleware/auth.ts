@@ -172,7 +172,11 @@ type AuthEnv = { Bindings: Bindings; Variables: Variables };
 
 export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 	const path = new URL(c.req.url).pathname;
+	const rawCookie = c.req.header("Cookie");
+	const jwtCookieValue = getCookie(c, "devpad_jwt");
 	console.log("[AUTH] Request path:", path);
+	console.log("[AUTH] Raw Cookie header:", rawCookie ?? "(none)");
+	console.log("[AUTH] devpad_jwt cookie:", jwtCookieValue ? `${jwtCookieValue.slice(0, 20)}...` : "(none)");
 
 	if (isExemptPath(path)) {
 		console.log("[AUTH] Path is exempt, skipping auth");
