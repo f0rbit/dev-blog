@@ -28,22 +28,24 @@ type DevpadUser = {
 	avatar_url: string | null;
 };
 
-const hexEncode = (buffer: ArrayBuffer): string =>
+type UserRow = typeof users.$inferSelect;
+
+export const hexEncode = (buffer: ArrayBuffer): string =>
 	Array.from(new Uint8Array(buffer))
 		.map(b => b.toString(16).padStart(2, "0"))
 		.join("");
 
-const hashToken = async (token: string): Promise<string> => {
+export const hashToken = async (token: string): Promise<string> => {
 	const encoder = new TextEncoder();
 	const data = encoder.encode(token);
 	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
 	return hexEncode(hashBuffer);
 };
 
-const isExemptPath = (path: string): boolean => EXEMPT_PATHS.some(exempt => path === exempt || path.startsWith(`${exempt}/`));
-const isOptionalAuthPath = (path: string): boolean => OPTIONAL_AUTH_PATHS.some(p => path === p || path.startsWith(`${p}/`));
+export const isExemptPath = (path: string): boolean => EXEMPT_PATHS.some(exempt => path === exempt || path.startsWith(`${exempt}/`));
+export const isOptionalAuthPath = (path: string): boolean => OPTIONAL_AUTH_PATHS.some(p => path === p || path.startsWith(`${p}/`));
 
-const rowToUser = (row: typeof users.$inferSelect): User => ({
+export const rowToUser = (row: UserRow): User => ({
 	id: row.id,
 	github_id: row.github_id,
 	username: row.username,
@@ -125,9 +127,13 @@ const ensureUser = async (db: DrizzleDB, devpadUser: DevpadUser): Promise<Result
 	return ok(rowToUser(userRow));
 };
 
-const extractJWTFromHeader = (authHeader: string): string | null => {
-	if (!authHeader.startsWith("Bearer jwt:")) return null;
-	return authHeader.slice("Bearer jwt:".length);
+const JWT_PREFIX = "Bearer jwt:";
+
+export const extractJWTFromHeader = (authHeader: string): Result<string, string> => {
+	if (!authHeader.startsWith(JWT_PREFIX)) return err("missing_jwt_prefix");
+	const token = authHeader.slice(JWT_PREFIX.length);
+	if (token.length === 0) return err("empty_jwt_token");
+	return ok(token);
 };
 
 const verifyWithDevpadJWT = async (devpadApi: string, jwtToken: string): Promise<Result<DevpadUser, string>> => {
@@ -190,12 +196,12 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 
 	const authHeader = c.req.header("Authorization");
 	if (authHeader) {
-		const jwtToken = extractJWTFromHeader(authHeader);
-		if (jwtToken) {
-			const result = await authenticateWithJWT(ctx.db, ctx.devpadApi, jwtToken);
+		const jwtResult = extractJWTFromHeader(authHeader);
+		if (jwtResult.ok) {
+			const result = await authenticateWithJWT(ctx.db, ctx.devpadApi, jwtResult.value);
 			if (result.ok) {
 				c.set("user", result.value);
-				c.set("jwtToken", jwtToken);
+				c.set("jwtToken", jwtResult.value);
 				return next();
 			}
 		}

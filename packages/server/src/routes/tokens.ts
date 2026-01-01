@@ -4,6 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
+import { hexEncode } from "../middleware/auth";
 
 type Variables = {
 	user: { id: number };
@@ -14,14 +15,13 @@ const TokenIdSchema = z.object({
 	id: z.coerce.number().int().positive(),
 });
 
-const generateToken = (): string => crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+export const generateToken = (): string => crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
 
-const hashToken = async (token: string): Promise<string> => {
+export const hashToken = async (token: string): Promise<string> => {
 	const encoder = new TextEncoder();
 	const data = encoder.encode(token);
 	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-	const hashArray = Array.from(new Uint8Array(hashBuffer));
-	return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+	return hexEncode(hashBuffer);
 };
 
 const findToken = async (db: DrizzleDB, userId: number, tokenId: number): Promise<Result<schema.AccessKey, ApiError>> => {
@@ -38,7 +38,15 @@ const findToken = async (db: DrizzleDB, userId: number, tokenId: number): Promis
 	return ok(token);
 };
 
-const sanitizeToken = (token: schema.AccessKey) => ({
+export type SanitizedToken = {
+	id: number;
+	name: string;
+	note: string | null;
+	enabled: boolean;
+	created_at: Date;
+};
+
+export const sanitizeToken = (token: schema.AccessKey): SanitizedToken => ({
 	id: token.id,
 	name: token.name,
 	note: token.note,
