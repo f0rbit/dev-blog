@@ -32,10 +32,25 @@ const fetchCategories = async (): Promise<Category[]> => {
 };
 
 const CategoriesPage: Component<Props> = props => {
-	const [categories, { refetch }] = createResource(() => (props.initialCategories && props.initialCategories.length > 0 ? null : true), fetchCategories, { initialValue: props.initialCategories ?? [] });
+	// Use a signal to force refetch - increment to trigger new fetch
+	const [fetchTrigger, setFetchTrigger] = createSignal(0);
+	const [categories, { refetch }] = createResource(
+		() => {
+			const trigger = fetchTrigger();
+			// Skip initial fetch if we have SSR data, but always fetch on trigger > 0
+			if (trigger === 0 && props.initialCategories && props.initialCategories.length > 0) {
+				return null;
+			}
+			return trigger;
+		},
+		fetchCategories,
+		{ initialValue: props.initialCategories ?? [] }
+	);
 	const [error, setError] = createSignal<string | null>(null);
 	const [defaultParent, setDefaultParent] = createSignal("root");
 	const [formHighlighted, setFormHighlighted] = createSignal(false);
+
+	const refreshCategories = () => setFetchTrigger(n => n + 1);
 
 	const handleDelete = async (name: string) => {
 		setError(null);
@@ -48,7 +63,7 @@ const CategoriesPage: Component<Props> = props => {
 			return;
 		}
 
-		refetch();
+		refreshCategories();
 	};
 
 	const handleCreate = async (data: { name: string; parent: string }) => {
@@ -64,7 +79,7 @@ const CategoriesPage: Component<Props> = props => {
 			return;
 		}
 
-		refetch();
+		refreshCategories();
 	};
 
 	const selectParentForAdd = (parentName: string) => {

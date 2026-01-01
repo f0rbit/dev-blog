@@ -32,9 +32,10 @@ interface Integration {
 
 const fetchUser = async (): Promise<User | null> => {
 	if (typeof window === "undefined") return null;
-	const res = await api.fetch("/auth/user");
+	const res = await api.fetch("/auth/status");
 	if (!res.ok) return null;
-	const data = await res.json();
+	const data = (await res.json()) as { authenticated: boolean; user: User | null };
+	if (!data.authenticated) return null;
 	return data.user ?? null;
 };
 
@@ -42,7 +43,7 @@ const fetchTokens = async (): Promise<Token[]> => {
 	if (typeof window === "undefined") return [];
 	const res = await api.fetch("/api/blog/tokens");
 	if (!res.ok) throw new Error("Failed to fetch tokens");
-	const data = await res.json();
+	const data = (await res.json()) as { tokens?: Token[] };
 	return data.tokens ?? [];
 };
 
@@ -109,7 +110,7 @@ const SettingsPage: Component = () => {
 			throw new Error("Failed to create token");
 		}
 
-		const result = await res.json();
+		const result = (await res.json()) as { key: string };
 		refetch();
 		return result;
 	};
