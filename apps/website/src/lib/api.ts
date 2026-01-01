@@ -10,9 +10,13 @@ export const api = {
 	auth: (path: string) => `${API_HOST}/auth${path.startsWith("/") ? path : `/${path}`}`,
 
 	async fetch(path: string, options: RequestInit = {}): Promise<Response> {
+		const authHeaders = auth.getAuthHeaders();
+		console.log("[api.fetch] path:", path);
+		console.log("[api.fetch] authHeaders:", authHeaders);
+
 		const headers = {
 			...options.headers,
-			...auth.getAuthHeaders(),
+			...authHeaders,
 		};
 
 		return fetch(`${API_HOST}${path}`, {
