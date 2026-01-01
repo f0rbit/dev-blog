@@ -6,7 +6,6 @@ export {
 	accessKeys,
 	integrations,
 	fetchLinks,
-	devpadTokens,
 	projectsCache,
 	postProjects,
 } from "./database";
@@ -27,8 +26,6 @@ export type {
 	IntegrationInsert,
 	FetchLink as FetchLinkRow,
 	FetchLinkInsert,
-	DevpadToken,
-	DevpadTokenInsert,
 	ProjectCache as ProjectCacheRow,
 	ProjectCacheInsert,
 	PostProject,
