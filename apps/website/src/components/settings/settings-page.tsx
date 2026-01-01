@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import { type Component, For, Show, createResource, createSignal } from "solid-js";
+import { type Component, For, Show, createSignal, onMount } from "solid-js";
 import Button from "../ui/button";
 import { DevpadConnection } from "./devpad-connection";
 import TokenForm from "./token-form";
@@ -30,22 +30,6 @@ interface Integration {
 	username?: string;
 }
 
-const fetchUser = async (): Promise<User | null> => {
-	if (typeof window === "undefined") return null;
-	const res = await api.fetch("/auth/status");
-	if (!res.ok) return null;
-	const data = (await res.json()) as { authenticated: boolean; user: User | null };
-	return data.authenticated ? data.user : null;
-};
-
-const fetchTokens = async (): Promise<Token[]> => {
-	if (typeof window === "undefined") return [];
-	const res = await api.fetch("/api/blog/tokens");
-	if (!res.ok) throw new Error("Failed to fetch tokens");
-	const data = (await res.json()) as { tokens?: Token[] };
-	return data.tokens ?? [];
-};
-
 const formatDate = (dateStr: string): string => {
 	const date = new Date(dateStr);
 	return date.toLocaleDateString("en-US", {
@@ -63,10 +47,60 @@ const integrations: Integration[] = [
 ];
 
 const SettingsPage: Component = () => {
-	const [user] = createResource(fetchUser);
-	const [tokens, { refetch }] = createResource(fetchTokens);
-	const [showModal, setShowModal] = createSignal(false);
+	const [user, setUser] = createSignal<User | null>(null);
+	const [userLoading, setUserLoading] = createSignal(true);
+	const [userError, setUserError] = createSignal(false);
+
+	const [tokens, setTokens] = createSignal<Token[]>([]);
+	const [tokensLoading, setTokensLoading] = createSignal(true);
 	const [tokensError, setTokensError] = createSignal<string | null>(null);
+
+	const [showModal, setShowModal] = createSignal(false);
+
+	const fetchUser = async () => {
+		try {
+			const res = await api.fetch("/auth/status");
+			if (!res.ok) {
+				setUserError(true);
+				return;
+			}
+			const data = (await res.json()) as { authenticated: boolean; user: User | null };
+			if (data.authenticated && data.user) {
+				setUser(data.user);
+			}
+		} catch {
+			setUserError(true);
+		} finally {
+			setUserLoading(false);
+		}
+	};
+
+	const fetchTokens = async () => {
+		try {
+			const res = await api.fetch("/api/blog/tokens");
+			if (!res.ok) {
+				setTokensError("Failed to fetch tokens");
+				return;
+			}
+			const data = (await res.json()) as { tokens?: Token[] };
+			setTokens(data.tokens ?? []);
+		} catch {
+			setTokensError("Failed to fetch tokens");
+		} finally {
+			setTokensLoading(false);
+		}
+	};
+
+	const refetchTokens = () => {
+		setTokensLoading(true);
+		setTokensError(null);
+		fetchTokens();
+	};
+
+	onMount(() => {
+		fetchUser();
+		fetchTokens();
+	});
 
 	const handleToggle = async (id: number, enabled: boolean) => {
 		setTokensError(null);
@@ -81,7 +115,7 @@ const SettingsPage: Component = () => {
 			return;
 		}
 
-		refetch();
+		refetchTokens();
 	};
 
 	const handleDelete = async (id: number) => {
@@ -95,7 +129,7 @@ const SettingsPage: Component = () => {
 			return;
 		}
 
-		refetch();
+		refetchTokens();
 	};
 
 	const handleCreate = async (data: { name: string; note?: string }): Promise<{ key: string }> => {
@@ -110,7 +144,7 @@ const SettingsPage: Component = () => {
 		}
 
 		const result = (await res.json()) as { key: string };
-		refetch();
+		refetchTokens();
 		return result;
 	};
 
@@ -123,10 +157,10 @@ const SettingsPage: Component = () => {
 			<section class="settings-section">
 				<h3 class="settings-section__title">Profile</h3>
 				<div class="settings-section__content">
-					<Show when={user.loading}>
+					<Show when={userLoading()}>
 						<p class="muted text-sm">Loading profile...</p>
 					</Show>
-					<Show when={user.error}>
+					<Show when={userError()}>
 						<p class="muted text-sm">Unable to load profile</p>
 					</Show>
 					<Show when={user()} keyed>
@@ -157,7 +191,7 @@ const SettingsPage: Component = () => {
 							</>
 						)}
 					</Show>
-					<Show when={!user.loading && !user.error && !user()}>
+					<Show when={!userLoading() && !userError() && !user()}>
 						<p class="muted text-sm">Not signed in</p>
 					</Show>
 				</div>
@@ -210,11 +244,11 @@ const SettingsPage: Component = () => {
 						</div>
 					</Show>
 
-					<Show when={tokens.loading}>
+					<Show when={tokensLoading()}>
 						<p class="muted text-sm">Loading tokens...</p>
 					</Show>
 
-					<Show when={tokens.error}>
+					<Show when={tokensError()}>
 						<div class="form-error">
 							<p class="text-sm">Failed to load tokens</p>
 						</div>
