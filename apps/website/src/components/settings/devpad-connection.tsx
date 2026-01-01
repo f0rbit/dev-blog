@@ -6,9 +6,8 @@ type ConnectionStatus = {
 };
 
 const fetchStatus = async (): Promise<ConnectionStatus> => {
-	const response = await api.fetch("/api/blog/projects/status", {
-		credentials: "include",
-	});
+	if (typeof window === "undefined") return { connected: false };
+	const response = await api.fetch("/api/blog/projects/status");
 	if (!response.ok) return { connected: false };
 	return response.json();
 };

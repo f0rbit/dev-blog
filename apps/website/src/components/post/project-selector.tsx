@@ -16,6 +16,7 @@ type ProjectSelectorProps = {
 };
 
 const fetchProjects = async (): Promise<{ projects: Project[]; connected: boolean }> => {
+	if (typeof window === "undefined") return { projects: [], connected: false };
 	const response = await api.fetch("/api/blog/projects");
 	if (!response.ok) return { projects: [], connected: false };
 	return response.json();

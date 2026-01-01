@@ -31,6 +31,7 @@ interface Integration {
 }
 
 const fetchUser = async (): Promise<User | null> => {
+	if (typeof window === "undefined") return null;
 	const res = await api.fetch("/auth/user");
 	if (!res.ok) return null;
 	const data = await res.json();
@@ -38,6 +39,7 @@ const fetchUser = async (): Promise<User | null> => {
 };
 
 const fetchTokens = async (): Promise<Token[]> => {
+	if (typeof window === "undefined") return [];
 	const res = await api.fetch("/api/blog/tokens");
 	if (!res.ok) throw new Error("Failed to fetch tokens");
 	const data = await res.json();
