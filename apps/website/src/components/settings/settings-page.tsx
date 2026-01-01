@@ -23,6 +23,7 @@ interface Token {
 	created_at: string;
 }
 
+// Placeholder for future integrations feature
 interface Integration {
 	id: string;
 	name: string;
@@ -52,9 +53,7 @@ const integrations: Integration[] = [
 ];
 
 const SettingsPage: Component<SettingsPageProps> = props => {
-	const [user, setUser] = createSignal<User | null>(props.initialUser ?? null);
-	const [userLoading, setUserLoading] = createSignal(!props.initialUser);
-	const [userError, setUserError] = createSignal(false);
+	const [user] = createSignal<User | null>(props.initialUser ?? null);
 
 	const [tokens, setTokens] = createSignal<Token[]>(props.initialTokens ?? []);
 	const [tokensLoading, setTokensLoading] = createSignal(false);
@@ -139,13 +138,7 @@ const SettingsPage: Component<SettingsPageProps> = props => {
 			<section class="settings-section">
 				<h3 class="settings-section__title">Profile</h3>
 				<div class="settings-section__content">
-					<Show when={userLoading()}>
-						<p class="muted text-sm">Loading profile...</p>
-					</Show>
-					<Show when={userError()}>
-						<p class="muted text-sm">Unable to load profile</p>
-					</Show>
-					<Show when={user()} keyed>
+					<Show when={user()} keyed fallback={<p class="muted text-sm">Not signed in</p>}>
 						{userData => (
 							<>
 								<div class="profile-row">
@@ -172,9 +165,6 @@ const SettingsPage: Component<SettingsPageProps> = props => {
 								</div>
 							</>
 						)}
-					</Show>
-					<Show when={!userLoading() && !userError() && !user()}>
-						<p class="muted text-sm">Not signed in</p>
 					</Show>
 				</div>
 			</section>
@@ -228,12 +218,6 @@ const SettingsPage: Component<SettingsPageProps> = props => {
 
 					<Show when={tokensLoading()}>
 						<p class="muted text-sm">Loading tokens...</p>
-					</Show>
-
-					<Show when={tokensError()}>
-						<div class="form-error">
-							<p class="text-sm">Failed to load tokens</p>
-						</div>
 					</Show>
 
 					<Show when={tokens()} keyed>

@@ -1,4 +1,4 @@
-import { type ApiError, type PaginatedResponse, type Post, type PostCreate, type PostListParams, type PostUpdate, type PostsResponse, type Result, type Tag, err, ok } from "@blog/schema";
+import { type ApiError, type Post, type PostCreate, type PostListParams, type PostUpdate, type PostsResponse, type Result, err, ok } from "@blog/schema";
 
 // Asset type for file uploads (to be added to schema if needed)
 type Asset = {
