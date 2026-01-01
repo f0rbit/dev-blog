@@ -10,6 +10,7 @@
 		"strict": true,
 		"skipLibCheck": true,
 		"baseUrl": ".",
+		"types": ["@cloudflare/workers-types"],
 		"paths": {
 			"@/*": ["src/*"],
 			"@blog/api": ["../../packages/api/src/index.ts"],

@@ -37,8 +37,13 @@ let error: string | null = null;
 console.log("[SSR] Fetching post with slug:", slug);
 console.log("[SSR] API URL:", api.blog(`/post/${slug}`));
 
+const runtime = Astro.locals.runtime;
+
 try {
-	const [postRes, catRes] = await Promise.all([api.ssr(`/api/blog/post/${slug}`, Astro.request), api.ssr("/api/blog/categories", Astro.request)]);
+	const [postRes, catRes] = await Promise.all([
+		api.ssr(`/api/blog/post/${slug}`, Astro.request, {}, runtime),
+		api.ssr("/api/blog/categories", Astro.request, {}, runtime),
+	]);
 
 	console.log("[SSR] Post response status:", postRes.status);
 	console.log("[SSR] Categories response status:", catRes.status);

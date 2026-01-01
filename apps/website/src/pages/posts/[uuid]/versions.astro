@@ -42,8 +42,10 @@ let postInfo: PostInfo | null = null;
 let versions: VersionInfo[] = [];
 let error: string | null = null;
 
+const runtime = Astro.locals.runtime;
+
 try {
-	const versionsRes = await api.ssr(`/api/blog/post/${uuid}/versions`, Astro.request);
+	const versionsRes = await api.ssr(`/api/blog/post/${uuid}/versions`, Astro.request, {}, runtime);
 
 	if (versionsRes.ok) {
 		const data = await versionsRes.json();
@@ -57,7 +59,7 @@ try {
 	}
 
 	if (versions.length > 0) {
-		const postsRes = await api.ssr("/api/blog/posts?limit=100", Astro.request);
+		const postsRes = await api.ssr("/api/blog/posts?limit=100", Astro.request, {}, runtime);
 		if (postsRes.ok) {
 			const postsData = await postsRes.json();
 			const post = postsData.posts?.find((p: { uuid: string }) => p.uuid === uuid);
