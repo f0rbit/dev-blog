@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { authMiddleware } from "../../src/middleware/auth";
 import { tokensRouter } from "../../src/routes/tokens";
 import { hashToken } from "../../src/utils/crypto";
-import { type TestContext, createTestContext, createTestToken, createTestUser } from "../setup";
+import { type TestContext, createAuthenticatedTestApp, createTestContext, createTestToken, createTestUser } from "../setup";
 
 type SanitizedToken = {
 	id: number;
@@ -18,24 +18,7 @@ type TokenWithPlainKey = SanitizedToken & { token: string };
 
 type TokenListResponse = { tokens: SanitizedToken[] };
 
-const createTestApp = (ctx: TestContext, userId: number) => {
-	const app = new Hono<{ Variables: { user: { id: number }; appContext: AppContext } }>();
-
-	app.use("*", async (c, next) => {
-		c.set("appContext", {
-			db: ctx.db,
-			corpus: ctx.corpus,
-			devpadApi: "https://devpad.test",
-			environment: "test",
-		});
-		c.set("user", { id: userId });
-		await next();
-	});
-
-	app.route("/api/blog/tokens", tokensRouter);
-
-	return app;
-};
+const createTestApp = (ctx: TestContext, userId: number) => createAuthenticatedTestApp(ctx, tokensRouter, "/api/blog/tokens", userId);
 
 const createAuthTestApp = (ctx: TestContext) => {
 	const app = new Hono<{ Variables: { user: { id: number }; appContext: AppContext } }>();

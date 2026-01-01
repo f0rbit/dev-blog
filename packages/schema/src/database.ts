@@ -31,7 +31,6 @@ export const posts = sqliteTable(
 		publish_at: integer("publish_at", { mode: "timestamp" }),
 		created_at: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 		updated_at: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-		project_id: text("project_id"),
 	},
 	table => [unique("posts_author_slug_unique").on(table.author_id, table.slug)]
 );

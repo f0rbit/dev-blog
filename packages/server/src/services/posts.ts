@@ -12,6 +12,7 @@ import {
 	type Result,
 	type VersionInfo,
 	categories,
+	corpusPath,
 	err,
 	format_error,
 	ok,
@@ -22,7 +23,7 @@ import {
 	try_catch_async,
 } from "@blog/schema";
 import { and, desc, eq, gt, inArray, isNull, lte, sql } from "drizzle-orm";
-import { listVersions as corpusListVersions, corpusPath, deleteContent, getContent, putContent } from "../corpus/posts";
+import { listVersions as corpusListVersions, deleteContent, getContent, putContent } from "../corpus/posts";
 
 type PostServiceError = { type: "not_found"; resource: string } | { type: "slug_conflict"; slug: string } | { type: "corpus_error"; inner: PostCorpusError } | { type: "db_error"; message: string };
 

@@ -17,6 +17,7 @@ const ERROR_MAPPINGS: Record<string, { status: ErrorResponse["status"]; code: st
 	slug_conflict: { status: 409, code: "CONFLICT", defaultMessage: "Slug already exists" },
 	has_children: { status: 409, code: "CONFLICT", defaultMessage: "Cannot delete resource with children" },
 	has_posts: { status: 409, code: "CONFLICT", defaultMessage: "Cannot delete resource with posts" },
+	parent_not_found: { status: 400, code: "BAD_REQUEST", defaultMessage: "Parent category does not exist" },
 	db_error: { status: 500, code: "DB_ERROR", defaultMessage: "Database operation failed" },
 	corpus_error: { status: 500, code: "CORPUS_ERROR", defaultMessage: "Corpus operation failed" },
 	provider_error: { status: 502, code: "PROVIDER_ERROR", defaultMessage: "External provider error" },

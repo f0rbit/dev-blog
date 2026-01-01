@@ -1,5 +1,6 @@
 import { type AppContext, PostCreateSchema, PostListParamsSchema, PostUpdateSchema } from "@blog/schema";
 import { zValidator } from "@hono/zod-validator";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
@@ -13,23 +14,28 @@ type Variables = {
 
 export const postsRouter = new Hono<{ Variables: Variables }>();
 
-const UuidParam = z.object({
+const UuidParamSchema = z.object({
 	uuid: z.string().uuid(),
 });
 
-const SlugParam = z.object({
+const SlugParamSchema = z.object({
 	slug: z.string().min(1),
 });
 
-const HashParam = z.object({
+const HashParamSchema = z.object({
 	hash: z.string().min(1),
 });
+
+const UuidHashParamSchema = UuidParamSchema.merge(HashParamSchema);
+
+type ValidTarget = "query" | "param" | "json";
+const valid = <T>(c: Context, target: ValidTarget): T => (c.req.valid as (t: ValidTarget) => T)(target);
 
 postsRouter.get(
 	"/",
 	zValidator("query", PostListParamsSchema),
 	withAuth(async (c, user, ctx) => {
-		const params = PostListParamsSchema.parse(c.req.query());
+		const params = valid<z.infer<typeof PostListParamsSchema>>(c, "query");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 
 		const result = await service.list(user.id, params);
@@ -45,9 +51,9 @@ postsRouter.get(
 
 postsRouter.get(
 	"/:slug",
-	zValidator("param", SlugParam),
+	zValidator("param", SlugParamSchema),
 	withAuth(async (c, user, ctx) => {
-		const { slug } = SlugParam.parse(c.req.param());
+		const { slug } = valid<z.infer<typeof SlugParamSchema>>(c, "param");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 
 		const result = await service.getBySlug(user.id, slug);
@@ -65,7 +71,7 @@ postsRouter.post(
 	"/",
 	zValidator("json", PostCreateSchema),
 	withAuth(async (c, user, ctx) => {
-		const input = PostCreateSchema.parse(await c.req.json());
+		const input = valid<z.infer<typeof PostCreateSchema>>(c, "json");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 
 		const result = await service.create(user.id, input);
@@ -81,11 +87,11 @@ postsRouter.post(
 
 postsRouter.put(
 	"/:uuid",
-	zValidator("param", UuidParam),
+	zValidator("param", UuidParamSchema),
 	zValidator("json", PostUpdateSchema),
 	withAuth(async (c, user, ctx) => {
-		const { uuid } = UuidParam.parse(c.req.param());
-		const input = PostUpdateSchema.parse(await c.req.json());
+		const { uuid } = valid<z.infer<typeof UuidParamSchema>>(c, "param");
+		const input = valid<z.infer<typeof PostUpdateSchema>>(c, "json");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 
 		const result = await service.update(user.id, uuid, input);
@@ -101,9 +107,9 @@ postsRouter.put(
 
 postsRouter.delete(
 	"/:uuid",
-	zValidator("param", UuidParam),
+	zValidator("param", UuidParamSchema),
 	withAuth(async (c, user, ctx) => {
-		const { uuid } = UuidParam.parse(c.req.param());
+		const { uuid } = valid<z.infer<typeof UuidParamSchema>>(c, "param");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 
 		const result = await service.delete(user.id, uuid);
@@ -119,9 +125,9 @@ postsRouter.delete(
 
 postsRouter.get(
 	"/:uuid/versions",
-	zValidator("param", UuidParam),
+	zValidator("param", UuidParamSchema),
 	withAuth(async (c, user, ctx) => {
-		const { uuid } = UuidParam.parse(c.req.param());
+		const { uuid } = valid<z.infer<typeof UuidParamSchema>>(c, "param");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 
 		const result = await service.listVersions(user.id, uuid);
@@ -137,9 +143,9 @@ postsRouter.get(
 
 postsRouter.get(
 	"/:uuid/version/:hash",
-	zValidator("param", UuidParam.merge(HashParam)),
+	zValidator("param", UuidHashParamSchema),
 	withAuth(async (c, user, ctx) => {
-		const { uuid, hash } = UuidParam.merge(HashParam).parse(c.req.param());
+		const { uuid, hash } = valid<z.infer<typeof UuidHashParamSchema>>(c, "param");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 
 		const result = await service.getVersion(user.id, uuid, hash);
@@ -155,9 +161,9 @@ postsRouter.get(
 
 postsRouter.post(
 	"/:uuid/restore/:hash",
-	zValidator("param", UuidParam.merge(HashParam)),
+	zValidator("param", UuidHashParamSchema),
 	withAuth(async (c, user, ctx) => {
-		const { uuid, hash } = UuidParam.merge(HashParam).parse(c.req.param());
+		const { uuid, hash } = valid<z.infer<typeof UuidHashParamSchema>>(c, "param");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 
 		const result = await service.restoreVersion(user.id, uuid, hash);

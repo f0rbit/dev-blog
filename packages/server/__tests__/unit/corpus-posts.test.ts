@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
-import { type PostContent, type PostsCorpus, create_corpus, create_memory_backend, postsStoreDefinition } from "@blog/schema";
-import { corpusPath, deleteContent, getContent, listVersions, putContent } from "../../src/corpus/posts";
+import { type PostContent, type PostsCorpus, corpusPath, create_corpus, create_memory_backend, postsStoreDefinition } from "@blog/schema";
+import { deleteContent, getContent, listVersions, putContent } from "../../src/corpus/posts";
 
 describe("corpus/posts", () => {
 	let corpus: PostsCorpus;

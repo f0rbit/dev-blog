@@ -1,32 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import type { AppContext } from "@blog/schema";
 import * as schema from "@blog/schema/database";
-import { Hono } from "hono";
 import { tagsRouter } from "../../src/routes/tags";
-import { type TestContext, createTestContext, createTestPost, createTestUser } from "../setup";
+import { type TestContext, createAuthenticatedTestApp, createTestContext, createTestPost, createTestUser } from "../setup";
 
 type TagWithCount = { tag: string; count: number };
 type TagsListResponse = { tags: TagWithCount[] };
 type PostTagsResponse = { tags: string[] };
 
-const createTestApp = (ctx: TestContext, userId: number) => {
-	const app = new Hono<{ Variables: { user: { id: number }; appContext: AppContext } }>();
-
-	app.use("*", async (c, next) => {
-		c.set("appContext", {
-			db: ctx.db,
-			corpus: ctx.corpus,
-			devpadApi: "https://devpad.test",
-			environment: "test",
-		});
-		c.set("user", { id: userId });
-		await next();
-	});
-
-	app.route("/api/blog/tags", tagsRouter);
-
-	return app;
-};
+const createTestApp = (ctx: TestContext, userId: number) => createAuthenticatedTestApp(ctx, tagsRouter, "/api/blog/tags", userId);
 
 const addTagsToPost = async (ctx: TestContext, postId: number, tags: string[]) => {
 	for (const tag of tags) {

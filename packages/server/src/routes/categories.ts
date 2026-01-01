@@ -1,5 +1,6 @@
 import { type AppContext, CategoryCreateSchema } from "@blog/schema";
 import { zValidator } from "@hono/zod-validator";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
@@ -18,6 +19,9 @@ const CategoryNameSchema = z.object({
 const CategoryUpdateSchema = z.object({
 	name: z.string().min(1),
 });
+
+type ValidTarget = "query" | "param" | "json";
+const valid = <T>(c: Context, target: ValidTarget): T => (c.req.valid as (t: ValidTarget) => T)(target);
 
 export const categoriesRouter = new Hono<{ Variables: Variables }>();
 
@@ -40,16 +44,12 @@ categoriesRouter.post(
 	"/",
 	zValidator("json", CategoryCreateSchema),
 	withAuth(async (c, user, ctx) => {
-		const data = CategoryCreateSchema.parse(await c.req.json());
+		const data = valid<z.infer<typeof CategoryCreateSchema>>(c, "json");
 		const service = createCategoryService({ db: ctx.db });
 
 		const result = await service.create(user.id, data);
 		if (!result.ok) {
-			const error = result.error;
-			if (error.type === "conflict" && error.message?.includes("Parent")) {
-				return c.json({ code: "BAD_REQUEST", message: error.message }, 400);
-			}
-			const { status, body } = mapServiceErrorToResponse(error);
+			const { status, body } = mapServiceErrorToResponse(result.error);
 			return c.json(body, status);
 		}
 
@@ -62,8 +62,8 @@ categoriesRouter.put(
 	zValidator("param", CategoryNameSchema),
 	zValidator("json", CategoryUpdateSchema),
 	withAuth(async (c, user, ctx) => {
-		const { name } = CategoryNameSchema.parse(c.req.param());
-		const data = CategoryUpdateSchema.parse(await c.req.json()) as CategoryUpdate;
+		const { name } = valid<z.infer<typeof CategoryNameSchema>>(c, "param");
+		const data = valid<z.infer<typeof CategoryUpdateSchema>>(c, "json") as CategoryUpdate;
 		const service = createCategoryService({ db: ctx.db });
 
 		const result = await service.update(user.id, name, data);
@@ -80,7 +80,7 @@ categoriesRouter.delete(
 	"/:name",
 	zValidator("param", CategoryNameSchema),
 	withAuth(async (c, user, ctx) => {
-		const { name } = CategoryNameSchema.parse(c.req.param());
+		const { name } = valid<z.infer<typeof CategoryNameSchema>>(c, "param");
 		const service = createCategoryService({ db: ctx.db });
 
 		const result = await service.delete(user.id, name);

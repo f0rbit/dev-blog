@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { type PostCreate, type PostUpdate, tags } from "@blog/schema";
+import { type AppContext, type PostCreate, type PostUpdate, tags } from "@blog/schema";
 import { drizzle } from "drizzle-orm/bun-sqlite";
+import { Hono } from "hono";
+import { postsRouter } from "../../src/routes/posts";
 import { type PostService, createPostService } from "../../src/services/posts";
-import { createTestCategory, createTestContext, createTestUser } from "../setup";
+import { type TestContext, createTestCategory, createTestContext, createTestUser } from "../setup";
 
 /** Helper to build PostCreate with defaults for required fields */
 const post = (overrides: Partial<PostCreate> & Pick<PostCreate, "slug" | "title" | "content">): PostCreate => ({
@@ -1044,6 +1046,499 @@ describe("PostService", () => {
 			expect(fetchResult.ok).toBe(true);
 			if (!fetchResult.ok) return;
 			expect(fetchResult.value.project_ids).toEqual(["proj-m", "proj-n"]);
+		});
+	});
+});
+
+type Post = {
+	uuid: string;
+	slug: string;
+	title: string;
+	content: string;
+	format: string;
+	category: string;
+	tags: string[];
+	project_ids: string[];
+	archived: boolean;
+	publish_at: string | null;
+	description: string | null;
+	corpus_version: string | null;
+	created_at: string;
+	updated_at: string;
+};
+
+type PostListResponse = {
+	posts: Post[];
+	total_posts: number;
+	total_pages: number;
+	current_page: number;
+	per_page: number;
+};
+
+type ErrorResponse = { code: string; message: string };
+
+const createTestApp = (ctx: TestContext, userId: number) => {
+	const app = new Hono<{ Variables: { user: { id: number }; appContext: AppContext } }>();
+
+	app.use("*", async (c, next) => {
+		c.set("appContext", {
+			db: ctx.db,
+			corpus: ctx.corpus,
+			devpadApi: "https://devpad.test",
+			environment: "test",
+		});
+		c.set("user", { id: userId });
+		await next();
+	});
+
+	app.route("/api/blog/posts", postsRouter);
+
+	return app;
+};
+
+const createUnauthenticatedApp = (ctx: TestContext) => {
+	const app = new Hono<{ Variables: { user?: { id: number }; appContext: AppContext } }>();
+
+	app.use("*", async (c, next) => {
+		c.set("appContext", {
+			db: ctx.db,
+			corpus: ctx.corpus,
+			devpadApi: "https://devpad.test",
+			environment: "test",
+		});
+		await next();
+	});
+
+	app.route("/api/blog/posts", postsRouter);
+
+	return app;
+};
+
+describe("Posts Routes (HTTP)", () => {
+	let ctx: TestContext;
+
+	beforeEach(() => {
+		ctx = createTestContext();
+	});
+
+	afterEach(() => {
+		ctx.close();
+	});
+
+	describe("GET /api/blog/posts", () => {
+		it("requires authentication", async () => {
+			const app = createUnauthenticatedApp(ctx);
+			const res = await app.request("/api/blog/posts");
+
+			expect(res.status).toBe(401);
+			const body = (await res.json()) as ErrorResponse;
+			expect(body.code).toBe("UNAUTHORIZED");
+		});
+
+		it("returns posts list", async () => {
+			const user = await createTestUser(ctx);
+			const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
+			await service.create(user.id, post({ slug: "first-post", title: "First Post", content: "Content 1" }));
+			await service.create(user.id, post({ slug: "second-post", title: "Second Post", content: "Content 2" }));
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request("/api/blog/posts");
+
+			expect(res.status).toBe(200);
+			const body = (await res.json()) as PostListResponse;
+			expect(body.posts).toHaveLength(2);
+			expect(body.total_posts).toBe(2);
+		});
+
+		it("returns empty list when no posts", async () => {
+			const user = await createTestUser(ctx);
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request("/api/blog/posts");
+
+			expect(res.status).toBe(200);
+			const body = (await res.json()) as PostListResponse;
+			expect(body.posts).toEqual([]);
+			expect(body.total_posts).toBe(0);
+		});
+
+		it("only returns posts for current user", async () => {
+			const userA = await createTestUser(ctx, { github_id: 100001 });
+			const userB = await createTestUser(ctx, { github_id: 100002 });
+			const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
+
+			await service.create(userA.id, post({ slug: "a-post", title: "A Post", content: "Content" }));
+			await service.create(userB.id, post({ slug: "b-post", title: "B Post", content: "Content" }));
+
+			const appA = createTestApp(ctx, userA.id);
+			const resA = await appA.request("/api/blog/posts");
+			const bodyA = (await resA.json()) as PostListResponse;
+
+			expect(bodyA.posts).toHaveLength(1);
+			expect(bodyA.posts[0]?.slug).toBe("a-post");
+		});
+
+		it("supports pagination", async () => {
+			const user = await createTestUser(ctx);
+			const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
+
+			for (let i = 1; i <= 5; i++) {
+				await service.create(user.id, post({ slug: `post-${i}`, title: `Post ${i}`, content: `Content ${i}` }));
+			}
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request("/api/blog/posts?limit=2&offset=0");
+
+			expect(res.status).toBe(200);
+			const body = (await res.json()) as PostListResponse;
+			expect(body.posts).toHaveLength(2);
+			expect(body.total_posts).toBe(5);
+			expect(body.total_pages).toBe(3);
+			expect(body.per_page).toBe(2);
+		});
+
+		it("filters by status", async () => {
+			const user = await createTestUser(ctx);
+			const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
+
+			await service.create(user.id, post({ slug: "draft", title: "Draft", content: "Content", publish_at: null }));
+			await service.create(user.id, post({ slug: "published", title: "Published", content: "Content", publish_at: new Date("2020-01-01") }));
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request("/api/blog/posts?status=draft");
+
+			expect(res.status).toBe(200);
+			const body = (await res.json()) as PostListResponse;
+			expect(body.posts).toHaveLength(1);
+			expect(body.posts[0]?.slug).toBe("draft");
+		});
+	});
+
+	describe("GET /api/blog/posts/:slug", () => {
+		it("requires authentication", async () => {
+			const app = createUnauthenticatedApp(ctx);
+			const res = await app.request("/api/blog/posts/some-slug");
+
+			expect(res.status).toBe(401);
+			const body = (await res.json()) as ErrorResponse;
+			expect(body.code).toBe("UNAUTHORIZED");
+		});
+
+		it("returns single post by slug", async () => {
+			const user = await createTestUser(ctx);
+			const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
+			await service.create(user.id, post({ slug: "my-post", title: "My Post", content: "Content here" }));
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request("/api/blog/posts/my-post");
+
+			expect(res.status).toBe(200);
+			const body = (await res.json()) as Post;
+			expect(body.slug).toBe("my-post");
+			expect(body.title).toBe("My Post");
+			expect(body.content).toBe("Content here");
+		});
+
+		it("returns 404 for non-existent slug", async () => {
+			const user = await createTestUser(ctx);
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request("/api/blog/posts/nonexistent");
+
+			expect(res.status).toBe(404);
+			const body = (await res.json()) as ErrorResponse;
+			expect(body.code).toBe("NOT_FOUND");
+		});
+
+		it("cannot access another users post", async () => {
+			const userA = await createTestUser(ctx, { github_id: 200001 });
+			const userB = await createTestUser(ctx, { github_id: 200002 });
+			const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
+
+			await service.create(userA.id, post({ slug: "private-post", title: "Private", content: "Content" }));
+
+			const appB = createTestApp(ctx, userB.id);
+			const res = await appB.request("/api/blog/posts/private-post");
+
+			expect(res.status).toBe(404);
+		});
+	});
+
+	describe("POST /api/blog/posts", () => {
+		it("requires authentication", async () => {
+			const app = createUnauthenticatedApp(ctx);
+			const res = await app.request("/api/blog/posts", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ slug: "test", title: "Test", content: "Content" }),
+			});
+
+			expect(res.status).toBe(401);
+			const body = (await res.json()) as ErrorResponse;
+			expect(body.code).toBe("UNAUTHORIZED");
+		});
+
+		it("creates post", async () => {
+			const user = await createTestUser(ctx);
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request("/api/blog/posts", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ slug: "new-post", title: "New Post", content: "Content", format: "md" }),
+			});
+
+			expect(res.status).toBe(201);
+			const body = (await res.json()) as Post;
+			expect(body.slug).toBe("new-post");
+			expect(body.title).toBe("New Post");
+			expect(body.uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+		});
+
+		it("creates post with tags", async () => {
+			const user = await createTestUser(ctx);
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request("/api/blog/posts", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ slug: "tagged", title: "Tagged Post", content: "Content", format: "md", tags: ["typescript", "testing"] }),
+			});
+
+			expect(res.status).toBe(201);
+			const body = (await res.json()) as Post;
+			expect(body.tags).toEqual(["typescript", "testing"]);
+		});
+
+		it("returns 409 for duplicate slug", async () => {
+			const user = await createTestUser(ctx);
+			const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
+			await service.create(user.id, post({ slug: "existing", title: "Existing", content: "Content" }));
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request("/api/blog/posts", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ slug: "existing", title: "New", content: "Content", format: "md" }),
+			});
+
+			expect(res.status).toBe(409);
+			const body = (await res.json()) as ErrorResponse;
+			expect(body.code).toBe("CONFLICT");
+		});
+
+		it("validates required fields", async () => {
+			const user = await createTestUser(ctx);
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request("/api/blog/posts", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ slug: "missing-title" }),
+			});
+
+			expect(res.status).toBe(400);
+		});
+	});
+
+	describe("PUT /api/blog/posts/:uuid", () => {
+		it("requires authentication", async () => {
+			const app = createUnauthenticatedApp(ctx);
+			const res = await app.request("/api/blog/posts/00000000-0000-0000-0000-000000000000", {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ title: "Updated" }),
+			});
+
+			expect(res.status).toBe(401);
+			const body = (await res.json()) as ErrorResponse;
+			expect(body.code).toBe("UNAUTHORIZED");
+		});
+
+		it("updates post", async () => {
+			const user = await createTestUser(ctx);
+			const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
+			const createResult = await service.create(user.id, post({ slug: "update-me", title: "Original", content: "Content" }));
+			expect(createResult.ok).toBe(true);
+			if (!createResult.ok) return;
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request(`/api/blog/posts/${createResult.value.uuid}`, {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ title: "Updated Title" }),
+			});
+
+			expect(res.status).toBe(200);
+			const body = (await res.json()) as Post;
+			expect(body.title).toBe("Updated Title");
+			expect(body.slug).toBe("update-me");
+		});
+
+		it("updates post slug", async () => {
+			const user = await createTestUser(ctx);
+			const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
+			const createResult = await service.create(user.id, post({ slug: "old-slug", title: "Post", content: "Content" }));
+			expect(createResult.ok).toBe(true);
+			if (!createResult.ok) return;
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request(`/api/blog/posts/${createResult.value.uuid}`, {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ slug: "new-slug" }),
+			});
+
+			expect(res.status).toBe(200);
+			const body = (await res.json()) as Post;
+			expect(body.slug).toBe("new-slug");
+		});
+
+		it("returns 404 for non-existent uuid", async () => {
+			const user = await createTestUser(ctx);
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request("/api/blog/posts/00000000-0000-0000-0000-000000000000", {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ title: "Updated" }),
+			});
+
+			expect(res.status).toBe(404);
+			const body = (await res.json()) as ErrorResponse;
+			expect(body.code).toBe("NOT_FOUND");
+		});
+
+		it("returns 409 for slug conflict", async () => {
+			const user = await createTestUser(ctx);
+			const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
+
+			await service.create(user.id, post({ slug: "taken", title: "Taken", content: "Content" }));
+			const createResult = await service.create(user.id, post({ slug: "other", title: "Other", content: "Content" }));
+			expect(createResult.ok).toBe(true);
+			if (!createResult.ok) return;
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request(`/api/blog/posts/${createResult.value.uuid}`, {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ slug: "taken" }),
+			});
+
+			expect(res.status).toBe(409);
+			const body = (await res.json()) as ErrorResponse;
+			expect(body.code).toBe("CONFLICT");
+		});
+
+		it("cannot update another users post", async () => {
+			const userA = await createTestUser(ctx, { github_id: 300001 });
+			const userB = await createTestUser(ctx, { github_id: 300002 });
+			const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
+
+			const createResult = await service.create(userA.id, post({ slug: "a-post", title: "A Post", content: "Content" }));
+			expect(createResult.ok).toBe(true);
+			if (!createResult.ok) return;
+
+			const appB = createTestApp(ctx, userB.id);
+			const res = await appB.request(`/api/blog/posts/${createResult.value.uuid}`, {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ title: "Hacked" }),
+			});
+
+			expect(res.status).toBe(404);
+		});
+
+		it("validates uuid format", async () => {
+			const user = await createTestUser(ctx);
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request("/api/blog/posts/not-a-uuid", {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ title: "Updated" }),
+			});
+
+			expect(res.status).toBe(400);
+		});
+	});
+
+	describe("DELETE /api/blog/posts/:uuid", () => {
+		it("requires authentication", async () => {
+			const app = createUnauthenticatedApp(ctx);
+			const res = await app.request("/api/blog/posts/00000000-0000-0000-0000-000000000000", {
+				method: "DELETE",
+			});
+
+			expect(res.status).toBe(401);
+			const body = (await res.json()) as ErrorResponse;
+			expect(body.code).toBe("UNAUTHORIZED");
+		});
+
+		it("deletes post", async () => {
+			const user = await createTestUser(ctx);
+			const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
+			const createResult = await service.create(user.id, post({ slug: "delete-me", title: "Delete Me", content: "Content" }));
+			expect(createResult.ok).toBe(true);
+			if (!createResult.ok) return;
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request(`/api/blog/posts/${createResult.value.uuid}`, {
+				method: "DELETE",
+			});
+
+			expect(res.status).toBe(200);
+			const body = (await res.json()) as { success: boolean };
+			expect(body.success).toBe(true);
+
+			const getRes = await app.request(`/api/blog/posts/${createResult.value.slug}`);
+			expect(getRes.status).toBe(404);
+		});
+
+		it("returns 404 for non-existent uuid", async () => {
+			const user = await createTestUser(ctx);
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request("/api/blog/posts/00000000-0000-0000-0000-000000000000", {
+				method: "DELETE",
+			});
+
+			expect(res.status).toBe(404);
+			const body = (await res.json()) as ErrorResponse;
+			expect(body.code).toBe("NOT_FOUND");
+		});
+
+		it("cannot delete another users post", async () => {
+			const userA = await createTestUser(ctx, { github_id: 400001 });
+			const userB = await createTestUser(ctx, { github_id: 400002 });
+			const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
+
+			const createResult = await service.create(userA.id, post({ slug: "a-post", title: "A Post", content: "Content" }));
+			expect(createResult.ok).toBe(true);
+			if (!createResult.ok) return;
+
+			const appB = createTestApp(ctx, userB.id);
+			const res = await appB.request(`/api/blog/posts/${createResult.value.uuid}`, {
+				method: "DELETE",
+			});
+
+			expect(res.status).toBe(404);
+
+			const appA = createTestApp(ctx, userA.id);
+			const listRes = await appA.request("/api/blog/posts");
+			const body = (await listRes.json()) as PostListResponse;
+			expect(body.posts).toHaveLength(1);
+		});
+
+		it("validates uuid format", async () => {
+			const user = await createTestUser(ctx);
+
+			const app = createTestApp(ctx, user.id);
+			const res = await app.request("/api/blog/posts/not-a-uuid", {
+				method: "DELETE",
+			});
+
+			expect(res.status).toBe(400);
 		});
 	});
 });

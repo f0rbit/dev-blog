@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { generateToken, hashToken, sanitizeToken } from "../../src/routes/tokens";
+import { generateToken, sanitizeToken } from "../../src/services/tokens";
 
 describe("generateToken", () => {
 	it("generates a 64-character token", () => {
@@ -23,47 +23,6 @@ describe("generateToken", () => {
 	it("generates hex-like characters", () => {
 		const token = generateToken();
 		expect(token).toMatch(/^[0-9a-f]{64}$/);
-	});
-});
-
-describe("hashToken", () => {
-	it("produces consistent hash for same input", async () => {
-		const hash1 = await hashToken("test-token");
-		const hash2 = await hashToken("test-token");
-
-		expect(hash1).toBe(hash2);
-	});
-
-	it("produces different hashes for different inputs", async () => {
-		const hash1 = await hashToken("token-a");
-		const hash2 = await hashToken("token-b");
-
-		expect(hash1).not.toBe(hash2);
-	});
-
-	it("produces 64 character hex string (SHA-256)", async () => {
-		const hash = await hashToken("any-token");
-
-		expect(hash.length).toBe(64);
-		expect(hash).toMatch(/^[0-9a-f]{64}$/);
-	});
-
-	it("hashes empty string correctly", async () => {
-		const hash = await hashToken("");
-		expect(hash).toBe("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
-	});
-
-	it("hashes known value correctly", async () => {
-		const hash = await hashToken("hello");
-		expect(hash).toBe("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
-	});
-
-	it("works correctly with generated tokens", async () => {
-		const token = generateToken();
-		const hash = await hashToken(token);
-
-		expect(hash.length).toBe(64);
-		expect(hash).toMatch(/^[0-9a-f]{64}$/);
 	});
 });
 

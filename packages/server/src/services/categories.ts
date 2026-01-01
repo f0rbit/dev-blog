@@ -1,7 +1,13 @@
 import { type Category, type CategoryCreate, type DrizzleDB, type Result, categories, err, format_error, ok, posts, try_catch_async } from "@blog/schema";
 import { and, eq } from "drizzle-orm";
 
-type CategoryServiceError = { type: "not_found"; resource: string } | { type: "conflict"; message: string } | { type: "has_children" } | { type: "has_posts" } | { type: "db_error"; message: string };
+type CategoryServiceError =
+	| { type: "not_found"; resource: string }
+	| { type: "conflict"; message: string }
+	| { type: "parent_not_found"; message: string }
+	| { type: "has_children" }
+	| { type: "has_posts" }
+	| { type: "db_error"; message: string };
 
 export type CategoryUpdate = {
 	name: string;
@@ -114,7 +120,7 @@ export const createCategoryService = ({ db }: Deps) => {
 		if (input.parent && input.parent !== "root") {
 			const parentResult = await find(userId, input.parent);
 			if (!parentResult.ok) {
-				return err(conflict("Parent category does not exist"));
+				return err({ type: "parent_not_found", message: "Parent category does not exist" });
 			}
 		}
 

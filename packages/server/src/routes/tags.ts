@@ -1,5 +1,6 @@
 import type { AppContext } from "@blog/schema";
 import { zValidator } from "@hono/zod-validator";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
@@ -26,6 +27,9 @@ const TagsBodySchema = z.object({
 	tags: z.array(z.string().min(1)),
 });
 
+type ValidTarget = "query" | "param" | "json";
+const valid = <T>(c: Context, target: ValidTarget): T => (c.req.valid as (t: ValidTarget) => T)(target);
+
 export const tagsRouter = new Hono<{ Variables: Variables }>();
 
 tagsRouter.get(
@@ -47,7 +51,7 @@ tagsRouter.get(
 	"/posts/:uuid/tags",
 	zValidator("param", PostUuidSchema),
 	withAuth(async (c, user, ctx) => {
-		const { uuid } = PostUuidSchema.parse(c.req.param());
+		const { uuid } = valid<z.infer<typeof PostUuidSchema>>(c, "param");
 		const service = createTagService({ db: ctx.db });
 
 		const postResult = await service.findPost(user.id, uuid);
@@ -71,8 +75,8 @@ tagsRouter.put(
 	zValidator("param", PostUuidSchema),
 	zValidator("json", TagsBodySchema),
 	withAuth(async (c, user, ctx) => {
-		const { uuid } = PostUuidSchema.parse(c.req.param());
-		const { tags: newTags } = TagsBodySchema.parse(await c.req.json());
+		const { uuid } = valid<z.infer<typeof PostUuidSchema>>(c, "param");
+		const { tags: newTags } = valid<z.infer<typeof TagsBodySchema>>(c, "json");
 		const service = createTagService({ db: ctx.db });
 
 		const postResult = await service.findPost(user.id, uuid);
@@ -96,8 +100,8 @@ tagsRouter.post(
 	zValidator("param", PostUuidSchema),
 	zValidator("json", TagsBodySchema),
 	withAuth(async (c, user, ctx) => {
-		const { uuid } = PostUuidSchema.parse(c.req.param());
-		const { tags: tagsToAdd } = TagsBodySchema.parse(await c.req.json());
+		const { uuid } = valid<z.infer<typeof PostUuidSchema>>(c, "param");
+		const { tags: tagsToAdd } = valid<z.infer<typeof TagsBodySchema>>(c, "json");
 		const service = createTagService({ db: ctx.db });
 
 		const postResult = await service.findPost(user.id, uuid);
@@ -120,7 +124,7 @@ tagsRouter.delete(
 	"/posts/:uuid/tags/:tag",
 	zValidator("param", TagParamSchema),
 	withAuth(async (c, user, ctx) => {
-		const { uuid, tag } = TagParamSchema.parse(c.req.param());
+		const { uuid, tag } = valid<z.infer<typeof TagParamSchema>>(c, "param");
 		const service = createTagService({ db: ctx.db });
 
 		const postResult = await service.findPost(user.id, uuid);

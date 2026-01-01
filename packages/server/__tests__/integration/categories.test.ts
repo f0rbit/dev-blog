@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import type { AppContext } from "@blog/schema";
-import { Hono } from "hono";
-import { type CategoryNode, categoriesRouter } from "../../src/routes/categories";
-import { type TestContext, createTestCategory, createTestContext, createTestPost, createTestUser } from "../setup";
+import { categoriesRouter } from "../../src/routes/categories";
+import { type TestContext, createAuthenticatedTestApp, createTestCategory, createTestContext, createTestPost, createTestUser } from "../setup";
 
 type Category = {
 	id: number;
@@ -11,27 +9,12 @@ type Category = {
 	parent: string | null;
 };
 
+type CategoryNode = Category & { children: CategoryNode[] };
+
 type CategoriesTreeResponse = { categories: CategoryNode[] };
 type ErrorResponse = { code: string; message: string };
 
-const createTestApp = (ctx: TestContext, userId: number) => {
-	const app = new Hono<{ Variables: { user: { id: number }; appContext: AppContext } }>();
-
-	app.use("*", async (c, next) => {
-		c.set("appContext", {
-			db: ctx.db,
-			corpus: ctx.corpus,
-			devpadApi: "https://devpad.test",
-			environment: "test",
-		});
-		c.set("user", { id: userId });
-		await next();
-	});
-
-	app.route("/api/blog/categories", categoriesRouter);
-
-	return app;
-};
+const createTestApp = (ctx: TestContext, userId: number) => createAuthenticatedTestApp(ctx, categoriesRouter, "/api/blog/categories", userId);
 
 describe("Categories Route Integration", () => {
 	let ctx: TestContext;

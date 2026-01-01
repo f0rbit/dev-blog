@@ -1,13 +1,12 @@
 import { AccessKeyCreateSchema, AccessKeyUpdateSchema, type AppContext } from "@blog/schema";
 import { zValidator } from "@hono/zod-validator";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
-import { type CreatedToken, type SanitizedToken, createTokenService, generateToken, sanitizeToken } from "../services/tokens";
-import { hashToken } from "../utils/crypto";
+import { type CreatedToken, type SanitizedToken, createTokenService } from "../services/tokens";
 import { mapServiceErrorToResponse } from "../utils/errors";
 
-export { generateToken, hashToken, sanitizeToken };
 export type { CreatedToken, SanitizedToken };
 
 type Variables = {
@@ -18,6 +17,9 @@ type Variables = {
 const TokenIdSchema = z.object({
 	id: z.coerce.number().int().positive(),
 });
+
+type ValidTarget = "query" | "param" | "json";
+const valid = <T>(c: Context, target: ValidTarget): T => (c.req.valid as (t: ValidTarget) => T)(target);
 
 export const tokensRouter = new Hono<{ Variables: Variables }>();
 
@@ -40,7 +42,7 @@ tokensRouter.post(
 	"/",
 	zValidator("json", AccessKeyCreateSchema),
 	withAuth(async (c, user, ctx) => {
-		const data = AccessKeyCreateSchema.parse(await c.req.json());
+		const data = valid<z.infer<typeof AccessKeyCreateSchema>>(c, "json");
 		const service = createTokenService({ db: ctx.db });
 
 		const result = await service.create(user.id, data);
@@ -58,8 +60,8 @@ tokensRouter.put(
 	zValidator("param", TokenIdSchema),
 	zValidator("json", AccessKeyUpdateSchema),
 	withAuth(async (c, user, ctx) => {
-		const { id } = TokenIdSchema.parse(c.req.param());
-		const data = AccessKeyUpdateSchema.parse(await c.req.json());
+		const { id } = valid<z.infer<typeof TokenIdSchema>>(c, "param");
+		const data = valid<z.infer<typeof AccessKeyUpdateSchema>>(c, "json");
 		const service = createTokenService({ db: ctx.db });
 
 		const result = await service.update(user.id, id, data);
@@ -76,7 +78,7 @@ tokensRouter.delete(
 	"/:id",
 	zValidator("param", TokenIdSchema),
 	withAuth(async (c, user, ctx) => {
-		const { id } = TokenIdSchema.parse(c.req.param());
+		const { id } = valid<z.infer<typeof TokenIdSchema>>(c, "param");
 		const service = createTokenService({ db: ctx.db });
 
 		const result = await service.delete(user.id, id);

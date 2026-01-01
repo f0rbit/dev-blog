@@ -1,9 +1,10 @@
 import { Database } from "bun:sqlite";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { type DrizzleDB, type PostsCorpus, create_corpus, create_memory_backend, postsStoreDefinition } from "@blog/schema";
+import { type AppContext, type DrizzleDB, type PostsCorpus, create_corpus, create_memory_backend, postsStoreDefinition } from "@blog/schema";
 import * as schema from "@blog/schema/database";
 import { drizzle } from "drizzle-orm/bun-sqlite";
+import { Hono } from "hono";
 
 export type TestUser = {
 	id: number;
@@ -55,9 +56,17 @@ export type TestContext = {
 	sqliteDb: Database;
 	db: DrizzleDB;
 	corpus: PostsCorpus;
+	ctx: AppContext;
 	reset: () => void;
 	close: () => void;
 };
+
+export const createAppContext = (db: DrizzleDB, corpus: PostsCorpus): AppContext => ({
+	db,
+	corpus,
+	devpadApi: "https://devpad.test",
+	environment: "test",
+});
 
 export const createTestContext = (): TestContext => {
 	const sqliteDb = new Database(":memory:");
@@ -74,6 +83,7 @@ export const createTestContext = (): TestContext => {
 		sqliteDb,
 		db,
 		corpus,
+		ctx: createAppContext(db, corpus),
 		reset: () => {
 			// Clear tables in reverse dependency order using Drizzle
 			bunDb.delete(schema.postProjects).run();
@@ -214,3 +224,21 @@ export { createMockDevpadProvider } from "../src/providers/devpad";
 export type { DevpadProvider } from "../src/providers/devpad";
 
 export const generateId = (): string => crypto.randomUUID();
+
+type AuthenticatedVariables = {
+	user: { id: number };
+	appContext: AppContext;
+};
+
+export const createAuthenticatedTestApp = (ctx: TestContext, router: Hono<{ Variables: AuthenticatedVariables }>, basePath: string, userId: number) => {
+	const app = new Hono<{ Variables: AuthenticatedVariables }>();
+
+	app.use("*", async (c, next) => {
+		c.set("user", { id: userId });
+		c.set("appContext", ctx.ctx);
+		return next();
+	});
+
+	app.route(basePath, router);
+	return app;
+};

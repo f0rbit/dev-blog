@@ -1,7 +1,5 @@
-import { type PostContent, type PostCorpusError, type PostsCorpus, type Result, type VersionInfo, corpusPath, err, mapCorpusError, ok, postsStoreDefinition } from "@blog/schema";
+import { type PostContent, type PostCorpusError, type PostsCorpus, type Result, type VersionInfo, err, mapCorpusError, ok, postsStoreDefinition } from "@blog/schema";
 import { type Backend, create_store } from "@f0rbit/corpus";
-
-export { corpusPath };
 
 const corpusToBackend = (corpus: PostsCorpus): Backend => {
 	const backend: Backend = {
