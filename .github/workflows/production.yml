@@ -24,19 +24,8 @@ jobs:
       - name: Run tests
         run: bun test
       
-      - name: Build frontend
-        run: bun run build:client
-        env:
-          PUBLIC_API_URL: https://blog-devpad-api.dev-818.workers.dev
-      
-      - name: Deploy Worker (Production)
-        run: bunx wrangler deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      
-      - name: Deploy Pages (Production)
-        run: bunx wrangler pages deploy apps/website/dist --project-name=blog-devpad --branch=main
+      - name: Build and Deploy
+        run: bun run deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

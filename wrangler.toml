@@ -4,7 +4,7 @@ compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
 [assets]
-directory = "dist/client"
+directory = "dist"
 
 # Production environment (default)
 [vars]
@@ -25,7 +25,7 @@ bucket_name = "blog-devpad-corpus"
 name = "blog-devpad-api-preview"
 
 [env.preview.assets]
-directory = "dist/client"
+directory = "dist"
 
 [env.preview.vars]
 ENVIRONMENT = "preview"
