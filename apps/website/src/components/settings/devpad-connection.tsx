@@ -1,102 +1,16 @@
-import { api } from "@/lib/api";
-import { Show, createResource, createSignal } from "solid-js";
+import type { Component } from "solid-js";
 
-type ConnectionStatus = {
-	connected: boolean;
-};
-
-const fetchStatus = async (): Promise<ConnectionStatus> => {
-	if (typeof window === "undefined") return { connected: false };
-	const response = await api.fetch("/api/blog/projects/status");
-	if (!response.ok) return { connected: false };
-	return response.json();
-};
-
-export const DevpadConnection = () => {
-	const [status, { refetch }] = createResource(fetchStatus);
-	const [token, setToken] = createSignal("");
-	const [saving, setSaving] = createSignal(false);
-	const [error, setError] = createSignal<string | null>(null);
-
-	const connected = () => status()?.connected ?? false;
-
-	const handleConnect = async (e: Event) => {
-		e.preventDefault();
-		if (!token().trim()) return;
-
-		setSaving(true);
-		setError(null);
-
-		try {
-			const response = await api.fetch("/api/blog/projects/token", {
-				method: "PUT",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ token: token() }),
-				credentials: "include",
-			});
-
-			if (!response.ok) {
-				const data = await response.json();
-				setError(data.error ?? "Failed to connect");
-				return;
-			}
-
-			setToken("");
-			await refetch();
-		} catch (err) {
-			setError("Network error");
-		} finally {
-			setSaving(false);
-		}
-	};
-
-	const handleDisconnect = async () => {
-		setSaving(true);
-		setError(null);
-
-		try {
-			await api.fetch("/api/blog/projects/token", {
-				method: "DELETE",
-				credentials: "include",
-			});
-			await refetch();
-		} catch (err) {
-			setError("Failed to disconnect");
-		} finally {
-			setSaving(false);
-		}
-	};
-
+export const DevpadConnection: Component = () => {
 	return (
-		<div class="devpad-connection">
-			<Show when={error()}>
-				<p class="devpad-connection__error">{error()}</p>
-			</Show>
-
-			<Show
-				when={connected()}
-				fallback={
-					<form class="devpad-connection__form" onSubmit={handleConnect}>
-						<p class="devpad-connection__info">Connect your DevPad account to link posts to projects. Get your API token from DevPad settings.</p>
-						<div class="devpad-connection__input-row">
-							<input type="password" class="input" placeholder="DevPad API Token" value={token()} onInput={e => setToken(e.currentTarget.value)} disabled={saving()} />
-							<button type="submit" class="btn btn-primary" disabled={saving() || !token().trim()}>
-								{saving() ? "Connecting..." : "Connect"}
-							</button>
-						</div>
-					</form>
-				}
-			>
-				<div class="devpad-connection__connected">
-					<span class="devpad-connection__status">
-						<span class="status-dot status-dot--success" />
-						Connected to DevPad
-					</span>
-					<button type="button" class="btn btn-secondary" onClick={handleDisconnect} disabled={saving()}>
-						{saving() ? "..." : "Disconnect"}
-					</button>
-				</div>
-			</Show>
+		<div class="devpad-status">
+			<p class="text-sm">
+				<span style={{ color: "var(--color-success, #22c55e)" }}>●</span> Connected via DevPad login
+			</p>
+			<p class="text-sm muted" style={{ "margin-top": "8px" }}>
+				Your DevPad projects are available in the post editor.
+			</p>
 		</div>
 	);
 };
+
+export default DevpadConnection;
