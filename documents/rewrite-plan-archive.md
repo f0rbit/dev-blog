@@ -1,3 +1,11 @@
+# Blog Platform Rewrite Plan (ARCHIVED)
+
+> **Note:** This document is an archived planning document from the initial rewrite. 
+> The implementation has been completed and some details may be outdated.
+> For current documentation, see `deployment.md`.
+
+---
+
 # Migration Plan: dev-blog-go to blog.devpad.tools
 
 ## Executive Summary

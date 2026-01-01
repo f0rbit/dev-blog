@@ -29,6 +29,7 @@ dev-blog/
 - **Database**: D1 (SQLite at edge) for metadata
 - **File Storage**: R2 bucket for Corpus content versioning (via @f0rbit/corpus)
 - **Auth**: Delegates to devpad.tools for GitHub OAuth, also supports API tokens
+- **DevPad Integration**: Preview deployments use JWT tokens (not API keys) for DevPad API authentication
 
 ### Database Tables (Already Namespaced)
 
@@ -43,7 +44,6 @@ Blog-specific tables are prefixed with `blog_` for future monorepo compatibility
 | `blog_tags` | Post tags |
 | `blog_integrations` | External service integrations |
 | `blog_fetch_links` | Links between posts and integrations |
-| `blog_devpad_tokens` | DevPad API tokens per user |
 | `blog_projects_cache` | Cached DevPad projects |
 | `blog_post_projects` | Many-to-many post-project links |
 
@@ -72,7 +72,7 @@ import { api } from "@/lib/api";
 
 // Usage
 fetch(api.blog("/posts"))    // → {host}/api/blog/posts
-fetch(api.auth("/user"))     // → {host}/auth/user
+fetch(api.auth("/status"))   // → {host}/auth/status
 ```
 
 Set `PUBLIC_API_URL` environment variable for production.
@@ -185,7 +185,7 @@ bunx wrangler d1 execute blog-devpad-db --remote --command="SELECT name FROM sql
 Expected tables:
 - `users`, `access_keys` (shared, no prefix)
 - `blog_posts`, `blog_categories`, `blog_tags`, `blog_integrations`
-- `blog_fetch_links`, `blog_devpad_tokens`, `blog_projects_cache`, `blog_post_projects`
+- `blog_fetch_links`, `blog_projects_cache`, `blog_post_projects`
 - Corpus internal tables (e.g., `corpus_snapshots`, `corpus_metadata`)
 
 ### 1.4 Deploy the API (Cloudflare Workers)
@@ -485,7 +485,6 @@ Blog tables are **already prefixed** with `blog_` - no migration needed:
 | `blog_tags` | ✅ Already prefixed |
 | `blog_integrations` | ✅ Already prefixed |
 | `blog_fetch_links` | ✅ Already prefixed |
-| `blog_devpad_tokens` | ✅ Already prefixed |
 | `blog_projects_cache` | ✅ Already prefixed |
 | `blog_post_projects` | ✅ Already prefixed |
 
