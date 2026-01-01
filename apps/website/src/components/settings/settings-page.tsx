@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import { type Component, For, Show, createSignal, onMount } from "solid-js";
+import { type Component, For, Show, createSignal } from "solid-js";
 import Button from "../ui/button";
 import { DevpadConnection } from "./devpad-connection";
 import TokenForm from "./token-form";
@@ -30,6 +30,11 @@ interface Integration {
 	username?: string;
 }
 
+interface SettingsPageProps {
+	initialUser?: User | null;
+	initialTokens?: Token[];
+}
+
 const formatDate = (dateStr: string): string => {
 	const date = new Date(dateStr);
 	return date.toLocaleDateString("en-US", {
@@ -46,34 +51,16 @@ const integrations: Integration[] = [
 	{ id: "hashnode", name: "Hashnode", connected: false },
 ];
 
-const SettingsPage: Component = () => {
-	const [user, setUser] = createSignal<User | null>(null);
-	const [userLoading, setUserLoading] = createSignal(true);
+const SettingsPage: Component<SettingsPageProps> = props => {
+	const [user, setUser] = createSignal<User | null>(props.initialUser ?? null);
+	const [userLoading, setUserLoading] = createSignal(!props.initialUser);
 	const [userError, setUserError] = createSignal(false);
 
-	const [tokens, setTokens] = createSignal<Token[]>([]);
-	const [tokensLoading, setTokensLoading] = createSignal(true);
+	const [tokens, setTokens] = createSignal<Token[]>(props.initialTokens ?? []);
+	const [tokensLoading, setTokensLoading] = createSignal(false);
 	const [tokensError, setTokensError] = createSignal<string | null>(null);
 
 	const [showModal, setShowModal] = createSignal(false);
-
-	const fetchUser = async () => {
-		try {
-			const res = await api.fetch("/auth/status");
-			if (!res.ok) {
-				setUserError(true);
-				return;
-			}
-			const data = (await res.json()) as { authenticated: boolean; user: User | null };
-			if (data.authenticated && data.user) {
-				setUser(data.user);
-			}
-		} catch {
-			setUserError(true);
-		} finally {
-			setUserLoading(false);
-		}
-	};
 
 	const fetchTokens = async () => {
 		try {
@@ -96,11 +83,6 @@ const SettingsPage: Component = () => {
 		setTokensError(null);
 		fetchTokens();
 	};
-
-	onMount(() => {
-		fetchUser();
-		fetchTokens();
-	});
 
 	const handleToggle = async (id: number, enabled: boolean) => {
 		setTokensError(null);
