@@ -166,6 +166,7 @@ const authenticateWithJWT = async (db: DrizzleDB, devpadApi: string, jwtToken: s
 type Variables = {
 	user: User;
 	appContext: AppContext;
+	jwtToken?: string;
 };
 
 type AuthEnv = { Bindings: Bindings; Variables: Variables };
@@ -209,6 +210,7 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 			if (result.ok) {
 				console.log("[AUTH] JWT valid, user:", result.value.username);
 				c.set("user", result.value);
+				c.set("jwtToken", jwtToken);
 				return next();
 			}
 			console.log("[AUTH] JWT invalid");
@@ -223,6 +225,7 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 		if (result.ok) {
 			console.log("[AUTH] JWT cookie valid, user:", result.value.username);
 			c.set("user", result.value);
+			c.set("jwtToken", jwtCookie);
 			return next();
 		}
 		console.log("[AUTH] JWT cookie invalid");
