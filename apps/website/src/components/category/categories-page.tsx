@@ -18,8 +18,14 @@ interface CategoryNode {
 const flattenTree = (nodes: CategoryNode[], id = 1): Category[] => nodes.flatMap((n, i) => [{ id: id + i, name: n.name, parent: n.parent }, ...flattenTree(n.children ?? [], id + i + 100)]);
 
 const fetchCategories = async (): Promise<Category[]> => {
+	console.log("[categories] fetchCategories called");
 	const res = await api.fetch("/api/blog/categories");
-	if (!res.ok) throw new Error("Failed to fetch categories");
+	console.log("[categories] response status:", res.status);
+	if (!res.ok) {
+		const text = await res.text();
+		console.error("[categories] error response:", text);
+		throw new Error("Failed to fetch categories");
+	}
 	const data = await res.json();
 	return flattenTree(data.categories ?? []);
 };
