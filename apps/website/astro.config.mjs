@@ -6,6 +6,8 @@ import { defineConfig } from "astro/config";
 export default defineConfig({
 	integrations: [solidJs()],
 	adapter: cloudflare({
+		mode: "advanced",
+		imageService: "passthrough",
 		platformProxy: {
 			enabled: true,
 		},
