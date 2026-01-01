@@ -1,6 +1,33 @@
 ---
 import PostEditor from "@/components/post/post-editor";
 import AppLayout from "@/layouts/app-layout.astro";
+import { api } from "@/lib/api";
+
+interface CategoryNode {
+	name: string;
+	parent: string | null;
+	children?: CategoryNode[];
+}
+
+interface Category {
+	name: string;
+	parent: string | null;
+}
+
+const flattenTree = (nodes: CategoryNode[]): Category[] => nodes.flatMap(n => [{ name: n.name, parent: n.parent }, ...flattenTree(n.children ?? [])]);
+
+let categories: Category[] = [];
+
+try {
+	const runtime = Astro.locals.runtime;
+	const response = await api.ssr("/api/blog/categories", Astro.request, {}, runtime);
+	if (response.ok) {
+		const data = await response.json();
+		categories = flattenTree(data.categories ?? []);
+	}
+} catch (e) {
+	console.error("[SSR:new-post] Categories fetch failed:", e);
+}
 ---
 
 <AppLayout title="New Post">
@@ -15,7 +42,7 @@ import AppLayout from "@/layouts/app-layout.astro";
 		</header>
 
 		<div id="editor-container">
-			<PostEditor client:load categories={[]} />
+			<PostEditor client:load categories={categories} />
 		</div>
 	</section>
 </AppLayout>
