@@ -3,7 +3,9 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
-import { type CreatedToken, type SanitizedToken, createTokenService, generateToken, hashToken, sanitizeToken } from "../services/tokens";
+import { type CreatedToken, type SanitizedToken, createTokenService, generateToken, sanitizeToken } from "../services/tokens";
+import { hashToken } from "../utils/crypto";
+import { mapServiceErrorToResponse } from "../utils/errors";
 
 export { generateToken, hashToken, sanitizeToken };
 export type { CreatedToken, SanitizedToken };
@@ -26,9 +28,8 @@ tokensRouter.get(
 
 		const result = await service.list(user.id);
 		if (!result.ok) {
-			const error = result.error;
-			const message = error.type === "db_error" ? error.message : "Unknown error";
-			return c.json({ code: "DB_ERROR", message }, 500);
+			const { status, body } = mapServiceErrorToResponse(result.error);
+			return c.json(body, status);
 		}
 
 		return c.json({ tokens: result.value });
@@ -44,9 +45,8 @@ tokensRouter.post(
 
 		const result = await service.create(user.id, data);
 		if (!result.ok) {
-			const error = result.error;
-			const message = error.type === "db_error" ? error.message : "Unknown error";
-			return c.json({ code: "DB_ERROR", message }, 500);
+			const { status, body } = mapServiceErrorToResponse(result.error);
+			return c.json(body, status);
 		}
 
 		return c.json(result.value, 201);
@@ -64,11 +64,8 @@ tokensRouter.put(
 
 		const result = await service.update(user.id, id, data);
 		if (!result.ok) {
-			const error = result.error;
-			if (error.type === "not_found") {
-				return c.json({ code: "NOT_FOUND", message: "Token not found" }, 404);
-			}
-			return c.json({ code: "DB_ERROR", message: error.message }, 500);
+			const { status, body } = mapServiceErrorToResponse(result.error);
+			return c.json(body, status);
 		}
 
 		return c.json(result.value);
@@ -84,11 +81,8 @@ tokensRouter.delete(
 
 		const result = await service.delete(user.id, id);
 		if (!result.ok) {
-			const error = result.error;
-			if (error.type === "not_found") {
-				return c.json({ code: "NOT_FOUND", message: "Token not found" }, 404);
-			}
-			return c.json({ code: "DB_ERROR", message: error.message }, 500);
+			const { status, body } = mapServiceErrorToResponse(result.error);
+			return c.json(body, status);
 		}
 
 		return c.body(null, 204);

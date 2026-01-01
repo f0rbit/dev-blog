@@ -3,6 +3,7 @@ import type { AppContext } from "@blog/schema";
 import { Hono } from "hono";
 import { authMiddleware } from "../../src/middleware/auth";
 import { tokensRouter } from "../../src/routes/tokens";
+import { hashToken } from "../../src/utils/crypto";
 import { type TestContext, createTestContext, createTestToken, createTestUser } from "../setup";
 
 type SanitizedToken = {
@@ -16,15 +17,6 @@ type SanitizedToken = {
 type TokenWithPlainKey = SanitizedToken & { token: string };
 
 type TokenListResponse = { tokens: SanitizedToken[] };
-
-const hashToken = async (token: string): Promise<string> => {
-	const encoder = new TextEncoder();
-	const data = encoder.encode(token);
-	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-	return Array.from(new Uint8Array(hashBuffer))
-		.map(b => b.toString(16).padStart(2, "0"))
-		.join("");
-};
 
 const createTestApp = (ctx: TestContext, userId: number) => {
 	const app = new Hono<{ Variables: { user: { id: number }; appContext: AppContext } }>();

@@ -2,7 +2,8 @@ import type { AppContext, User } from "@blog/schema";
 import { Hono } from "hono";
 import { withAuth } from "../middleware/require-auth";
 import { createDevpadProvider } from "../providers/devpad";
-import { type ProjectServiceError, createProjectService } from "../services/projects";
+import { createProjectService } from "../services/projects";
+import { mapServiceErrorToResponse } from "../utils/errors";
 
 type Variables = {
 	user: User;
@@ -11,14 +12,6 @@ type Variables = {
 };
 
 export const projectsRouter = new Hono<{ Variables: Variables }>();
-
-const errorMessage = (error: ProjectServiceError): string => {
-	switch (error.type) {
-		case "provider_error":
-		case "corpus_error":
-			return error.message;
-	}
-};
 
 const getService = (ctx: AppContext) => {
 	const devpadProvider = createDevpadProvider({
@@ -38,7 +31,8 @@ projectsRouter.get(
 		const result = await service.list(user.id);
 
 		if (!result.ok) {
-			return c.json({ code: "INTERNAL_ERROR", message: result.error.message ?? "Failed to list projects" }, 500);
+			const { status, body } = mapServiceErrorToResponse(result.error);
+			return c.json(body, status);
 		}
 
 		return c.json({ projects: result.value });
@@ -58,7 +52,8 @@ projectsRouter.post(
 		const result = await service.refresh(user.id, jwtToken);
 
 		if (!result.ok) {
-			return c.json({ code: "INTERNAL_ERROR", message: errorMessage(result.error) ?? "Failed to refresh projects" }, 500);
+			const { status, body } = mapServiceErrorToResponse(result.error);
+			return c.json(body, status);
 		}
 
 		return c.json({ projects: result.value });

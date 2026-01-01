@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import type { AppContext } from "@blog/schema";
 import { Hono } from "hono";
 import { authMiddleware } from "../../src/middleware/auth";
+import { hashToken } from "../../src/utils/crypto";
 import { type TestContext, createMockDevpadVerifyFetch, createTestContext, createTestToken, createTestUser } from "../setup";
 
 type AuthResponse = {
@@ -56,15 +57,6 @@ const createTestApp = (ctx: TestContext, devpadApi: string) => {
 	});
 
 	return app;
-};
-
-const hashToken = async (token: string): Promise<string> => {
-	const encoder = new TextEncoder();
-	const data = encoder.encode(token);
-	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-	return Array.from(new Uint8Array(hashBuffer))
-		.map(b => b.toString(16).padStart(2, "0"))
-		.join("");
 };
 
 const mockFetchWithPreconnect = (handler: (url: string | URL | Request, init?: RequestInit) => Promise<Response>) => {

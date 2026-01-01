@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { getCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
+import { hashToken } from "../utils/crypto";
 
 const EXEMPT_PATHS = ["/health", "/auth/login", "/auth/logout", "/auth/callback"];
 const OPTIONAL_AUTH_PATHS = ["/auth/status"];
@@ -29,18 +30,6 @@ type DevpadUser = {
 };
 
 type UserRow = typeof users.$inferSelect;
-
-export const hexEncode = (buffer: ArrayBuffer): string =>
-	Array.from(new Uint8Array(buffer))
-		.map(b => b.toString(16).padStart(2, "0"))
-		.join("");
-
-export const hashToken = async (token: string): Promise<string> => {
-	const encoder = new TextEncoder();
-	const data = encoder.encode(token);
-	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-	return hexEncode(hashBuffer);
-};
 
 export const isExemptPath = (path: string): boolean => EXEMPT_PATHS.some(exempt => path === exempt || path.startsWith(`${exempt}/`));
 export const isOptionalAuthPath = (path: string): boolean => OPTIONAL_AUTH_PATHS.some(p => path === p || path.startsWith(`${p}/`));

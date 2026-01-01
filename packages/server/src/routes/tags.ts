@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
 import { type TagWithCount, createTagService } from "../services/tags";
+import { mapServiceErrorToResponse } from "../utils/errors";
 
 export type { TagWithCount };
 
@@ -34,9 +35,8 @@ tagsRouter.get(
 
 		const result = await service.list(user.id);
 		if (!result.ok) {
-			const error = result.error;
-			const message = error.type === "db_error" ? error.message : "Unknown error";
-			return c.json({ code: "DB_ERROR", message }, 500);
+			const { status, body } = mapServiceErrorToResponse(result.error);
+			return c.json(body, status);
 		}
 
 		return c.json({ tags: result.value });
@@ -52,14 +52,14 @@ tagsRouter.get(
 
 		const postResult = await service.findPost(user.id, uuid);
 		if (!postResult.ok) {
-			return c.json({ code: "NOT_FOUND", message: "Post not found" }, 404);
+			const { status, body } = mapServiceErrorToResponse(postResult.error);
+			return c.json(body, status);
 		}
 
 		const tagsResult = await service.getPostTags(postResult.value.id);
 		if (!tagsResult.ok) {
-			const error = tagsResult.error;
-			const message = error.type === "db_error" ? error.message : "Unknown error";
-			return c.json({ code: "DB_ERROR", message }, 500);
+			const { status, body } = mapServiceErrorToResponse(tagsResult.error);
+			return c.json(body, status);
 		}
 
 		return c.json({ tags: tagsResult.value });
@@ -77,14 +77,14 @@ tagsRouter.put(
 
 		const postResult = await service.findPost(user.id, uuid);
 		if (!postResult.ok) {
-			return c.json({ code: "NOT_FOUND", message: "Post not found" }, 404);
+			const { status, body } = mapServiceErrorToResponse(postResult.error);
+			return c.json(body, status);
 		}
 
 		const result = await service.setPostTags(postResult.value.id, newTags);
 		if (!result.ok) {
-			const error = result.error;
-			const message = error.type === "db_error" ? error.message : "Unknown error";
-			return c.json({ code: "DB_ERROR", message }, 500);
+			const { status, body } = mapServiceErrorToResponse(result.error);
+			return c.json(body, status);
 		}
 
 		return c.json({ tags: result.value });
@@ -102,14 +102,14 @@ tagsRouter.post(
 
 		const postResult = await service.findPost(user.id, uuid);
 		if (!postResult.ok) {
-			return c.json({ code: "NOT_FOUND", message: "Post not found" }, 404);
+			const { status, body } = mapServiceErrorToResponse(postResult.error);
+			return c.json(body, status);
 		}
 
 		const result = await service.addPostTags(postResult.value.id, tagsToAdd);
 		if (!result.ok) {
-			const error = result.error;
-			const message = error.type === "db_error" ? error.message : "Unknown error";
-			return c.json({ code: "DB_ERROR", message }, 500);
+			const { status, body } = mapServiceErrorToResponse(result.error);
+			return c.json(body, status);
 		}
 
 		return c.json({ tags: result.value }, 201);
@@ -125,16 +125,14 @@ tagsRouter.delete(
 
 		const postResult = await service.findPost(user.id, uuid);
 		if (!postResult.ok) {
-			return c.json({ code: "NOT_FOUND", message: "Post not found" }, 404);
+			const { status, body } = mapServiceErrorToResponse(postResult.error);
+			return c.json(body, status);
 		}
 
 		const result = await service.removePostTag(postResult.value.id, tag);
 		if (!result.ok) {
-			const error = result.error;
-			if (error.type === "not_found") {
-				return c.json({ code: "NOT_FOUND", message: "Tag not found on post" }, 404);
-			}
-			return c.json({ code: "DB_ERROR", message: error.message }, 500);
+			const { status, body } = mapServiceErrorToResponse(result.error);
+			return c.json(body, status);
 		}
 
 		return c.body(null, 204);

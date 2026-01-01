@@ -1,7 +1,7 @@
 import { type AccessKeyCreate, type AccessKeyUpdate, type DrizzleDB, type Result, accessKeys, err, format_error, ok, try_catch_async } from "@blog/schema";
 import type { AccessKey } from "@blog/schema/database";
 import { and, eq } from "drizzle-orm";
-import { hexEncode } from "../middleware/auth";
+import { hashToken } from "../utils/crypto";
 
 type TokenServiceError = { type: "not_found"; resource: string } | { type: "db_error"; message: string };
 
@@ -46,13 +46,6 @@ export const sanitizeToken = (token: AccessKey): SanitizedToken => ({
 });
 
 export const generateToken = (): string => crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
-
-export const hashToken = async (token: string): Promise<string> => {
-	const encoder = new TextEncoder();
-	const data = encoder.encode(token);
-	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-	return hexEncode(hashBuffer);
-};
 
 export const createTokenService = ({ db }: Deps) => {
 	const list = async (userId: number): Promise<Result<SanitizedToken[], TokenServiceError>> =>

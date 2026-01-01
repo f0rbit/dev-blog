@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { type CategoryNode, buildCategoryTree } from "../../src/routes/categories";
+import { type CategoryNode, buildCategoryTree } from "../../src/services/categories";
 
 describe("buildCategoryTree", () => {
 	it("builds tree from flat categories", () => {

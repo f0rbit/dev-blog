@@ -134,7 +134,7 @@ const PostEditor: Component<PostEditorProps> = props => {
 	};
 
 	const saveNewPost = async (data: PostFormData) => {
-		const response = await api.fetch("/api/blog/post", {
+		const response = await api.fetch("/api/blog/posts", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({

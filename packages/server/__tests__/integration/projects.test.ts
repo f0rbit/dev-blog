@@ -1,12 +1,40 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import type { AppContext, Project, User } from "@blog/schema";
 import { Hono } from "hono";
+import { authMiddleware } from "../../src/middleware/auth";
 import { createMockDevpadProvider } from "../../src/providers/devpad";
+import { projectsRouter } from "../../src/routes/projects";
 import { createProjectService } from "../../src/services/projects";
-import { type TestContext, createTestContext, createTestUser } from "../setup";
+import { hashToken } from "../../src/utils/crypto";
+import { type TestContext, createMockDevpadVerifyFetch, createTestContext, createTestToken, createTestUser } from "../setup";
 
 type ProjectsResponse = { projects: Project[] };
 type ErrorResponse = { code: string; message: string };
+
+const mockFetchWithPreconnect = (handler: (url: string | URL | Request, init?: RequestInit) => Promise<Response>) => {
+	const fn = handler as typeof globalThis.fetch;
+	(fn as unknown as { preconnect: () => void }).preconnect = () => {};
+	return fn;
+};
+
+const createAuthenticatedTestApp = (ctx: TestContext, devpadApi: string) => {
+	const app = new Hono<{ Variables: { user: User; appContext: AppContext; jwtToken?: string } }>();
+
+	app.use("*", async (c, next) => {
+		c.set("appContext", {
+			db: ctx.db,
+			corpus: ctx.corpus,
+			devpadApi,
+			environment: "test",
+		});
+		await next();
+	});
+
+	app.use("*", authMiddleware);
+	app.route("/api/blog/projects", projectsRouter);
+
+	return app;
+};
 
 const createTestApp = (ctx: TestContext, user: User, mockProvider: ReturnType<typeof createMockDevpadProvider>, jwtToken?: string) => {
 	const app = new Hono<{ Variables: { user: User; appContext: AppContext; jwtToken?: string } }>();
@@ -264,6 +292,144 @@ describe("Projects Route Integration", () => {
 			const resB = await appB.request("/api/blog/projects");
 			const bodyB = (await resB.json()) as ProjectsResponse;
 			expect(bodyB.projects).toHaveLength(2);
+		});
+	});
+});
+
+describe("Projects Routes (HTTP)", () => {
+	let ctx: TestContext;
+	let originalFetch: typeof globalThis.fetch;
+	const devpadApi = "https://devpad.test";
+
+	beforeEach(() => {
+		ctx = createTestContext();
+		originalFetch = globalThis.fetch;
+	});
+
+	afterEach(() => {
+		ctx.close();
+		globalThis.fetch = originalFetch;
+	});
+
+	describe("GET /api/blog/projects", () => {
+		it("requires authentication", async () => {
+			const app = createAuthenticatedTestApp(ctx, devpadApi);
+			const res = await app.request("/api/blog/projects");
+
+			expect(res.status).toBe(401);
+			const body = (await res.json()) as ErrorResponse;
+			expect(body.code).toBe("UNAUTHORIZED");
+		});
+
+		it("returns projects with valid Auth-Token", async () => {
+			const user = await createTestUser(ctx);
+			const plainToken = "projects-test-token";
+			await createTestToken(ctx, user.id, "test-token", await hashToken(plainToken));
+
+			const app = createAuthenticatedTestApp(ctx, devpadApi);
+			const res = await app.request("/api/blog/projects", {
+				headers: { "Auth-Token": plainToken },
+			});
+
+			expect(res.status).toBe(200);
+			const body = (await res.json()) as ProjectsResponse;
+			expect(body.projects).toEqual([]);
+		});
+
+		it("returns projects with valid JWT auth", async () => {
+			const mockUser = {
+				github_id: 999001,
+				username: "jwtprojectsuser",
+				email: "jwt@projects.test",
+				avatar_url: null,
+			};
+
+			globalThis.fetch = mockFetchWithPreconnect(createMockDevpadVerifyFetch({ authenticated: true, user: mockUser }));
+
+			const app = createAuthenticatedTestApp(ctx, devpadApi);
+			const res = await app.request("/api/blog/projects", {
+				headers: { Authorization: "Bearer jwt:valid-jwt-token" },
+			});
+
+			expect(res.status).toBe(200);
+			const body = (await res.json()) as ProjectsResponse;
+			expect(body.projects).toEqual([]);
+		});
+	});
+
+	describe("POST /api/blog/projects/refresh", () => {
+		it("requires authentication", async () => {
+			const app = createAuthenticatedTestApp(ctx, devpadApi);
+			const res = await app.request("/api/blog/projects/refresh", { method: "POST" });
+
+			expect(res.status).toBe(401);
+			const body = (await res.json()) as ErrorResponse;
+			expect(body.code).toBe("UNAUTHORIZED");
+		});
+
+		it("requires JWT token (rejects Auth-Token only)", async () => {
+			const user = await createTestUser(ctx);
+			const plainToken = "refresh-test-token";
+			await createTestToken(ctx, user.id, "test-token", await hashToken(plainToken));
+
+			const app = createAuthenticatedTestApp(ctx, devpadApi);
+			const res = await app.request("/api/blog/projects/refresh", {
+				method: "POST",
+				headers: { "Auth-Token": plainToken },
+			});
+
+			expect(res.status).toBe(401);
+			const body = (await res.json()) as ErrorResponse;
+			expect(body.code).toBe("UNAUTHORIZED");
+			expect(body.message).toContain("JWT");
+		});
+
+		it("works with valid JWT auth", async () => {
+			const mockUser = {
+				github_id: 999002,
+				username: "jwtrefreshuser",
+				email: "jwtrefresh@projects.test",
+				avatar_url: null,
+			};
+
+			const mockProjectsResponse = JSON.stringify([{ id: "p1", name: "Project 1", slug: "project-1", description: null, color: null, icon: null, url: null }]);
+
+			globalThis.fetch = mockFetchWithPreconnect(async url => {
+				const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
+
+				if (urlStr.includes("/api/auth/verify")) {
+					return new Response(
+						JSON.stringify({
+							authenticated: true,
+							user: {
+								id: `user-${mockUser.github_id}`,
+								name: mockUser.username,
+								email: mockUser.email,
+								github_id: mockUser.github_id,
+								image_url: mockUser.avatar_url,
+							},
+						}),
+						{ status: 200 }
+					);
+				}
+
+				if (urlStr.includes("/api/v0/projects")) {
+					return new Response(mockProjectsResponse, { status: 200 });
+				}
+
+				return new Response("Not found", { status: 404 });
+			});
+
+			const app = createAuthenticatedTestApp(ctx, devpadApi);
+			const res = await app.request("/api/blog/projects/refresh", {
+				method: "POST",
+				headers: { Authorization: "Bearer jwt:valid-jwt-token" },
+			});
+
+			expect(res.status).toBe(200);
+			const body = (await res.json()) as ProjectsResponse;
+			expect(body.projects).toHaveLength(1);
+			expect(body.projects[0]?.name).toBe("Project 1");
 		});
 	});
 });

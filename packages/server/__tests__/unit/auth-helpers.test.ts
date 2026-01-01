@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { extractJWTFromHeader, hashToken, hexEncode, isExemptPath, isOptionalAuthPath, rowToUser } from "../../src/middleware/auth";
+import { extractJWTFromHeader, isExemptPath, isOptionalAuthPath, rowToUser } from "../../src/middleware/auth";
+import { hashToken, hexEncode } from "../../src/utils/crypto";
 
 describe("hexEncode", () => {
 	it("encodes empty buffer to empty string", () => {
