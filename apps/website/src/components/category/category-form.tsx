@@ -1,5 +1,6 @@
 import type { Category as SchemaCategory } from "@blog/schema";
 import { type Component, For, createEffect, createSignal } from "solid-js";
+import { createFormState } from "../../lib/form-utils";
 import Button from "../ui/button";
 import Input from "../ui/input";
 
@@ -23,7 +24,7 @@ const scrollToFormAndFocus = () => {
 const CategoryForm: Component<CategoryFormProps> = props => {
 	const [name, setName] = createSignal("");
 	const [parent, setParent] = createSignal(props.defaultParent);
-	const [submitting, setSubmitting] = createSignal(false);
+	const form = createFormState();
 
 	createEffect(() => {
 		setParent(props.defaultParent);
@@ -35,11 +36,11 @@ const CategoryForm: Component<CategoryFormProps> = props => {
 		const trimmedName = name().trim();
 		if (!trimmedName) return;
 
-		setSubmitting(true);
-		await props.onSubmit({ name: trimmedName, parent: parent() });
-		setName("");
-		setParent("root");
-		setSubmitting(false);
+		await form.handleSubmit(async () => {
+			await props.onSubmit({ name: trimmedName, parent: parent() });
+			setName("");
+			setParent("root");
+		});
 	};
 
 	const parentCategory = () => {
@@ -62,20 +63,20 @@ const CategoryForm: Component<CategoryFormProps> = props => {
 						value={name()}
 						onInput={setName}
 						placeholder="Category name"
-						disabled={submitting()}
+						disabled={form.submitting()}
 					/>
 				</div>
 				<div class="form-row">
 					<label for="category-parent" class="text-xs tertiary">
 						Parent
 					</label>
-					<select value={parent()} onChange={e => setParent(e.currentTarget.value)} disabled={submitting()}>
+					<select value={parent()} onChange={e => setParent(e.currentTarget.value)} disabled={form.submitting()}>
 						<For each={props.categories}>{cat => <option value={cat.name}>{cat.name}</option>}</For>
 					</select>
 				</div>
 				<div class="category-form-actions">
-					<Button type="submit" variant="primary" disabled={submitting() || !name().trim()}>
-						{submitting() ? "Creating..." : "+ Create"}
+					<Button type="submit" variant="primary" disabled={form.submitting() || !name().trim()}>
+						{form.submitting() ? "Creating..." : "+ Create"}
 					</Button>
 				</div>
 			</form>

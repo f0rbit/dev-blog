@@ -50,12 +50,7 @@ const SettingsPage: Component<SettingsPageProps> = props => {
 
 	const fetchTokens = async () => {
 		try {
-			const res = await api.fetch("/api/blog/tokens");
-			if (!res.ok) {
-				setTokensError("Failed to fetch tokens");
-				return;
-			}
-			const data = (await res.json()) as { tokens?: Token[] };
+			const data = await api.json<{ tokens?: Token[] }>("/api/blog/tokens");
 			setTokens(data.tokens ?? []);
 		} catch {
 			setTokensError("Failed to fetch tokens");
@@ -72,46 +67,26 @@ const SettingsPage: Component<SettingsPageProps> = props => {
 
 	const handleToggle = async (id: number, enabled: boolean) => {
 		setTokensError(null);
-		const res = await api.fetch(`/api/blog/tokens/${id}`, {
-			method: "PUT",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ enabled }),
-		});
-
-		if (!res.ok) {
+		try {
+			await api.put(`/api/blog/tokens/${id}`, { enabled });
+			refetchTokens();
+		} catch {
 			setTokensError("Failed to update token");
-			return;
 		}
-
-		refetchTokens();
 	};
 
 	const handleDelete = async (id: number) => {
 		setTokensError(null);
-		const res = await api.fetch(`/api/blog/tokens/${id}`, {
-			method: "DELETE",
-		});
-
-		if (!res.ok) {
+		try {
+			await api.delete(`/api/blog/tokens/${id}`);
+			refetchTokens();
+		} catch {
 			setTokensError("Failed to delete token");
-			return;
 		}
-
-		refetchTokens();
 	};
 
 	const handleCreate = async (data: { name: string; note?: string }): Promise<{ key: string }> => {
-		const res = await api.fetch("/api/blog/tokens", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(data),
-		});
-
-		if (!res.ok) {
-			throw new Error("Failed to create token");
-		}
-
-		const result = (await res.json()) as { key: string };
+		const result = await api.post<{ key: string }>("/api/blog/tokens", data);
 		refetchTokens();
 		return result;
 	};

@@ -22,9 +22,7 @@ const fetchCategories = async (): Promise<Category[]> => {
 	if (typeof window === "undefined") {
 		return [];
 	}
-	const res = await api.fetch("/api/blog/categories");
-	if (!res.ok) throw new Error("Failed to fetch categories");
-	const data = (await res.json()) as { categories?: CategoryNode[] };
+	const data = await api.json<{ categories?: CategoryNode[] }>("/api/blog/categories");
 	return flattenTree(data.categories ?? []);
 };
 
@@ -51,32 +49,22 @@ const CategoriesPage: Component<Props> = props => {
 
 	const handleDelete = async (name: string) => {
 		setError(null);
-		const res = await api.fetch(`/api/blog/categories/${encodeURIComponent(name)}`, {
-			method: "DELETE",
-		});
-
-		if (!res.ok) {
+		try {
+			await api.delete(`/api/blog/categories/${encodeURIComponent(name)}`);
+			refreshCategories();
+		} catch {
 			setError("Failed to delete category");
-			return;
 		}
-
-		refreshCategories();
 	};
 
 	const handleCreate = async (data: { name: string; parent: string }) => {
 		setError(null);
-		const res = await api.fetch("/api/blog/categories", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(data),
-		});
-
-		if (!res.ok) {
+		try {
+			await api.post("/api/blog/categories", data);
+			refreshCategories();
+		} catch {
 			setError("Failed to create category");
-			return;
 		}
-
-		refreshCategories();
 	};
 
 	const selectParentForAdd = (parentName: string) => {

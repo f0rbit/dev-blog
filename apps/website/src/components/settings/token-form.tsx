@@ -1,4 +1,5 @@
 import { type Component, Show, createSignal } from "solid-js";
+import { createFormState } from "../../lib/form-utils";
 import Button from "../ui/button";
 import Input from "../ui/input";
 import Modal from "../ui/modal";
@@ -13,16 +14,14 @@ interface TokenFormProps {
 const TokenForm: Component<TokenFormProps> = props => {
 	const [name, setName] = createSignal("");
 	const [note, setNote] = createSignal("");
-	const [submitting, setSubmitting] = createSignal(false);
 	const [generatedKey, setGeneratedKey] = createSignal<string | null>(null);
-	const [error, setError] = createSignal<string | null>(null);
+	const form = createFormState();
 
 	const reset = () => {
 		setName("");
 		setNote("");
 		setGeneratedKey(null);
-		setError(null);
-		setSubmitting(false);
+		form.setError(null);
 	};
 
 	const handleClose = () => {
@@ -35,20 +34,13 @@ const TokenForm: Component<TokenFormProps> = props => {
 		const trimmedName = name().trim();
 		if (!trimmedName) return;
 
-		setSubmitting(true);
-		setError(null);
-
-		try {
-			const result = await props.onSubmit({
+		const result = await form.handleSubmit(() =>
+			props.onSubmit({
 				name: trimmedName,
 				note: note().trim() || undefined,
-			});
-			setGeneratedKey(result.key);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to create token");
-		} finally {
-			setSubmitting(false);
-		}
+			})
+		);
+		if (result) setGeneratedKey(result.key);
 	};
 
 	const copyToClipboard = async () => {
@@ -86,27 +78,27 @@ const TokenForm: Component<TokenFormProps> = props => {
 				}
 			>
 				<form onSubmit={handleSubmit} class="modal-form">
-					<Show when={error()}>
+					<Show when={form.error()}>
 						<div class="form-error">
-							<p class="text-sm">{error()}</p>
+							<p class="text-sm">{form.error()}</p>
 						</div>
 					</Show>
 					<div class="form-row">
 						<label for="token-name">
 							Name <span class="required">*</span>
 						</label>
-						<Input value={name()} onInput={setName} placeholder="Token name" disabled={submitting()} />
+						<Input value={name()} onInput={setName} placeholder="Token name" disabled={form.submitting()} />
 					</div>
 					<div class="form-row">
 						<label for="token-note">Note (optional)</label>
-						<Textarea value={note()} onInput={setNote} placeholder="What is this token for?" rows={3} disabled={submitting()} />
+						<Textarea value={note()} onInput={setNote} placeholder="What is this token for?" rows={3} disabled={form.submitting()} />
 					</div>
 					<div class="modal-actions">
-						<Button variant="secondary" onClick={handleClose} disabled={submitting()}>
+						<Button variant="secondary" onClick={handleClose} disabled={form.submitting()}>
 							Cancel
 						</Button>
-						<Button type="submit" variant="primary" disabled={submitting() || !name().trim()}>
-							{submitting() ? "Creating..." : "Create Token"}
+						<Button type="submit" variant="primary" disabled={form.submitting() || !name().trim()}>
+							{form.submitting() ? "Creating..." : "Create Token"}
 						</Button>
 					</div>
 				</form>

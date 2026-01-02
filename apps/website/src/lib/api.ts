@@ -18,6 +18,39 @@ export const api = {
 		});
 	},
 
+	async json<T>(path: string, options?: RequestInit): Promise<T> {
+		const res = await this.fetch(path, options);
+		if (!res.ok) {
+			const errorData = (await res.json().catch(() => ({}))) as { message?: string };
+			throw new Error(errorData.message || `Request failed: ${res.status}`);
+		}
+		return res.json() as Promise<T>;
+	},
+
+	async post<T>(path: string, body: unknown): Promise<T> {
+		return this.json<T>(path, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
+	},
+
+	async put<T>(path: string, body: unknown): Promise<T> {
+		return this.json<T>(path, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
+	},
+
+	async delete(path: string): Promise<void> {
+		const res = await this.fetch(path, { method: "DELETE" });
+		if (!res.ok) {
+			const errorData = (await res.json().catch(() => ({}))) as { message?: string };
+			throw new Error(errorData.message || `Delete failed: ${res.status}`);
+		}
+	},
+
 	/**
 	 * Make an SSR request to the API.
 	 * If running in the unified worker, uses direct internal call.

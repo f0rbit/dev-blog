@@ -2,6 +2,7 @@ import type { Component } from "solid-js";
 import { For, Show, createSignal, onMount } from "solid-js";
 import { api } from "../../lib/api";
 import { relativeTime } from "../../lib/date-utils";
+import { createFormState } from "../../lib/form-utils";
 import { PostPreview } from "./post-preview";
 import { ProjectSelector } from "./project-selector";
 import TagEditor from "./tag-editor";
@@ -73,8 +74,7 @@ const PostEditor: Component<PostEditorProps> = props => {
 	const [publishAt, setPublishAt] = createSignal<Date | null>(props.post?.publish_at ? new Date(props.post.publish_at) : null);
 	const [categories, setCategories] = createSignal<Category[]>(props.categories ?? []);
 
-	const [saving, setSaving] = createSignal(false);
-	const [error, setError] = createSignal<string | null>(null);
+	const form = createFormState();
 	const [activeTab, setActiveTab] = createSignal<"write" | "preview">("write");
 
 	// Fetch categories on mount if not provided
@@ -160,36 +160,30 @@ const PostEditor: Component<PostEditorProps> = props => {
 	};
 
 	const handleSave = async () => {
-		setError(null);
+		form.setError(null);
 		if (!title().trim()) {
-			setError("Title is required");
+			form.setError("Title is required");
 			return;
 		}
 		if (!slug().trim()) {
-			setError("Slug is required");
+			form.setError("Slug is required");
 			return;
 		}
 
-		setSaving(true);
-		try {
+		await form.handleSubmit(async () => {
 			const data = getFormData();
 			if (props.onSave) {
 				await props.onSave(data);
 			} else if (!props.post) {
-				// New post - save internally
 				await saveNewPost(data);
 			}
-		} catch (e) {
-			setError(e instanceof Error ? e.message : "Failed to save post");
-		} finally {
-			setSaving(false);
-		}
+		});
 	};
 
 	return (
 		<div class="post-editor">
-			<Show when={error()}>
-				<div class="form-error">{error()}</div>
+			<Show when={form.error()}>
+				<div class="form-error">{form.error()}</div>
 			</Show>
 
 			{/* Title + Metadata section with border */}
@@ -255,8 +249,8 @@ const PostEditor: Component<PostEditorProps> = props => {
 				{/* Actions - show for new posts or when onSave is provided */}
 				<Show when={props.onSave || !props.post}>
 					<div class="post-editor__actions">
-						<button type="button" class="btn-primary" onClick={handleSave} disabled={saving()}>
-							{saving() ? "Saving..." : isEditing() ? "Update" : "Create"}
+						<button type="button" class="btn-primary" onClick={handleSave} disabled={form.submitting()}>
+							{form.submitting() ? "Saving..." : isEditing() ? "Update" : "Create"}
 						</button>
 					</div>
 				</Show>
