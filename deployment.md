@@ -15,8 +15,7 @@ dev-blog/
 ├── apps/website/              # Astro + SolidJS frontend (Cloudflare Pages)
 │   └── src/lib/api.ts         # Centralized API URL configuration
 ├── packages/
-│   ├── api/                   # API client library
-│   ├── schema/                # Drizzle schema + Zod types
+│   ├── schema/                # Drizzle schema + Zod types + Corpus re-exports
 │   └── server/                # Hono API (Cloudflare Workers)
 │       └── src/index.ts       # Unified blogRouter mounted at /api/blog
 ├── migrations/                # Drizzle D1 migrations
@@ -65,17 +64,31 @@ All blog API routes are under `/api/blog/`:
 
 ### Frontend API Configuration
 
-All API URLs are configured in a single file (`apps/website/src/lib/api.ts`):
+All API URLs are configured in `apps/website/src/lib/api.ts`:
 
 ```typescript
-import { api } from "@/lib/api";
-
-// Usage
-fetch(api.blog("/posts"))    // → {host}/api/blog/posts
-fetch(api.auth("/status"))   // → {host}/auth/status
+export const api = {
+  blog: (path: string) => `/api/blog${path.startsWith("/") ? path : `/${path}`}`,
+  auth: (path: string) => `/auth${path.startsWith("/") ? path : `/${path}`}`,
+  
+  // Standard fetch with credentials
+  async fetch(path: string, options?: RequestInit): Promise<Response>,
+  
+  // Throwing methods (for try/catch patterns)
+  async json<T>(path: string, options?: RequestInit): Promise<T>,
+  async post<T>(path: string, body: unknown): Promise<T>,
+  async put<T>(path: string, body: unknown): Promise<T>,
+  async delete(path: string): Promise<void>,
+  
+  // Result-based methods (for explicit error handling)
+  async fetchResult<T>(path: string, options?: RequestInit): Promise<Result<T, ApiError>>,
+  async postResult<T>(path: string, body: unknown): Promise<Result<T, ApiError>>,
+  async putResult<T>(path: string, body: unknown): Promise<Result<T, ApiError>>,
+  async deleteResult(path: string): Promise<Result<void, ApiError>>,
+};
 ```
 
-Set `PUBLIC_API_URL` environment variable for production.
+For SSR requests, use `api.ssr(locals)` which handles internal routing in the unified worker.
 
 ---
 
@@ -118,14 +131,18 @@ bunx wrangler r2 bucket create blog-devpad-corpus-staging
 Update the placeholder database IDs with the actual values:
 
 ```toml
-name = "blog-devpad"
-main = "packages/server/src/index.ts"
+name = "blog-devpad-api"
+main = "dist/_worker.js"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
+[assets]
+directory = "dist"
+
+# Production environment (default)
 [vars]
 ENVIRONMENT = "production"
-DEVPAD_API = "https://devpad.io/api"
+DEVPAD_API = "https://devpad.tools"
 
 [[d1_databases]]
 binding = "DB"
@@ -136,25 +153,32 @@ database_id = "<YOUR_PRODUCTION_D1_ID>"  # Replace with actual ID
 binding = "CORPUS_BUCKET"
 bucket_name = "blog-devpad-corpus"
 
-[env.staging]
-name = "blog-devpad-staging"
-[env.staging.vars]
-ENVIRONMENT = "staging"
-DEVPAD_API = "https://staging.devpad.io/api"
+# Preview environment
+[env.preview]
+name = "blog-devpad-api-preview"
 
-[[env.staging.d1_databases]]
+[env.preview.assets]
+directory = "dist"
+
+[env.preview.vars]
+ENVIRONMENT = "preview"
+DEVPAD_API = "https://devpad.tools"
+
+[[env.preview.d1_databases]]
 binding = "DB"
-database_name = "blog-devpad-db-staging"
-database_id = "<YOUR_STAGING_D1_ID>"  # Replace with actual ID
+database_name = "blog-devpad-db-preview"
+database_id = "<YOUR_PREVIEW_D1_ID>"  # Replace with actual ID
 
-[[env.staging.r2_buckets]]
+[[env.preview.r2_buckets]]
 binding = "CORPUS_BUCKET"
-bucket_name = "blog-devpad-corpus-staging"
+bucket_name = "blog-devpad-corpus-preview"
 
 [dev]
 port = 8787
 local_protocol = "http"
 ```
+
+> **Note**: The project uses a unified build (`bun run build`) that bundles the Astro frontend and Hono API into a single Cloudflare Worker. The `[assets]` section serves static files from the `dist` directory.
 
 ### 1.3 Database Migrations
 
@@ -301,10 +325,14 @@ If using a separate API subdomain:
 
 ### 1.8 CI/CD with GitHub Actions
 
-Create `.github/workflows/deploy.yml`:
+The project uses two workflow files:
+
+#### Preview Workflow (`.github/workflows/preview.yml`)
+
+Triggers on push to `main` and pull requests. Runs tests/linting and deploys to preview environment on push to main.
 
 ```yaml
-name: Deploy
+name: Preview
 
 on:
   push:
@@ -312,69 +340,53 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
       - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      
-      - name: Install dependencies
-        run: bun install
-      
-      - name: Run linter
-        run: bun run lint
-      
-      - name: Run tests
-        run: bun test
+      - run: bun install
+      - run: bun run lint
+      - run: bun test
 
-  deploy-api:
+  deploy:
     needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
       - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      
-      - name: Install dependencies
-        run: bun install
-      
-      - name: Deploy Worker
-        run: bunx wrangler deploy
+      - run: bun install
+      - run: bun run deploy:preview
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+```
 
-  deploy-frontend:
-    needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+#### Production Workflow (`.github/workflows/production.yml`)
+
+Triggers on GitHub release publication. Runs tests and deploys to production.
+
+```yaml
+name: Production Deployment
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  deploy-production:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
       - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      
-      - name: Install dependencies
-        run: bun install
-      
-      - name: Build frontend
-        run: bun run build:client
-      
-      - name: Deploy to Cloudflare Pages
-        run: bunx wrangler pages deploy apps/website/dist --project-name=blog-devpad-web
+      - run: bun install
+      - run: bun test
+      - run: bun run deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 ```
 
 #### Required GitHub Secrets
@@ -382,7 +394,7 @@ jobs:
 | Secret | Description |
 |--------|-------------|
 | `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID |
-| `CLOUDFLARE_API_TOKEN` | API token with Workers/Pages/D1/R2 permissions |
+| `CLOUDFLARE_API_TOKEN` | API token with Workers/D1/R2 permissions |
 
 ### 1.9 Post-Deployment Verification
 
