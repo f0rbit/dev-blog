@@ -33,7 +33,7 @@
 		"wrangler": "^3.99.0"
 	},
 	"dependencies": {
-		"@f0rbit/corpus": "^0.2.2",
+		"@f0rbit/corpus": "^0.3.0",
 		"better-sqlite3": "^11.7.0",
 		"drizzle-orm": "^0.38.2",
 		"hono": "^4.6.14",
