@@ -16,19 +16,16 @@ let error: string | null = null;
 
 try {
 	const runtime = Astro.locals.runtime;
-	const [postsRes, projectsRes] = await Promise.all([
-		api.ssr("/api/blog/posts?limit=100", Astro.request, {}, runtime),
-		api.ssr("/api/blog/projects", Astro.request, {}, runtime)
-	]);
+	const [postsRes, projectsRes] = await Promise.all([api.ssr("/api/blog/posts?limit=100", Astro.request, {}, runtime), api.ssr("/api/blog/projects", Astro.request, {}, runtime)]);
 
 	if (!postsRes.ok) {
 		throw new Error("Failed to fetch posts");
 	}
-	const postsData = await postsRes.json() as { posts?: Post[] };
+	const postsData = (await postsRes.json()) as { posts?: Post[] };
 	posts = postsData.posts ?? [];
 
 	if (projectsRes.ok) {
-		const projectsData = await projectsRes.json() as { projects?: Project[] };
+		const projectsData = (await projectsRes.json()) as { projects?: Project[] };
 		const projects = projectsData.projects ?? [];
 		projectMap = Object.fromEntries(projects.map(p => [p.id, p.name]));
 	}

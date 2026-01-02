@@ -28,18 +28,15 @@ let projects: Project[] = [];
 
 try {
 	const runtime = Astro.locals.runtime;
-	const [catRes, projRes] = await Promise.all([
-		api.ssr("/api/blog/categories", Astro.request, {}, runtime),
-		api.ssr("/api/blog/projects", Astro.request, {}, runtime)
-	]);
+	const [catRes, projRes] = await Promise.all([api.ssr("/api/blog/categories", Astro.request, {}, runtime), api.ssr("/api/blog/projects", Astro.request, {}, runtime)]);
 
 	if (catRes.ok) {
-		const data = await catRes.json() as { categories?: CategoryNode[] };
+		const data = (await catRes.json()) as { categories?: CategoryNode[] };
 		categories = flattenTree(data.categories ?? []);
 	}
 
 	if (projRes.ok) {
-		const data = await projRes.json() as { projects?: Project[] };
+		const data = (await projRes.json()) as { projects?: Project[] };
 		projects = data.projects ?? [];
 	}
 } catch (e) {

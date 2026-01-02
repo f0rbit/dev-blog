@@ -1,9 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 import type { Corpus, Store } from "@f0rbit/corpus";
-import { createSelectSchema, createInsertSchema } from "drizzle-zod";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 import type { PostContent } from "./corpus";
-import { users, posts, categories, tags, accessKeys, integrations, fetchLinks, projectsCache, postProjects, type DrizzleDB } from "./tables";
+import { type DrizzleDB, accessKeys, categories, fetchLinks, integrations, postProjects, posts, projectsCache, tags, users } from "./tables";
 
 export {
 	ok,

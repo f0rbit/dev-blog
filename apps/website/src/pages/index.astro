@@ -15,8 +15,8 @@ const runtime = Astro.locals.runtime;
 const authRes = await api.ssr("/auth/status", Astro.request, {}, runtime);
 let isAuthenticated = false;
 if (authRes.ok) {
-  const authData = await authRes.json() as { authenticated?: boolean };
-  isAuthenticated = authData.authenticated === true;
+	const authData = (await authRes.json()) as { authenticated?: boolean };
+	isAuthenticated = authData.authenticated === true;
 }
 ---
 

@@ -47,7 +47,7 @@ try {
 	const [postRes, catRes, projRes] = await Promise.all([
 		api.ssr(`/api/blog/posts/${slug}`, Astro.request, {}, runtime),
 		api.ssr("/api/blog/categories", Astro.request, {}, runtime),
-		api.ssr("/api/blog/projects", Astro.request, {}, runtime)
+		api.ssr("/api/blog/projects", Astro.request, {}, runtime),
 	]);
 
 	if (postRes.ok) {
@@ -57,12 +57,12 @@ try {
 	}
 
 	if (catRes.ok) {
-		const catData = await catRes.json() as { categories?: CategoryNode[] };
+		const catData = (await catRes.json()) as { categories?: CategoryNode[] };
 		categories = flattenTree(catData.categories ?? []);
 	}
 
 	if (projRes.ok) {
-		const projData = await projRes.json() as { projects?: Project[] };
+		const projData = (await projRes.json()) as { projects?: Project[] };
 		projects = projData.projects ?? [];
 	}
 } catch (e) {
