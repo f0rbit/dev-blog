@@ -1,4 +1,4 @@
-import { type AppContext, type Bindings, type DrizzleDB, type Result, type User, accessKeys, err, ok, pipe, users } from "@blog/schema";
+import { type AppContext, type Bindings, type DrizzleDB, type Result, type User, accessKeys, err, ok, pipe, try_catch_async, users } from "@blog/schema";
 import { and, eq } from "drizzle-orm";
 import { getCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
@@ -63,27 +63,33 @@ const validateApiToken = async (db: DrizzleDB, token: string): Promise<Result<Us
 };
 
 const verifyWithDevpad = async (devpadApi: string, cookie: string): Promise<Result<DevpadUser, string>> => {
-	const response = await fetch(`${devpadApi}/api/auth/verify`, {
-		method: "GET",
-		headers: { Cookie: cookie },
-	});
+	const fetchResult = await try_catch_async(
+		async () => {
+			const response = await fetch(`${devpadApi}/api/auth/verify`, {
+				method: "GET",
+				headers: { Cookie: cookie },
+			});
+			if (!response.ok) throw new Error("session_invalid");
+			return response.json();
+		},
+		() => "session_invalid"
+	);
 
-	if (!response.ok) return err("session_invalid");
+	return pipe(fetchResult)
+		.flat_map((json: unknown) => {
+			const parsed = DevpadVerifyResponseSchema.safeParse(json);
+			if (!parsed.success) return err("invalid_user_response");
+			if (!parsed.data.authenticated || !parsed.data.user) return err("session_invalid");
 
-	const json = await response.json();
-	const parsed = DevpadVerifyResponseSchema.safeParse(json);
-
-	if (!parsed.success) return err("invalid_user_response");
-
-	if (!parsed.data.authenticated || !parsed.data.user) return err("session_invalid");
-
-	const devpadUser = parsed.data.user;
-	return ok({
-		github_id: devpadUser.github_id,
-		username: devpadUser.name,
-		email: devpadUser.email ?? null,
-		avatar_url: devpadUser.image_url ?? null,
-	});
+			const devpadUser = parsed.data.user;
+			return ok({
+				github_id: devpadUser.github_id,
+				username: devpadUser.name,
+				email: devpadUser.email ?? null,
+				avatar_url: devpadUser.image_url ?? null,
+			});
+		})
+		.result();
 };
 
 const ensureUser = async (db: DrizzleDB, devpadUser: DevpadUser): Promise<Result<User, string>> => {
@@ -126,26 +132,33 @@ export const extractJWTFromHeader = (authHeader: string): Result<string, string>
 };
 
 const verifyWithDevpadJWT = async (devpadApi: string, jwtToken: string): Promise<Result<DevpadUser, string>> => {
-	const response = await fetch(`${devpadApi}/api/auth/verify`, {
-		method: "GET",
-		headers: { Authorization: `Bearer jwt:${jwtToken}` },
-	});
+	const fetchResult = await try_catch_async(
+		async () => {
+			const response = await fetch(`${devpadApi}/api/auth/verify`, {
+				method: "GET",
+				headers: { Authorization: `Bearer jwt:${jwtToken}` },
+			});
+			if (!response.ok) throw new Error("jwt_invalid");
+			return response.json();
+		},
+		() => "jwt_invalid"
+	);
 
-	if (!response.ok) return err("jwt_invalid");
+	return pipe(fetchResult)
+		.flat_map((json: unknown) => {
+			const parsed = DevpadVerifyResponseSchema.safeParse(json);
+			if (!parsed.success) return err("invalid_user_response");
+			if (!parsed.data.authenticated || !parsed.data.user) return err("not_authenticated");
 
-	const json = await response.json();
-	const parsed = DevpadVerifyResponseSchema.safeParse(json);
-
-	if (!parsed.success) return err("invalid_user_response");
-	if (!parsed.data.authenticated || !parsed.data.user) return err("not_authenticated");
-
-	const devpadUser = parsed.data.user;
-	return ok({
-		github_id: devpadUser.github_id,
-		username: devpadUser.name,
-		email: devpadUser.email ?? null,
-		avatar_url: devpadUser.image_url ?? null,
-	});
+			const devpadUser = parsed.data.user;
+			return ok({
+				github_id: devpadUser.github_id,
+				username: devpadUser.name,
+				email: devpadUser.email ?? null,
+				avatar_url: devpadUser.image_url ?? null,
+			});
+		})
+		.result();
 };
 
 const authenticateWithCookie = async (db: DrizzleDB, devpadApi: string, cookie: string): Promise<Result<User, string>> =>

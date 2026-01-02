@@ -1,4 +1,4 @@
-import { type Project, ProjectSchema, type Result, err, ok } from "@blog/schema";
+import { type Project, ProjectSchema, type Result, err, format_error, ok, pipe, try_catch, try_catch_async } from "@blog/schema";
 import { z } from "zod";
 
 export type DevpadProviderConfig = {
@@ -11,35 +11,38 @@ export type DevpadProvider = {
 
 const ProjectsResponseSchema = z.array(ProjectSchema);
 
+const extractProjectsArray = (data: unknown): unknown => (Array.isArray(data) ? data : (data as { projects?: unknown })?.projects);
+
 export const createDevpadProvider = (config: DevpadProviderConfig): DevpadProvider => {
 	const fetchProjects = async (token: string): Promise<Result<Project[], string>> => {
-		try {
-			const response = await fetch(`${config.apiUrl}/api/v0/projects`, {
-				headers: {
-					Authorization: `Bearer jwt:${token}`,
-					"Content-Type": "application/json",
-				},
-			});
+		const fetchResult = await try_catch_async(
+			async () => {
+				const response = await fetch(`${config.apiUrl}/api/v0/projects`, {
+					headers: {
+						Authorization: `Bearer jwt:${token}`,
+						"Content-Type": "application/json",
+					},
+				});
 
-			if (!response.ok) {
-				if (response.status === 401) {
-					return err("Invalid or expired DevPad token");
+				if (!response.ok) {
+					if (response.status === 401) throw new Error("Invalid or expired DevPad token");
+					throw new Error(`DevPad API error: ${response.status} ${response.statusText}`);
 				}
-				return err(`DevPad API error: ${response.status} ${response.statusText}`);
-			}
 
-			const data: unknown = await response.json();
-			const projectsArray = Array.isArray(data) ? data : (data as { projects?: unknown })?.projects;
-			const parsed = ProjectsResponseSchema.safeParse(projectsArray);
+				return response.json();
+			},
+			e => format_error(e)
+		);
 
-			if (!parsed.success) {
-				return err(`Invalid response format: ${parsed.error.message}`);
-			}
-
-			return ok(parsed.data);
-		} catch (e) {
-			return err(e instanceof Error ? e.message : "Failed to fetch projects");
-		}
+		return pipe(fetchResult)
+			.map(extractProjectsArray)
+			.flat_map((data: unknown) =>
+				try_catch(
+					() => ProjectsResponseSchema.parse(data),
+					e => `Invalid response format: ${format_error(e)}`
+				)
+			)
+			.result();
 	};
 
 	return { fetchProjects };
