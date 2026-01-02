@@ -861,7 +861,7 @@ footer {
 	background: var(--input-background);
 	padding: 0.125rem 0.5rem;
 	border-radius: 999px;
-	text-transform: capitalize;
+	text-transform: lowercase;
 }
 
 /* ==========================================================================

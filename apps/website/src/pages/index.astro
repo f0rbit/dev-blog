@@ -1,12 +1,23 @@
 ---
 import BaseLayout from "@/layouts/base-layout.astro";
+import { api } from "@/lib/api";
+import ArrowRight from "lucide-astro/ArrowRight";
 import CalendarCheck from "lucide-astro/CalendarCheck";
 import FileText from "lucide-astro/FileText";
 import Github from "lucide-astro/Github";
 import History from "lucide-astro/History";
+import Plus from "lucide-astro/Plus";
 import RefreshCw from "lucide-astro/RefreshCw";
 import Sparkles from "lucide-astro/Sparkles";
 import Tag from "lucide-astro/Tag";
+
+const runtime = Astro.locals.runtime;
+const authRes = await api.ssr("/auth/status", Astro.request, {}, runtime);
+let isAuthenticated = false;
+if (authRes.ok) {
+  const authData = await authRes.json() as { authenticated?: boolean };
+  isAuthenticated = authData.authenticated === true;
+}
 ---
 
 <BaseLayout title="Blog - devpad">
@@ -14,7 +25,11 @@ import Tag from "lucide-astro/Tag";
     <!-- Navigation -->
     <nav class="landing-nav">
       <a href="/" class="landing-logo">blog</a>
-      <a href="/auth/login" class="btn-primary btn-login"><Github size={16} />login</a>
+      {isAuthenticated ? (
+        <a href="/posts" class="btn-primary btn-login">dashboard <ArrowRight size={16} /></a>
+      ) : (
+        <a href="/auth/login" class="btn-primary btn-login"><Github size={16} />login</a>
+      )}
     </nav>
 
     <!-- Hero Section -->
@@ -25,9 +40,13 @@ import Tag from "lucide-astro/Tag";
           <span class="landing-title-accent">for developers.</span>
         </h1>
         <p class="landing-tagline">
-          A blog platform built for devpad. Link posts to your projects and tasks, write in Markdown, and publish with full version control.
+          a blog platform built for devpad. link posts to your projects and tasks, write in markdown, and publish with full version control.
         </p>
-        <a href="/auth/login" class="btn-primary btn-large">Get Started</a>
+        {isAuthenticated ? (
+          <a href="/posts" class="btn-primary btn-large">open dashboard</a>
+        ) : (
+          <a href="/auth/login" class="btn-primary btn-large">get started</a>
+        )}
       </div>
       <div class="hero-mockup">
         <div class="mockup-window">
@@ -42,8 +61,8 @@ import Tag from "lucide-astro/Tag";
             </div>
             <div class="mockup-divider"></div>
             <div class="mockup-preview">
-              <h1 class="preview-h1">Hello World</h1>
-              <p class="preview-p">Write your thoughts in <strong>markdown</strong>.</p>
+              <h1 class="preview-h1">hello world</h1>
+              <p class="preview-p">write your thoughts in <strong>markdown</strong>.</p>
             </div>
           </div>
         </div>
@@ -56,68 +75,68 @@ import Tag from "lucide-astro/Tag";
         <div class="feature-card">
           <div class="feature-header">
             <FileText size={20} class="feature-icon" />
-            <h3>Markdown Editor</h3>
+            <h3>markdown editor</h3>
           </div>
-          <p>Write posts in Markdown with a split-pane live preview. Supports syntax highlighting, tables, and code blocks.</p>
+          <p>write posts in markdown with a split-pane live preview. supports syntax highlighting, tables, and code blocks.</p>
         </div>
         <div class="feature-card">
           <div class="feature-header">
             <History size={20} class="feature-icon" />
-            <h3>Version History</h3>
+            <h3>version history</h3>
           </div>
-          <p>Every save creates an immutable version. Browse history, compare changes, and restore any previous state with one click.</p>
+          <p>every save creates an immutable version. browse history, compare changes, and restore any previous state with one click.</p>
         </div>
         <div class="feature-card">
           <div class="feature-header">
             <Sparkles size={20} class="feature-icon" />
-            <h3>Project Linking</h3>
+            <h3>project linking</h3>
           </div>
-          <p>Connect posts to your devpad projects. Write devlogs, release notes, or tutorials tied directly to what you're building.</p>
+          <p>connect posts to your devpad projects. write devlogs, release notes, or tutorials tied directly to what you're building.</p>
         </div>
         <div class="feature-card">
           <div class="feature-header">
             <CalendarCheck size={20} class="feature-icon" />
-            <h3>Scheduled Publishing</h3>
+            <h3>scheduled publishing</h3>
           </div>
-          <p>Set a publish date and time. Posts automatically go live on schedule—no need to be at your desk.</p>
+          <p>set a publish date and time. posts automatically go live on schedule—no need to be at your desk.</p>
         </div>
         <div class="feature-card">
           <div class="feature-header">
             <Tag size={20} class="feature-icon" />
-            <h3>Categories & Tags</h3>
+            <h3>categories & tags</h3>
           </div>
-          <p>Organize posts with nested categories and flexible tags. Filter and find content across your entire blog.</p>
+          <p>organize posts with nested categories and flexible tags. filter and find content across your entire blog.</p>
         </div>
         <div class="feature-card">
           <div class="feature-header">
             <RefreshCw size={20} class="feature-icon" />
-            <h3>API Access</h3>
+            <h3>api access</h3>
           </div>
-          <p>Generate API tokens to read your published posts. Build custom frontends or integrate with static site generators.</p>
+          <p>generate api tokens to read your published posts. build custom frontends or integrate with static site generators.</p>
         </div>
       </div>
     </section>
 
     <!-- How It Works Section -->
     <section class="landing-steps">
-      <h2 class="section-title">How It Works</h2>
+      <h2 class="section-title">how it works</h2>
       <div class="steps-grid">
         <div class="step">
           <span class="step-number">1</span>
-          <h3>Connect</h3>
-          <p>Sign in with GitHub</p>
+          <h3>connect</h3>
+          <p>sign in with github</p>
         </div>
         <div class="step-divider"></div>
         <div class="step">
           <span class="step-number">2</span>
-          <h3>Write</h3>
-          <p>Create and edit posts in Markdown</p>
+          <h3>write</h3>
+          <p>create and edit posts in markdown</p>
         </div>
         <div class="step-divider"></div>
         <div class="step">
           <span class="step-number">3</span>
-          <h3>Publish</h3>
-          <p>Go live instantly or schedule for later</p>
+          <h3>publish</h3>
+          <p>go live instantly or schedule for later</p>
         </div>
       </div>
     </section>
@@ -152,13 +171,22 @@ import Tag from "lucide-astro/Tag";
           <div class="api-step__label">render</div>
         </div>
       </div>
-      <p class="api-tagline">Full TypeScript support. Works everywhere.</p>
+      <p class="api-tagline">full typescript support. works everywhere.</p>
     </section>
 
     <!-- Bottom CTA -->
     <section class="landing-cta">
-      <h2>Ready to start writing?</h2>
-      <a href="/auth/login" class="btn-primary btn-large flex-row"><Github size={18} />login</a>
+      {isAuthenticated ? (
+        <>
+          <h2>ready to write something new?</h2>
+          <a href="/posts/new" class="btn-primary btn-large flex-row"><Plus size={18} />new post</a>
+        </>
+      ) : (
+        <>
+          <h2>ready to start writing?</h2>
+          <a href="/auth/login" class="btn-primary btn-large flex-row"><Github size={18} />login</a>
+        </>
+      )}
     </section>
 
     <!-- Footer -->
@@ -899,9 +927,9 @@ import Tag from "lucide-astro/Tag";
 </style>
 
 <script>
-  const TYPING_TEXT = `# Hello World
+  const TYPING_TEXT = `# hello world
 
-Write your thoughts in **markdown**.`;
+write your thoughts in **markdown**.`;
 
   const TYPING_SPEED = 50;
   const INITIAL_DELAY = 500;
