@@ -1,25 +1,17 @@
-import { AccessKeyCreateSchema, AccessKeyUpdateSchema, type AppContext } from "@blog/schema";
+import { AccessKeyCreateSchema, AccessKeyUpdateSchema } from "@blog/schema";
 import { zValidator } from "@hono/zod-validator";
-import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
 import { type CreatedToken, type SanitizedToken, createTokenService } from "../services/tokens";
 import { mapServiceErrorToResponse } from "../utils/errors";
+import { type Variables, valid } from "../utils/route-helpers";
 
 export type { CreatedToken, SanitizedToken };
-
-type Variables = {
-	user: { id: number };
-	appContext: AppContext;
-};
 
 const TokenIdSchema = z.object({
 	id: z.coerce.number().int().positive(),
 });
-
-type ValidTarget = "query" | "param" | "json";
-const valid = <T>(c: Context, target: ValidTarget): T => (c.req.valid as (t: ValidTarget) => T)(target);
 
 export const tokensRouter = new Hono<{ Variables: Variables }>();
 

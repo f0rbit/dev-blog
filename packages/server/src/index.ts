@@ -1,4 +1,4 @@
-import type { AppContext, Bindings, User } from "@blog/schema";
+import type { Bindings } from "@blog/schema";
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { createContextFromBindings } from "./context";
@@ -10,11 +10,7 @@ import { postsRouter } from "./routes/posts";
 import { projectsRouter } from "./routes/projects";
 import { tagsRouter } from "./routes/tags";
 import { tokensRouter } from "./routes/tokens";
-
-type Variables = {
-	user: User;
-	appContext: AppContext;
-};
+import type { Variables } from "./utils/route-helpers";
 
 export const createApiApp = (env: Bindings) => {
 	const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();

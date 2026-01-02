@@ -1,7 +1,8 @@
-import { type AccessKeyCreate, type AccessKeyUpdate, type DrizzleDB, type Result, accessKeys, err, format_error, ok, try_catch_async } from "@blog/schema";
+import { type AccessKeyCreate, type AccessKeyUpdate, type DrizzleDB, type Result, accessKeys, ok, try_catch_async } from "@blog/schema";
 import type { AccessKey } from "@blog/schema/database";
 import { and, eq } from "drizzle-orm";
 import { hashToken } from "../utils/crypto";
+import { createDbError, createNotFound, firstRowOr } from "../utils/service-helpers";
 
 type TokenServiceError = { type: "not_found"; resource: string } | { type: "db_error"; message: string };
 
@@ -21,21 +22,11 @@ type Deps = {
 	db: DrizzleDB;
 };
 
-const toDbError = (e: unknown): TokenServiceError => ({
-	type: "db_error",
-	message: format_error(e),
-});
+const toDbError = (e: unknown): TokenServiceError => createDbError(e);
 
-const notFound = (resource: string): TokenServiceError => ({
-	type: "not_found",
-	resource,
-});
+const notFound = (resource: string): TokenServiceError => createNotFound(resource);
 
-const firstRow = <T>(rows: T[], resource: string): Result<T, TokenServiceError> => {
-	const row = rows[0];
-	if (!row) return err(notFound(resource));
-	return ok(row);
-};
+const firstRow = <T>(rows: T[], resource: string): Result<T, TokenServiceError> => firstRowOr(rows, () => notFound(resource));
 
 export const sanitizeToken = (token: AccessKey): SanitizedToken => ({
 	id: token.id,

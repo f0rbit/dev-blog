@@ -1,5 +1,6 @@
 import type { AccessKey } from "@blog/schema";
 import { type Component, For, Show } from "solid-js";
+import { formatDate } from "../../lib/date-utils";
 import Button from "../ui/button";
 
 type Token = {
@@ -15,15 +16,6 @@ interface TokenListProps {
 	onToggle: (id: number, enabled: boolean) => void;
 	onDelete: (id: number) => void;
 }
-
-const formatDate = (dateStr: string): string => {
-	const date = new Date(dateStr);
-	return date.toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-	});
-};
 
 const TokenList: Component<TokenListProps> = props => {
 	return (

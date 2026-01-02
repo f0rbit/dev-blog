@@ -1,5 +1,6 @@
-import { type Category, type CategoryCreate, type DrizzleDB, type Result, categories, err, format_error, ok, posts, try_catch_async } from "@blog/schema";
+import { type Category, type CategoryCreate, type DrizzleDB, type Result, categories, err, ok, posts, try_catch_async } from "@blog/schema";
 import { and, eq } from "drizzle-orm";
+import { createDbError, createNotFound, firstRowOr } from "../utils/service-helpers";
 
 type CategoryServiceError =
 	| { type: "not_found"; resource: string }
@@ -23,26 +24,16 @@ type Deps = {
 	db: DrizzleDB;
 };
 
-const toDbError = (e: unknown): CategoryServiceError => ({
-	type: "db_error",
-	message: format_error(e),
-});
+const toDbError = (e: unknown): CategoryServiceError => createDbError(e);
 
-const notFound = (resource: string): CategoryServiceError => ({
-	type: "not_found",
-	resource,
-});
+const notFound = (resource: string): CategoryServiceError => createNotFound(resource);
 
 const conflict = (message: string): CategoryServiceError => ({
 	type: "conflict",
 	message,
 });
 
-const firstRow = <T>(rows: T[], resource: string): Result<T, CategoryServiceError> => {
-	const row = rows[0];
-	if (!row) return err(notFound(resource));
-	return ok(row);
-};
+const firstRow = <T>(rows: T[], resource: string): Result<T, CategoryServiceError> => firstRowOr(rows, () => notFound(resource));
 
 type CategoryLike = { name: string; parent: string | null };
 

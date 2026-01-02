@@ -1,5 +1,5 @@
-import type { Context, Input } from "hono";
 import type { AppContext, User } from "@blog/schema";
+import type { Context, Input } from "hono";
 
 type BaseVariables = {
 	user?: User;

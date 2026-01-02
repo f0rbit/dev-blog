@@ -1,6 +1,7 @@
 import { api } from "@/lib/api";
 import type { AccessKey, User as SchemaUser } from "@blog/schema";
 import { type Component, For, Show, createSignal } from "solid-js";
+import { formatDate } from "../../lib/date-utils";
 import Button from "../ui/button";
 import { DevpadConnection } from "./devpad-connection";
 import TokenForm from "./token-form";
@@ -30,15 +31,6 @@ interface SettingsPageProps {
 	initialUser?: User | null;
 	initialTokens?: Token[];
 }
-
-const formatDate = (dateStr: string): string => {
-	const date = new Date(dateStr);
-	return date.toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-	});
-};
 
 const integrations: IntegrationDisplay[] = [
 	{ id: "devto", name: "DEV.to", connected: false },

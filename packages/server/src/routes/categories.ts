@@ -1,16 +1,11 @@
-import { type AppContext, CategoryCreateSchema } from "@blog/schema";
+import { CategoryCreateSchema } from "@blog/schema";
 import { zValidator } from "@hono/zod-validator";
-import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
 import { type CategoryUpdate, createCategoryService } from "../services/categories";
 import { mapServiceErrorToResponse } from "../utils/errors";
-
-type Variables = {
-	user: { id: number };
-	appContext: AppContext;
-};
+import { type Variables, valid } from "../utils/route-helpers";
 
 const CategoryNameSchema = z.object({
 	name: z.string().min(1),
@@ -19,9 +14,6 @@ const CategoryNameSchema = z.object({
 const CategoryUpdateSchema = z.object({
 	name: z.string().min(1),
 });
-
-type ValidTarget = "query" | "param" | "json";
-const valid = <T>(c: Context, target: ValidTarget): T => (c.req.valid as (t: ValidTarget) => T)(target);
 
 export const categoriesRouter = new Hono<{ Variables: Variables }>();
 

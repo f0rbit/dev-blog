@@ -1,16 +1,11 @@
-import { type AppContext, PostCreateSchema, PostListParamsSchema, PostUpdateSchema } from "@blog/schema";
+import { PostCreateSchema, PostListParamsSchema, PostUpdateSchema } from "@blog/schema";
 import { zValidator } from "@hono/zod-validator";
-import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
 import { createPostService } from "../services/posts";
 import { mapServiceErrorToResponse } from "../utils/errors";
-
-type Variables = {
-	user: { id: number };
-	appContext: AppContext;
-};
+import { type Variables, valid } from "../utils/route-helpers";
 
 export const postsRouter = new Hono<{ Variables: Variables }>();
 
@@ -27,9 +22,6 @@ const HashParamSchema = z.object({
 });
 
 const UuidHashParamSchema = UuidParamSchema.merge(HashParamSchema);
-
-type ValidTarget = "query" | "param" | "json";
-const valid = <T>(c: Context, target: ValidTarget): T => (c.req.valid as (t: ValidTarget) => T)(target);
 
 postsRouter.get(
 	"/",

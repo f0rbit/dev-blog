@@ -1,17 +1,16 @@
-import type { AppContext, User } from "@blog/schema";
+import type { AppContext } from "@blog/schema";
 import { Hono } from "hono";
 import { withAuth } from "../middleware/require-auth";
 import { createDevpadProvider } from "../providers/devpad";
 import { createProjectService } from "../services/projects";
 import { mapServiceErrorToResponse } from "../utils/errors";
+import type { Variables } from "../utils/route-helpers";
 
-type Variables = {
-	user: User;
-	appContext: AppContext;
+type ProjectVariables = Variables & {
 	jwtToken?: string;
 };
 
-export const projectsRouter = new Hono<{ Variables: Variables }>();
+export const projectsRouter = new Hono<{ Variables: ProjectVariables }>();
 
 const getService = (ctx: AppContext) => {
 	const devpadProvider = createDevpadProvider({

@@ -14,7 +14,6 @@ import {
 	categories,
 	corpusPath,
 	err,
-	format_error,
 	ok,
 	pipe,
 	postProjects,
@@ -24,6 +23,7 @@ import {
 } from "@blog/schema";
 import { and, desc, eq, gt, inArray, isNull, lte, sql } from "drizzle-orm";
 import { listVersions as corpusListVersions, deleteContent, getContent, putContent } from "../corpus/posts";
+import { createDbError, createNotFound, firstRowOr } from "../utils/service-helpers";
 
 type PostServiceError = { type: "not_found"; resource: string } | { type: "slug_conflict"; slug: string } | { type: "corpus_error"; inner: PostCorpusError } | { type: "db_error"; message: string };
 
@@ -37,15 +37,9 @@ const toCorpusError = (e: PostCorpusError): PostServiceError => ({
 	inner: e,
 });
 
-const toDbError = (e: unknown): PostServiceError => ({
-	type: "db_error",
-	message: format_error(e),
-});
+const toDbError = (e: unknown): PostServiceError => createDbError(e);
 
-const notFound = (resource: string): PostServiceError => ({
-	type: "not_found",
-	resource,
-});
+const notFound = (resource: string): PostServiceError => createNotFound(resource);
 
 const slugConflict = (slug: string): PostServiceError => ({
 	type: "slug_conflict",
@@ -120,11 +114,7 @@ const assemblePost = (row: PostRow, content: PostContent, tagList: string[], pro
 	corpus_version: row.corpus_version,
 });
 
-const firstRow = <T>(rows: T[], resource: string): Result<T, PostServiceError> => {
-	const row = rows[0];
-	if (!row) return err(notFound(resource));
-	return ok(row);
-};
+const firstRow = <T>(rows: T[], resource: string): Result<T, PostServiceError> => firstRowOr(rows, () => notFound(resource));
 
 export const createPostService = ({ db, corpus }: Deps) => {
 	const checkSlugUnique = async (userId: number, slug: string, excludeId?: number): Promise<Result<void, PostServiceError>> => {

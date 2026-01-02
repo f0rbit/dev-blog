@@ -1,18 +1,12 @@
-import type { AppContext } from "@blog/schema";
 import { zValidator } from "@hono/zod-validator";
-import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
 import { type TagWithCount, createTagService } from "../services/tags";
 import { mapServiceErrorToResponse } from "../utils/errors";
+import { type Variables, valid } from "../utils/route-helpers";
 
 export type { TagWithCount };
-
-type Variables = {
-	user: { id: number };
-	appContext: AppContext;
-};
 
 const PostUuidSchema = z.object({
 	uuid: z.string().uuid(),
@@ -26,9 +20,6 @@ const TagParamSchema = z.object({
 const TagsBodySchema = z.object({
 	tags: z.array(z.string().min(1)),
 });
-
-type ValidTarget = "query" | "param" | "json";
-const valid = <T>(c: Context, target: ValidTarget): T => (c.req.valid as (t: ValidTarget) => T)(target);
 
 export const tagsRouter = new Hono<{ Variables: Variables }>();
 
