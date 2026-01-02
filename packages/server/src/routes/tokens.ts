@@ -5,7 +5,7 @@ import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
 import { type CreatedToken, type SanitizedToken, createTokenService } from "../services/tokens";
 import { mapServiceErrorToResponse } from "../utils/errors";
-import { type Variables, valid } from "../utils/route-helpers";
+import { type Variables, handleResult, valid } from "../utils/route-helpers";
 
 export type { CreatedToken, SanitizedToken };
 
@@ -36,14 +36,8 @@ tokensRouter.post(
 	withAuth(async (c, user, ctx) => {
 		const data = valid<z.infer<typeof AccessKeyCreateSchema>>(c, "json");
 		const service = createTokenService({ db: ctx.db });
-
 		const result = await service.create(user.id, data);
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.json(result.value, 201);
+		return handleResult(c, result, 201);
 	})
 );
 
@@ -55,14 +49,8 @@ tokensRouter.put(
 		const { id } = valid<z.infer<typeof TokenIdSchema>>(c, "param");
 		const data = valid<z.infer<typeof AccessKeyUpdateSchema>>(c, "json");
 		const service = createTokenService({ db: ctx.db });
-
 		const result = await service.update(user.id, id, data);
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.json(result.value);
+		return handleResult(c, result);
 	})
 );
 

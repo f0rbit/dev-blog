@@ -5,7 +5,7 @@ import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
 import { type CategoryUpdate, createCategoryService } from "../services/categories";
 import { mapServiceErrorToResponse } from "../utils/errors";
-import { type Variables, valid } from "../utils/route-helpers";
+import { type Variables, handleResult, valid } from "../utils/route-helpers";
 
 const CategoryNameSchema = z.object({
 	name: z.string().min(1),
@@ -38,14 +38,8 @@ categoriesRouter.post(
 	withAuth(async (c, user, ctx) => {
 		const data = valid<z.infer<typeof CategoryCreateSchema>>(c, "json");
 		const service = createCategoryService({ db: ctx.db });
-
 		const result = await service.create(user.id, data);
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.json(result.value, 201);
+		return handleResult(c, result, 201);
 	})
 );
 
@@ -57,14 +51,8 @@ categoriesRouter.put(
 		const { name } = valid<z.infer<typeof CategoryNameSchema>>(c, "param");
 		const data = valid<z.infer<typeof CategoryUpdateSchema>>(c, "json") as CategoryUpdate;
 		const service = createCategoryService({ db: ctx.db });
-
 		const result = await service.update(user.id, name, data);
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.json(result.value);
+		return handleResult(c, result);
 	})
 );
 
