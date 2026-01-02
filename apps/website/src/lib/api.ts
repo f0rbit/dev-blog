@@ -1,5 +1,12 @@
+import { type Result, try_catch_async } from "@f0rbit/corpus";
+
 type ApiHandler = {
 	fetch: (request: Request) => Promise<Response>;
+};
+
+export type ApiError = {
+	status: number;
+	message: string;
 };
 
 type RuntimeEnv = {
@@ -49,6 +56,60 @@ export const api = {
 			const errorData = (await res.json().catch(() => ({}))) as { message?: string };
 			throw new Error(errorData.message || `Delete failed: ${res.status}`);
 		}
+	},
+
+	/** Result-based fetch that returns errors as values instead of throwing */
+	async fetchResult<T>(path: string, options?: RequestInit): Promise<Result<T, ApiError>> {
+		return try_catch_async(
+			async () => {
+				const res = await this.fetch(path, options);
+				if (!res.ok) {
+					const errorData = (await res.json().catch(() => ({}))) as { message?: string };
+					throw { status: res.status, message: errorData.message || `Request failed: ${res.status}` };
+				}
+				return res.json() as Promise<T>;
+			},
+			(e): ApiError => {
+				if (typeof e === "object" && e !== null && "status" in e) {
+					return e as ApiError;
+				}
+				return { status: 0, message: e instanceof Error ? e.message : "Network error" };
+			}
+		);
+	},
+
+	async postResult<T>(path: string, body: unknown): Promise<Result<T, ApiError>> {
+		return this.fetchResult<T>(path, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
+	},
+
+	async putResult<T>(path: string, body: unknown): Promise<Result<T, ApiError>> {
+		return this.fetchResult<T>(path, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
+	},
+
+	async deleteResult(path: string): Promise<Result<void, ApiError>> {
+		return try_catch_async(
+			async () => {
+				const res = await this.fetch(path, { method: "DELETE" });
+				if (!res.ok) {
+					const errorData = (await res.json().catch(() => ({}))) as { message?: string };
+					throw { status: res.status, message: errorData.message || `Delete failed: ${res.status}` };
+				}
+			},
+			(e): ApiError => {
+				if (typeof e === "object" && e !== null && "status" in e) {
+					return e as ApiError;
+				}
+				return { status: 0, message: e instanceof Error ? e.message : "Network error" };
+			}
+		);
 	},
 
 	/**
