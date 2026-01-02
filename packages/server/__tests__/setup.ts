@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { type AppContext, type DrizzleDB, type PostsCorpus, create_corpus, create_memory_backend, postsStoreDefinition } from "@blog/schema";
+import { type AppContext, type DrizzleDB, type PostsCorpus, create_corpus, create_memory_backend, postsStoreDefinition, projectsCacheStoreDefinition } from "@blog/schema";
 import * as schema from "@blog/schema/database";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { Hono } from "hono";
@@ -18,7 +18,7 @@ export type TestUser = {
 
 export const createTestCorpus = (): PostsCorpus => {
 	const backend = create_memory_backend();
-	return create_corpus().with_backend(backend).with_store(postsStoreDefinition).build() as PostsCorpus;
+	return create_corpus().with_backend(backend).with_store(postsStoreDefinition).with_store(projectsCacheStoreDefinition).build() as PostsCorpus;
 };
 
 /**

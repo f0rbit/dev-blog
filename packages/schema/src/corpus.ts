@@ -14,6 +14,40 @@ export const postsStoreDefinition = define_store("posts", json_codec(PostContent
 
 export const postStoreId = (userId: number, postUuid: string): string => `posts/${userId}/${postUuid}`;
 
+// Projects cache store - uses inline schema to avoid circular dependency with types.ts
+// This must match ProjectSchema from types.ts
+const ProjectSchemaInline = z.object({
+	id: z.string(),
+	owner_id: z.string(),
+	project_id: z.string(),
+	name: z.string(),
+	description: z.string().nullable(),
+	specification: z.string().nullable(),
+	repo_url: z.string().nullable(),
+	repo_id: z.number().nullable(),
+	icon_url: z.string().nullable(),
+	status: z.enum(["DEVELOPMENT", "PAUSED", "RELEASED", "LIVE", "FINISHED", "ABANDONED", "STOPPED"]),
+	link_url: z.string().nullable(),
+	link_text: z.string().nullable(),
+	visibility: z.enum(["PUBLIC", "PRIVATE", "HIDDEN", "ARCHIVED", "DRAFT", "DELETED"]),
+	current_version: z.string().nullable(),
+	scan_branch: z.string().nullable(),
+	created_at: z.string(),
+	updated_at: z.string(),
+	deleted: z.boolean(),
+});
+
+export const ProjectsCacheSchema = z.object({
+	projects: z.array(ProjectSchemaInline),
+	fetched_at: z.string(),
+});
+
+export type ProjectsCache = z.infer<typeof ProjectsCacheSchema>;
+
+export const projectsCacheStoreDefinition = define_store("projects-cache", json_codec(ProjectsCacheSchema));
+
+export const projectsCacheStoreId = (userId: number): string => `projects/${userId}/cache`;
+
 export const corpusPath = postStoreId;
 
 export const VersionInfoSchema = z.object({

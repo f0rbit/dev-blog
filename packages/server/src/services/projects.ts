@@ -1,16 +1,6 @@
-import { type PostsCorpus, type Project, ProjectSchema, type Result, err, ok } from "@blog/schema";
-import { type Backend, create_store, define_store, json_codec } from "@f0rbit/corpus";
-import { z } from "zod";
+import { type PostsCorpus, type Project, type ProjectsCache, type Result, err, ok, projectsCacheStoreDefinition, projectsCacheStoreId } from "@blog/schema";
+import { type Backend, create_store } from "@f0rbit/corpus";
 import type { DevpadProvider } from "../providers/devpad";
-
-const ProjectsCacheSchema = z.object({
-	projects: z.array(ProjectSchema),
-	fetched_at: z.string(),
-});
-
-type ProjectsCache = z.infer<typeof ProjectsCacheSchema>;
-
-const projectsCacheStore = define_store("projects-cache", json_codec(ProjectsCacheSchema));
 
 export type ProjectServiceError = { type: "provider_error"; message: string } | { type: "corpus_error"; message: string };
 
@@ -25,12 +15,10 @@ const getBackend = (corpus: PostsCorpus): Backend => ({
 });
 
 export const createProjectService = ({ corpus, devpadProvider }: Deps) => {
-	const cacheStoreId = (userId: number) => `projects/${userId}/cache`;
-
 	const getCache = async (userId: number): Promise<ProjectsCache | null> => {
-		const storeId = cacheStoreId(userId);
+		const storeId = projectsCacheStoreId(userId);
 		console.log("[projects] getCache:", { userId, storeId });
-		const store = create_store(getBackend(corpus), { ...projectsCacheStore, id: storeId });
+		const store = create_store(getBackend(corpus), { ...projectsCacheStoreDefinition, id: storeId });
 		const result = await store.get_latest();
 		console.log("[projects] getCache result:", { ok: result.ok });
 		if (!result.ok) {
@@ -42,9 +30,9 @@ export const createProjectService = ({ corpus, devpadProvider }: Deps) => {
 	};
 
 	const setCache = async (userId: number, projects: Project[]): Promise<Result<void, ProjectServiceError>> => {
-		const storeId = cacheStoreId(userId);
+		const storeId = projectsCacheStoreId(userId);
 		console.log("[projects] setCache:", { userId, storeId, projectCount: projects.length });
-		const store = create_store(getBackend(corpus), { ...projectsCacheStore, id: storeId });
+		const store = create_store(getBackend(corpus), { ...projectsCacheStoreDefinition, id: storeId });
 		const cache: ProjectsCache = {
 			projects,
 			fetched_at: new Date().toISOString(),

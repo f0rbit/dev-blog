@@ -110,12 +110,17 @@ export {
 	mapCorpusError,
 	parsePostContent,
 	serializePostContent,
+	// Projects cache store
+	ProjectsCacheSchema,
+	projectsCacheStoreDefinition,
+	projectsCacheStoreId,
 } from "./corpus";
 
 export type {
 	PostContent as CorpusPostContent,
 	VersionInfo,
 	PostCorpusError,
+	ProjectsCache,
 } from "./corpus";
 
 export {
