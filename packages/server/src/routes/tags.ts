@@ -4,7 +4,7 @@ import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
 import { type TagWithCount, createTagService } from "../services/tags";
 import { mapServiceErrorToResponse } from "../utils/errors";
-import { type Variables, valid } from "../utils/route-helpers";
+import { type Variables, handleResultNoContent, handleResultWith, valid } from "../utils/route-helpers";
 
 export type { TagWithCount };
 
@@ -27,14 +27,8 @@ tagsRouter.get(
 	"/",
 	withAuth(async (c, user, ctx) => {
 		const service = createTagService({ db: ctx.db });
-
 		const result = await service.list(user.id);
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.json({ tags: result.value });
+		return handleResultWith(c, result, tags => ({ tags }));
 	})
 );
 
@@ -52,12 +46,7 @@ tagsRouter.get(
 		}
 
 		const tagsResult = await service.getPostTags(postResult.value.id);
-		if (!tagsResult.ok) {
-			const { status, body } = mapServiceErrorToResponse(tagsResult.error);
-			return c.json(body, status);
-		}
-
-		return c.json({ tags: tagsResult.value });
+		return handleResultWith(c, tagsResult, tags => ({ tags }));
 	})
 );
 
@@ -77,12 +66,7 @@ tagsRouter.put(
 		}
 
 		const result = await service.setPostTags(postResult.value.id, newTags);
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.json({ tags: result.value });
+		return handleResultWith(c, result, tags => ({ tags }));
 	})
 );
 
@@ -102,12 +86,7 @@ tagsRouter.post(
 		}
 
 		const result = await service.addPostTags(postResult.value.id, tagsToAdd);
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.json({ tags: result.value }, 201);
+		return handleResultWith(c, result, tags => ({ tags }), 201);
 	})
 );
 
@@ -125,11 +104,6 @@ tagsRouter.delete(
 		}
 
 		const result = await service.removePostTag(postResult.value.id, tag);
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.body(null, 204);
+		return handleResultNoContent(c, result);
 	})
 );

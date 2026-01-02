@@ -4,8 +4,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
 import { type CreatedToken, type SanitizedToken, createTokenService } from "../services/tokens";
-import { mapServiceErrorToResponse } from "../utils/errors";
-import { type Variables, handleResult, valid } from "../utils/route-helpers";
+import { type Variables, handleResult, handleResultNoContent, handleResultWith, valid } from "../utils/route-helpers";
 
 export type { CreatedToken, SanitizedToken };
 
@@ -19,14 +18,8 @@ tokensRouter.get(
 	"/",
 	withAuth(async (c, user, ctx) => {
 		const service = createTokenService({ db: ctx.db });
-
 		const result = await service.list(user.id);
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.json({ tokens: result.value });
+		return handleResultWith(c, result, tokens => ({ tokens }));
 	})
 );
 
@@ -60,13 +53,7 @@ tokensRouter.delete(
 	withAuth(async (c, user, ctx) => {
 		const { id } = valid<z.infer<typeof TokenIdSchema>>(c, "param");
 		const service = createTokenService({ db: ctx.db });
-
 		const result = await service.delete(user.id, id);
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.body(null, 204);
+		return handleResultNoContent(c, result);
 	})
 );

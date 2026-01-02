@@ -4,8 +4,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
 import { type CategoryUpdate, createCategoryService } from "../services/categories";
-import { mapServiceErrorToResponse } from "../utils/errors";
-import { type Variables, handleResult, valid } from "../utils/route-helpers";
+import { type Variables, handleResult, handleResultNoContent, handleResultWith, valid } from "../utils/route-helpers";
 
 const CategoryNameSchema = z.object({
 	name: z.string().min(1),
@@ -22,13 +21,7 @@ categoriesRouter.get(
 	withAuth(async (c, user, ctx) => {
 		const service = createCategoryService({ db: ctx.db });
 		const result = await service.getTree(user.id);
-
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.json({ categories: result.value });
+		return handleResultWith(c, result, categories => ({ categories }));
 	})
 );
 
@@ -62,13 +55,7 @@ categoriesRouter.delete(
 	withAuth(async (c, user, ctx) => {
 		const { name } = valid<z.infer<typeof CategoryNameSchema>>(c, "param");
 		const service = createCategoryService({ db: ctx.db });
-
 		const result = await service.delete(user.id, name);
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.body(null, 204);
+		return handleResultNoContent(c, result);
 	})
 );

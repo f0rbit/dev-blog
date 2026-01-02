@@ -1,4 +1,4 @@
-import { type Result, err, format_error, ok } from "@blog/schema";
+import { type Result, err, first, format_error, match, ok, to_nullable } from "@blog/schema";
 
 export type ServiceError = {
 	type: "not_found" | "db_error" | "invalid_input" | "unauthorized" | "conflict";
@@ -16,8 +16,11 @@ export const createNotFound = (resource: string) => ({
 	resource,
 });
 
-export const firstRowOr = <T, E>(rows: T[], errorFn: () => E): Result<T, E> => {
-	const row = rows[0];
-	if (!row) return err(errorFn());
-	return ok(row);
-};
+export const firstRowOr = <T, E>(rows: T[], errorFn: () => E): Result<T, E> =>
+	match(
+		first(rows),
+		(v: T) => ok(v) as Result<T, E>,
+		() => err(errorFn())
+	);
+
+export const firstRowOrNull = <T>(rows: T[]): T | null => to_nullable(first(rows));

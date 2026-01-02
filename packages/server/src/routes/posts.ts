@@ -4,8 +4,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
 import { createPostService } from "../services/posts";
-import { mapServiceErrorToResponse } from "../utils/errors";
-import { type Variables, handleResult, valid } from "../utils/route-helpers";
+import { type Variables, handleResult, handleResultWith, valid } from "../utils/route-helpers";
 
 export const postsRouter = new Hono<{ Variables: Variables }>();
 
@@ -75,15 +74,8 @@ postsRouter.delete(
 	withAuth(async (c, user, ctx) => {
 		const { uuid } = valid<z.infer<typeof UuidParamSchema>>(c, "param");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
-
 		const result = await service.delete(user.id, uuid);
-
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.json({ success: true });
+		return handleResultWith(c, result, () => ({ success: true }));
 	})
 );
 
@@ -93,15 +85,8 @@ postsRouter.get(
 	withAuth(async (c, user, ctx) => {
 		const { uuid } = valid<z.infer<typeof UuidParamSchema>>(c, "param");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
-
 		const result = await service.listVersions(user.id, uuid);
-
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.json({ versions: result.value });
+		return handleResultWith(c, result, versions => ({ versions }));
 	})
 );
 

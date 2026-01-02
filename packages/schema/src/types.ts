@@ -2,7 +2,25 @@
 import type { Corpus, Store } from "@f0rbit/corpus";
 import { z } from "zod";
 import type { PostContent } from "./corpus";
-export { ok, err, pipe, try_catch_async, unwrap_or, match, format_error, type Result, type Pipe } from "@f0rbit/corpus";
+export {
+	ok,
+	err,
+	pipe,
+	try_catch_async,
+	unwrap_or,
+	match,
+	format_error,
+	try_catch,
+	fetch_result,
+	first,
+	last,
+	at,
+	to_nullable,
+	to_fallback,
+	type Result,
+	type Pipe,
+	type FetchError,
+} from "@f0rbit/corpus";
 export { PostContentSchema, type PostContent } from "./corpus";
 
 export const ProjectSchema = z.object({

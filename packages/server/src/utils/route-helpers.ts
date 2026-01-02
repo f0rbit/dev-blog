@@ -20,3 +20,19 @@ export const handleResult = <T>(c: Context, result: Result<T, MappableError>, su
 	}
 	return c.json(result.value, successStatus);
 };
+
+export const handleResultWith = <T, R>(c: Context, result: Result<T, MappableError>, mapper: (value: T) => R, successStatus: ContentfulStatusCode = 200): Response => {
+	if (!result.ok) {
+		const { status, body } = mapServiceErrorToResponse(result.error);
+		return c.json(body, status);
+	}
+	return c.json(mapper(result.value), successStatus);
+};
+
+export const handleResultNoContent = <T>(c: Context, result: Result<T, MappableError>): Response => {
+	if (!result.ok) {
+		const { status, body } = mapServiceErrorToResponse(result.error);
+		return c.json(body, status);
+	}
+	return c.body(null, 204);
+};

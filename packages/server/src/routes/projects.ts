@@ -3,8 +3,7 @@ import { Hono } from "hono";
 import { withAuth } from "../middleware/require-auth";
 import { createDevpadProvider } from "../providers/devpad";
 import { createProjectService } from "../services/projects";
-import { mapServiceErrorToResponse } from "../utils/errors";
-import type { Variables } from "../utils/route-helpers";
+import { type Variables, handleResultWith } from "../utils/route-helpers";
 
 type ProjectVariables = Variables & {
 	jwtToken?: string;
@@ -26,15 +25,8 @@ projectsRouter.get(
 	"/",
 	withAuth(async (c, user, ctx) => {
 		const service = getService(ctx);
-
 		const result = await service.list(user.id);
-
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.json({ projects: result.value });
+		return handleResultWith(c, result, projects => ({ projects }));
 	})
 );
 
@@ -49,12 +41,6 @@ projectsRouter.post(
 
 		const service = getService(ctx);
 		const result = await service.refresh(user.id, jwtToken);
-
-		if (!result.ok) {
-			const { status, body } = mapServiceErrorToResponse(result.error);
-			return c.json(body, status);
-		}
-
-		return c.json({ projects: result.value });
+		return handleResultWith(c, result, projects => ({ projects }));
 	})
 );
