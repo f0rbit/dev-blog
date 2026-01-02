@@ -1,5 +1,4 @@
-import { type AccessKeyCreate, type AccessKeyUpdate, type DrizzleDB, type Result, accessKeys, ok, try_catch_async } from "@blog/schema";
-import type { AccessKey } from "@blog/schema/database";
+import { type AccessKeyCreate, type AccessKeyRow, type AccessKeyUpdate, type DrizzleDB, type Result, accessKeys, ok, try_catch_async } from "@blog/schema";
 import { and, eq } from "drizzle-orm";
 import { hashToken } from "../utils/crypto";
 import { createDbError, createNotFound, firstRowOr } from "../utils/service-helpers";
@@ -28,7 +27,7 @@ const notFound = (resource: string): TokenServiceError => createNotFound(resourc
 
 const firstRow = <T>(rows: T[], resource: string): Result<T, TokenServiceError> => firstRowOr(rows, () => notFound(resource));
 
-export const sanitizeToken = (token: AccessKey): SanitizedToken => ({
+export const sanitizeToken = (token: AccessKeyRow): SanitizedToken => ({
 	id: token.id,
 	name: token.name,
 	note: token.note,
@@ -46,7 +45,7 @@ export const createTokenService = ({ db }: Deps) => {
 			return tokens.map(sanitizeToken);
 		}, toDbError);
 
-	const find = async (userId: number, tokenId: number): Promise<Result<AccessKey, TokenServiceError>> => {
+	const find = async (userId: number, tokenId: number): Promise<Result<AccessKeyRow, TokenServiceError>> => {
 		const rows = await db
 			.select()
 			.from(accessKeys)

@@ -14,9 +14,7 @@ export const postsStoreDefinition = define_store("posts", json_codec(PostContent
 
 export const postStoreId = (userId: number, postUuid: string): string => `posts/${userId}/${postUuid}`;
 
-// Projects cache store - uses inline schema to avoid circular dependency with types.ts
-// This must match ProjectSchema from types.ts
-const ProjectSchemaInline = z.object({
+export const ProjectSchema = z.object({
 	id: z.string(),
 	owner_id: z.string(),
 	project_id: z.string(),
@@ -37,8 +35,10 @@ const ProjectSchemaInline = z.object({
 	deleted: z.boolean(),
 });
 
+export type Project = z.infer<typeof ProjectSchema>;
+
 export const ProjectsCacheSchema = z.object({
-	projects: z.array(ProjectSchemaInline),
+	projects: z.array(ProjectSchema),
 	fetched_at: z.string(),
 });
 

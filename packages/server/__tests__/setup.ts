@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { type AppContext, type DrizzleDB, type PostsCorpus, create_corpus, create_memory_backend, postsStoreDefinition, projectsCacheStoreDefinition } from "@blog/schema";
-import * as schema from "@blog/schema/database";
+import * as schema from "@blog/schema/tables";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { Hono } from "hono";
 

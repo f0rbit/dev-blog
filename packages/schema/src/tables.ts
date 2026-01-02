@@ -2,7 +2,6 @@ import { sql } from "drizzle-orm";
 import type { BaseSQLiteDatabase } from "drizzle-orm/sqlite-core";
 import { integer, primaryKey, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
 
-// Generic Drizzle SQLite database type - works with both D1 and bun-sqlite
 // biome-ignore lint/suspicious/noExplicitAny: Drizzle uses 'any' for flexible query/result types
 export type DrizzleDB = BaseSQLiteDatabase<"async", any, Record<string, never>>;
 
@@ -120,30 +119,3 @@ export const postProjects = sqliteTable(
 	},
 	table => [primaryKey({ columns: [table.post_id, table.project_id] })]
 );
-
-export type PostProject = typeof postProjects.$inferSelect;
-export type PostProjectInsert = typeof postProjects.$inferInsert;
-
-export type User = typeof users.$inferSelect;
-export type UserInsert = typeof users.$inferInsert;
-
-export type PostRow = typeof posts.$inferSelect;
-export type PostRowInsert = typeof posts.$inferInsert;
-
-export type Category = typeof categories.$inferSelect;
-export type CategoryInsert = typeof categories.$inferInsert;
-
-export type Tag = typeof tags.$inferSelect;
-export type TagInsert = typeof tags.$inferInsert;
-
-export type AccessKey = typeof accessKeys.$inferSelect;
-export type AccessKeyInsert = typeof accessKeys.$inferInsert;
-
-export type Integration = typeof integrations.$inferSelect;
-export type IntegrationInsert = typeof integrations.$inferInsert;
-
-export type FetchLink = typeof fetchLinks.$inferSelect;
-export type FetchLinkInsert = typeof fetchLinks.$inferInsert;
-
-export type ProjectCache = typeof projectsCache.$inferSelect;
-export type ProjectCacheInsert = typeof projectsCache.$inferInsert;

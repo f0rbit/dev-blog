@@ -1,7 +1,10 @@
 /// <reference types="@cloudflare/workers-types" />
 import type { Corpus, Store } from "@f0rbit/corpus";
+import { createSelectSchema, createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import type { PostContent } from "./corpus";
+import { users, posts, categories, tags, accessKeys, integrations, fetchLinks, projectsCache, postProjects, type DrizzleDB } from "./tables";
+
 export {
 	ok,
 	err,
@@ -23,29 +26,65 @@ export {
 } from "@f0rbit/corpus";
 export { PostContentSchema, type PostContent } from "./corpus";
 
-export const ProjectSchema = z.object({
-	id: z.string(),
-	owner_id: z.string(),
-	project_id: z.string(), // User-defined project identifier (used as slug)
-	name: z.string(),
-	description: z.string().nullable(),
-	specification: z.string().nullable(),
-	repo_url: z.string().nullable(),
-	repo_id: z.number().nullable(),
-	icon_url: z.string().nullable(),
-	status: z.enum(["DEVELOPMENT", "PAUSED", "RELEASED", "LIVE", "FINISHED", "ABANDONED", "STOPPED"]),
-	link_url: z.string().nullable(),
-	link_text: z.string().nullable(),
-	visibility: z.enum(["PUBLIC", "PRIVATE", "HIDDEN", "ARCHIVED", "DRAFT", "DELETED"]),
-	current_version: z.string().nullable(),
-	scan_branch: z.string().nullable(),
-	created_at: z.string(),
-	updated_at: z.string(),
-	deleted: z.boolean(),
-});
+// Drizzle-generated schemas
+export const UserSchema = createSelectSchema(users);
+export type User = z.infer<typeof UserSchema>;
 
-export type Project = z.infer<typeof ProjectSchema>;
+export const UserInsertSchema = createInsertSchema(users);
+export type UserInsert = z.infer<typeof UserInsertSchema>;
 
+export const PostRowSchema = createSelectSchema(posts);
+export type PostRow = z.infer<typeof PostRowSchema>;
+
+export const PostRowInsertSchema = createInsertSchema(posts);
+export type PostRowInsert = z.infer<typeof PostRowInsertSchema>;
+
+export const CategorySchema = createSelectSchema(categories);
+export type Category = z.infer<typeof CategorySchema>;
+
+export const CategoryInsertSchema = createInsertSchema(categories);
+export type CategoryInsert = z.infer<typeof CategoryInsertSchema>;
+
+export const TagSchema = createSelectSchema(tags);
+export type Tag = z.infer<typeof TagSchema>;
+
+export const TagInsertSchema = createInsertSchema(tags);
+export type TagInsert = z.infer<typeof TagInsertSchema>;
+
+export const AccessKeyRowSchema = createSelectSchema(accessKeys);
+export type AccessKeyRow = z.infer<typeof AccessKeyRowSchema>;
+
+export const AccessKeySchema = AccessKeyRowSchema.omit({ key_hash: true });
+export type AccessKey = z.infer<typeof AccessKeySchema>;
+
+export const AccessKeyInsertSchema = createInsertSchema(accessKeys);
+export type AccessKeyInsert = z.infer<typeof AccessKeyInsertSchema>;
+
+export const IntegrationSchema = createSelectSchema(integrations);
+export type Integration = z.infer<typeof IntegrationSchema>;
+
+export const IntegrationInsertSchema = createInsertSchema(integrations);
+export type IntegrationInsert = z.infer<typeof IntegrationInsertSchema>;
+
+export const FetchLinkSchema = createSelectSchema(fetchLinks);
+export type FetchLink = z.infer<typeof FetchLinkSchema>;
+
+export const FetchLinkInsertSchema = createInsertSchema(fetchLinks);
+export type FetchLinkInsert = z.infer<typeof FetchLinkInsertSchema>;
+
+export const ProjectCacheSchema = createSelectSchema(projectsCache);
+export type ProjectCache = z.infer<typeof ProjectCacheSchema>;
+
+export const ProjectCacheInsertSchema = createInsertSchema(projectsCache);
+export type ProjectCacheInsert = z.infer<typeof ProjectCacheInsertSchema>;
+
+export const PostProjectSchema = createSelectSchema(postProjects);
+export type PostProject = z.infer<typeof PostProjectSchema>;
+
+export const PostProjectInsertSchema = createInsertSchema(postProjects);
+export type PostProjectInsert = z.infer<typeof PostProjectInsertSchema>;
+
+// Enriched Post schema (DB row + corpus content)
 export const PostSchema = z.object({
 	id: z.number(),
 	uuid: z.string().uuid(),
@@ -121,6 +160,7 @@ export const PostsResponseSchema = z.object({
 
 export type PostsResponse = z.infer<typeof PostsResponseSchema>;
 
+// Post status utilities
 type PublishAtField = Pick<Post, "publish_at">;
 
 export const isPublished = (post: PublishAtField): boolean => post.publish_at !== null && post.publish_at <= new Date();
@@ -137,27 +177,7 @@ export const postStatus = (post: PublishAtField): PostStatus => {
 	return "published";
 };
 
-export const UserSchema = z.object({
-	id: z.number(),
-	github_id: z.number(),
-	username: z.string(),
-	email: z.string().nullable(),
-	avatar_url: z.string().nullable(),
-	created_at: z.coerce.date(),
-	updated_at: z.coerce.date(),
-});
-
-export type User = z.infer<typeof UserSchema>;
-
-export const CategorySchema = z.object({
-	id: z.number(),
-	owner_id: z.number(),
-	name: z.string(),
-	parent: z.string().nullable(),
-});
-
-export type Category = z.infer<typeof CategorySchema>;
-
+// Category API schema
 export const CategoryCreateSchema = z.object({
 	name: z.string().min(1),
 	parent: z.string().default("root"),
@@ -165,24 +185,7 @@ export const CategoryCreateSchema = z.object({
 
 export type CategoryCreate = z.infer<typeof CategoryCreateSchema>;
 
-export const TagSchema = z.object({
-	post_id: z.number(),
-	tag: z.string(),
-});
-
-export type Tag = z.infer<typeof TagSchema>;
-
-export const AccessKeySchema = z.object({
-	id: z.number(),
-	user_id: z.number(),
-	name: z.string(),
-	note: z.string().nullable(),
-	enabled: z.boolean(),
-	created_at: z.coerce.date(),
-});
-
-export type AccessKey = z.infer<typeof AccessKeySchema>;
-
+// AccessKey API schemas
 export const AccessKeyCreateSchema = z.object({
 	name: z.string().min(1),
 	note: z.string().optional(),
@@ -198,19 +201,7 @@ export const AccessKeyUpdateSchema = z.object({
 
 export type AccessKeyUpdate = z.infer<typeof AccessKeyUpdateSchema>;
 
-export const IntegrationSchema = z.object({
-	id: z.number(),
-	user_id: z.number(),
-	source: z.string(),
-	location: z.string(),
-	data: z.record(z.unknown()).nullable(),
-	last_fetch: z.coerce.date().nullable(),
-	status: z.string().nullable(),
-	created_at: z.coerce.date(),
-});
-
-export type Integration = z.infer<typeof IntegrationSchema>;
-
+// Integration API schema
 export const IntegrationUpsertSchema = z.object({
 	source: z.string().min(1),
 	location: z.string().min(1),
@@ -219,25 +210,7 @@ export const IntegrationUpsertSchema = z.object({
 
 export type IntegrationUpsert = z.infer<typeof IntegrationUpsertSchema>;
 
-export const FetchLinkSchema = z.object({
-	id: z.number(),
-	post_id: z.number(),
-	integration_id: z.number(),
-	identifier: z.string(),
-});
-
-export type FetchLink = z.infer<typeof FetchLinkSchema>;
-
-export const ProjectCacheSchema = z.object({
-	id: z.number(),
-	user_id: z.number(),
-	status: z.string(),
-	data: z.record(z.unknown()).nullable(),
-	fetched_at: z.coerce.date().nullable(),
-});
-
-export type ProjectCache = z.infer<typeof ProjectCacheSchema>;
-
+// Generic API types
 export type ApiError = {
 	code: string;
 	message: string;
@@ -252,8 +225,7 @@ export type PaginatedResponse<T> = {
 	hasMore: boolean;
 };
 
-import type { DrizzleDB } from "./database";
-
+// App context types
 export type Bindings = {
 	DB: D1Database;
 	CORPUS_BUCKET: R2Bucket;
@@ -270,4 +242,4 @@ export type AppContext = {
 	environment: string;
 };
 
-export type { DrizzleDB } from "./database";
+export type { DrizzleDB } from "./tables";

@@ -11,8 +11,8 @@
 			"import": "./src/index.ts"
 		},
 		"./tables": {
-			"types": "./src/database.ts",
-			"import": "./src/database.ts"
+			"types": "./src/tables.ts",
+			"import": "./src/tables.ts"
 		},
 		"./validation": {
 			"types": "./src/types.ts",
@@ -31,6 +31,7 @@
 	"dependencies": {
 		"@f0rbit/corpus": "^0.2.2",
 		"drizzle-orm": "^0.38.2",
+		"drizzle-zod": "^0.7.0",
 		"zod": "^3.24.1"
 	},
 	"devDependencies": {

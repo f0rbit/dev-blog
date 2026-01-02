@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import * as schema from "@blog/schema/database";
+import * as schema from "@blog/schema/tables";
 import { tagsRouter } from "../../src/routes/tags";
 import { type TestContext, createAuthenticatedTestApp, createTestContext, createTestPost, createTestUser } from "../setup";
 
