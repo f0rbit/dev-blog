@@ -109,25 +109,36 @@ const createTestApp = (ctx: TestContext, user: User, mockProvider: ReturnType<ty
 	return app;
 };
 
+const createMockProject = (overrides: Partial<Project> & { id: string; name: string }): Project => ({
+	owner_id: "user-1",
+	project_id: overrides.id,
+	description: null,
+	specification: null,
+	repo_url: null,
+	repo_id: null,
+	icon_url: null,
+	status: "DEVELOPMENT",
+	link_url: null,
+	link_text: null,
+	visibility: "PRIVATE",
+	current_version: null,
+	scan_branch: null,
+	created_at: new Date().toISOString(),
+	updated_at: new Date().toISOString(),
+	deleted: false,
+	...overrides,
+});
+
 const mockProjects: Project[] = [
-	{
+	createMockProject({
 		id: "proj-1",
 		name: "Project One",
-		slug: "project-one",
 		description: "First project",
-		color: "#ff0000",
-		icon: "folder",
-		url: "https://example.com/1",
-	},
-	{
+	}),
+	createMockProject({
 		id: "proj-2",
 		name: "Project Two",
-		slug: "project-two",
-		description: null,
-		color: null,
-		icon: null,
-		url: null,
-	},
+	}),
 ];
 
 describe("Projects Route Integration", () => {
@@ -242,38 +253,9 @@ describe("Projects Route Integration", () => {
 			const mockProviderA = createMockDevpadProvider();
 			const mockProviderB = createMockDevpadProvider();
 
-			const projectsA: Project[] = [
-				{
-					id: "proj-a",
-					name: "User A Project",
-					slug: "user-a-project",
-					description: null,
-					color: null,
-					icon: null,
-					url: null,
-				},
-			];
+			const projectsA: Project[] = [createMockProject({ id: "proj-a", name: "User A Project" })];
 
-			const projectsB: Project[] = [
-				{
-					id: "proj-b1",
-					name: "User B Project 1",
-					slug: "user-b-project-1",
-					description: null,
-					color: null,
-					icon: null,
-					url: null,
-				},
-				{
-					id: "proj-b2",
-					name: "User B Project 2",
-					slug: "user-b-project-2",
-					description: null,
-					color: null,
-					icon: null,
-					url: null,
-				},
-			];
+			const projectsB: Project[] = [createMockProject({ id: "proj-b1", name: "User B Project 1" }), createMockProject({ id: "proj-b2", name: "User B Project 2" })];
 
 			mockProviderA.setProjects(projectsA);
 			mockProviderB.setProjects(projectsB);
@@ -392,7 +374,7 @@ describe("Projects Routes (HTTP)", () => {
 				avatar_url: null,
 			};
 
-			const mockProjectsResponse = JSON.stringify([{ id: "p1", name: "Project 1", slug: "project-1", description: null, color: null, icon: null, url: null }]);
+			const mockProjectsResponse = JSON.stringify([createMockProject({ id: "p1", name: "Project 1" })]);
 
 			globalThis.fetch = mockFetchWithPreconnect(async url => {
 				const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;

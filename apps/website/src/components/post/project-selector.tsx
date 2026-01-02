@@ -4,10 +4,9 @@ import { For, Show, createResource, createSignal } from "solid-js";
 type Project = {
 	id: string;
 	name: string;
-	slug?: string | null;
-	description?: string | null;
-	color?: string | null;
-	icon?: string | null;
+	project_id: string;
+	description: string | null;
+	icon_url: string | null;
 };
 
 type ProjectSelectorProps = {
@@ -62,7 +61,7 @@ export const ProjectSelector = (props: ProjectSelectorProps) => {
 			<div class="project-selector__selected">
 				<For each={selectedProjects()}>
 					{project => (
-						<span class="project-badge" style={{ "--project-color": project.color ?? "var(--text-muted)" }}>
+						<span class="project-badge">
 							{project.name}
 							<button type="button" class="project-badge__remove" onClick={() => removeProject(project.id)} aria-label={`Remove ${project.name}`}>
 								×
@@ -95,7 +94,7 @@ export const ProjectSelector = (props: ProjectSelectorProps) => {
 					<For each={availableProjects()}>
 						{project => (
 							<button type="button" class="project-selector__option" onClick={() => toggleProject(project.id)}>
-								<span class="project-selector__color" style={{ background: project.color ?? "var(--text-muted)" }} />
+								<span class="project-selector__color" />
 								<span class="project-selector__name">{project.name}</span>
 								<Show when={project.description}>
 									<span class="project-selector__desc">{project.description}</span>

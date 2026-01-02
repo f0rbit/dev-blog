@@ -25,15 +25,23 @@ export { PostContentSchema, type PostContent } from "./corpus";
 
 export const ProjectSchema = z.object({
 	id: z.string(),
+	owner_id: z.string(),
+	project_id: z.string(), // User-defined project identifier (used as slug)
 	name: z.string(),
-	slug: z
-		.string()
-		.nullish()
-		.transform(v => v ?? ""),
-	description: z.string().nullish(),
-	color: z.string().nullish(),
-	icon: z.string().nullish(),
-	url: z.string().nullish(),
+	description: z.string().nullable(),
+	specification: z.string().nullable(),
+	repo_url: z.string().nullable(),
+	repo_id: z.number().nullable(),
+	icon_url: z.string().nullable(),
+	status: z.enum(["DEVELOPMENT", "PAUSED", "RELEASED", "LIVE", "FINISHED", "ABANDONED", "STOPPED"]),
+	link_url: z.string().nullable(),
+	link_text: z.string().nullable(),
+	visibility: z.enum(["PUBLIC", "PRIVATE", "HIDDEN", "ARCHIVED", "DRAFT", "DELETED"]),
+	current_version: z.string().nullable(),
+	scan_branch: z.string().nullable(),
+	created_at: z.string(),
+	updated_at: z.string(),
+	deleted: z.boolean(),
 });
 
 export type Project = z.infer<typeof ProjectSchema>;
