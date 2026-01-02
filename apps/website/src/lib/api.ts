@@ -14,7 +14,7 @@ type RuntimeEnv = {
 };
 
 export const api = {
-	blog: (path: string) => `/api/blog${path.startsWith("/") ? path : `/${path}`}`,
+	blog: (path: string) => `/api/blog${path ? (path.startsWith("/") ? path : `/${path}`) : ""}`,
 
 	auth: (path: string) => `/auth${path.startsWith("/") ? path : `/${path}`}`,
 

@@ -16,6 +16,7 @@ const extractProjectsArray = (data: unknown): unknown => (Array.isArray(data) ? 
 export const createDevpadProvider = (config: DevpadProviderConfig): DevpadProvider => {
 	const fetchProjects = async (token: string): Promise<Result<Project[], string>> => {
 		const url = `${config.apiUrl}/api/v0/projects`;
+		console.log(`[DEVPAD:FETCH] url=${url} tokenLength=${token?.length}`);
 
 		const fetchResult = await try_catch_async(
 			async () => {
@@ -26,22 +27,42 @@ export const createDevpadProvider = (config: DevpadProviderConfig): DevpadProvid
 					},
 				});
 
+				console.log(`[DEVPAD:RESPONSE] status=${response.status} ok=${response.ok}`);
+
 				if (!response.ok) {
+					const body = await response.text().catch(() => "");
+					console.log(`[DEVPAD:ERROR] status=${response.status} body=${body.slice(0, 200)}`);
 					if (response.status === 401) throw new Error("Invalid or expired DevPad token");
 					throw new Error(`DevPad API error: ${response.status} ${response.statusText}`);
 				}
 
 				return response.json();
 			},
-			e => format_error(e)
+			e => {
+				console.log(`[DEVPAD:EXCEPTION] ${format_error(e)}`);
+				return format_error(e);
+			}
 		);
 
+		console.log(`[DEVPAD:FETCH_RESULT] ok=${fetchResult.ok}`);
+
 		return pipe(fetchResult)
-			.map(extractProjectsArray)
+			.map(data => {
+				const extracted = extractProjectsArray(data);
+				console.log(`[DEVPAD:EXTRACTED] isArray=${Array.isArray(extracted)} length=${Array.isArray(extracted) ? extracted.length : "N/A"}`);
+				return extracted;
+			})
 			.flat_map((data: unknown) =>
 				try_catch(
-					() => ProjectsResponseSchema.parse(data),
-					e => `Invalid response format: ${format_error(e)}`
+					() => {
+						const parsed = ProjectsResponseSchema.parse(data);
+						console.log(`[DEVPAD:PARSED] projectCount=${parsed.length}`);
+						return parsed;
+					},
+					e => {
+						console.log(`[DEVPAD:PARSE_ERROR] ${format_error(e)}`);
+						return `Invalid response format: ${format_error(e)}`;
+					}
 				)
 			)
 			.result();

@@ -77,7 +77,7 @@ export const createTestContext = (): TestContext => {
 	const bunDb = drizzle(sqliteDb, { schema });
 	const db = bunDb as unknown as DrizzleDB;
 	const backend = create_memory_backend();
-	const corpus = create_corpus().with_backend(backend).with_store(postsStoreDefinition).build() as PostsCorpus;
+	const corpus = create_corpus().with_backend(backend).with_store(postsStoreDefinition).with_store(projectsCacheStoreDefinition).build() as PostsCorpus;
 
 	return {
 		sqliteDb,

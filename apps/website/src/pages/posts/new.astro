@@ -14,19 +14,36 @@ interface Category {
 	parent: string | null;
 }
 
+interface Project {
+	id: string;
+	name: string;
+	project_id: string;
+	description: string | null;
+}
+
 const flattenTree = (nodes: CategoryNode[]): Category[] => nodes.flatMap(n => [{ name: n.name, parent: n.parent }, ...flattenTree(n.children ?? [])]);
 
 let categories: Category[] = [];
+let projects: Project[] = [];
 
 try {
 	const runtime = Astro.locals.runtime;
-	const response = await api.ssr("/api/blog/categories", Astro.request, {}, runtime);
-	if (response.ok) {
-		const data = await response.json();
+	const [catRes, projRes] = await Promise.all([
+		api.ssr("/api/blog/categories", Astro.request, {}, runtime),
+		api.ssr("/api/blog/projects", Astro.request, {}, runtime)
+	]);
+
+	if (catRes.ok) {
+		const data = await catRes.json() as { categories?: CategoryNode[] };
 		categories = flattenTree(data.categories ?? []);
 	}
+
+	if (projRes.ok) {
+		const data = await projRes.json() as { projects?: Project[] };
+		projects = data.projects ?? [];
+	}
 } catch (e) {
-	// Categories fetch failed silently
+	// Fetch failed silently
 }
 ---
 
@@ -42,7 +59,7 @@ try {
 		</header>
 
 		<div id="editor-container">
-			<PostEditor client:load categories={categories} />
+			<PostEditor client:load categories={categories} projects={projects} />
 		</div>
 	</section>
 </AppLayout>

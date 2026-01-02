@@ -12,10 +12,10 @@ type Project = {
 type ProjectSelectorProps = {
 	selectedIds: string[];
 	onChange: (ids: string[]) => void;
+	initialProjects?: Project[];
 };
 
 const fetchProjects = async (): Promise<Project[]> => {
-	if (typeof window === "undefined") return [];
 	const response = await api.fetch("/api/blog/projects");
 	if (!response.ok) return [];
 	const data: { projects?: Project[] } = await response.json();
@@ -23,7 +23,23 @@ const fetchProjects = async (): Promise<Project[]> => {
 };
 
 export const ProjectSelector = (props: ProjectSelectorProps) => {
-	const [projects, { refetch }] = createResource(fetchProjects);
+	// Use a trigger signal to control when to fetch
+	// Start at 0, only fetch when trigger > 0 OR when we don't have initial data
+	const [fetchTrigger, setFetchTrigger] = createSignal(0);
+
+	const [projects, { refetch }] = createResource(
+		() => {
+			const trigger = fetchTrigger();
+			// Skip initial fetch if we have SSR data
+			if (trigger === 0 && props.initialProjects && props.initialProjects.length > 0) {
+				return null; // Returning null skips the fetch
+			}
+			return trigger;
+		},
+		fetchProjects,
+		{ initialValue: props.initialProjects ?? [] }
+	);
+
 	const [isOpen, setIsOpen] = createSignal(false);
 	const [refreshing, setRefreshing] = createSignal(false);
 
@@ -50,7 +66,8 @@ export const ProjectSelector = (props: ProjectSelectorProps) => {
 			await api.fetch("/api/blog/projects/refresh", {
 				method: "POST",
 			});
-			await refetch();
+			// Increment trigger to force a refetch
+			setFetchTrigger(n => n + 1);
 		} finally {
 			setRefreshing(false);
 		}

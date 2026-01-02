@@ -27,16 +27,28 @@ type Post = {
 	updated_at: string;
 };
 
+type Project = {
+	id: string;
+	name: string;
+	project_id: string;
+	description: string | null;
+};
+
 const flattenTree = (nodes: CategoryNode[]): Category[] => nodes.flatMap(n => [{ name: n.name, parent: n.parent }, ...flattenTree(n.children ?? [])]);
 
 let post: Post | null = null;
 let categories: Category[] = [];
+let projects: Project[] = [];
 let error: string | null = null;
 
 const runtime = Astro.locals.runtime;
 
 try {
-	const [postRes, catRes] = await Promise.all([api.ssr(`/api/blog/posts/${slug}`, Astro.request, {}, runtime), api.ssr("/api/blog/categories", Astro.request, {}, runtime)]);
+	const [postRes, catRes, projRes] = await Promise.all([
+		api.ssr(`/api/blog/posts/${slug}`, Astro.request, {}, runtime),
+		api.ssr("/api/blog/categories", Astro.request, {}, runtime),
+		api.ssr("/api/blog/projects", Astro.request, {}, runtime)
+	]);
 
 	if (postRes.ok) {
 		post = await postRes.json();
@@ -45,8 +57,13 @@ try {
 	}
 
 	if (catRes.ok) {
-		const catData = await catRes.json();
+		const catData = await catRes.json() as { categories?: CategoryNode[] };
 		categories = flattenTree(catData.categories ?? []);
+	}
+
+	if (projRes.ok) {
+		const projData = await projRes.json() as { projects?: Project[] };
+		projects = projData.projects ?? [];
 	}
 } catch (e) {
 	error = "Failed to load post";
@@ -69,7 +86,7 @@ try {
 			<div class="form-error">{error}</div>
 		) : post ? (
 			<div id="editor-container" data-uuid={post.uuid}>
-				<PostEditor client:load post={post} categories={categories} onFormReady={() => {}} />
+				<PostEditor client:load post={post} categories={categories} projects={projects} onFormReady={() => {}} />
 			</div>
 		) : (
 			<div class="form-error">Post not found</div>
@@ -88,23 +105,29 @@ try {
 	}
 </style>
 
-<script define:vars={{ API_BASE: api.blog("") }}>
-	const API_URL = API_BASE;
+<script is:inline define:vars={{ API_BASE: api.blog("") }}>
+	console.log("[slug.astro] Script loaded, API_BASE:", API_BASE);
 
-	type PostFormData = {
-		slug: string;
-		title: string;
-		content: string;
-		description?: string;
-		format: "md" | "adoc";
-		category: string;
-		tags: string[];
-		project_ids: string[];
-		publish_at: Date | null;
+	// Define postEditorReady BEFORE DOMContentLoaded to avoid race condition
+	// PostEditor will call this when it's ready
+	var postEditorState = {
+		getFormData: null,
+		saveBtn: null,
+		uuid: null
 	};
 
-	const handleSave = async (uuid: string, data: PostFormData) => {
-		const response = await fetch(`${API_URL}/posts/${uuid}`, {
+	window.postEditorReady = function(getFormData) {
+		console.log("[slug.astro] postEditorReady called");
+		postEditorState.getFormData = getFormData;
+		// If DOM is already ready, enable button immediately
+		if (postEditorState.saveBtn) {
+			console.log("[slug.astro] Enabling save button");
+			postEditorState.saveBtn.disabled = false;
+		}
+	};
+
+	var handleSave = function(uuid, data) {
+		return fetch(API_BASE + "/posts/" + uuid, {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
@@ -116,58 +139,69 @@ try {
 				category: data.category,
 				tags: data.tags,
 				project_ids: data.project_ids,
-				publish_at: data.publish_at?.toISOString() ?? null,
+				publish_at: data.publish_at ? data.publish_at.toISOString() : null,
 			}),
+		}).then(function(response) {
+			if (!response.ok) {
+				return response.json().catch(function() { return { message: "Unknown error" }; }).then(function(error) {
+					throw new Error(error.message || "Failed to update post");
+				});
+			}
+			return response.json();
+		}).then(function(post) {
+			if (post.slug !== data.slug) {
+				window.location.href = "/posts/" + post.slug;
+			}
 		});
-
-		if (!response.ok) {
-			const error = await response.json().catch(() => ({ message: "Unknown error" }));
-			throw new Error(error.message ?? "Failed to update post");
-		}
-
-		const post = await response.json();
-		if (post.slug !== data.slug) {
-			window.location.href = `/posts/${post.slug}`;
-		}
 	};
 
-	// Wire up save button once PostEditor is ready
-	document.addEventListener("DOMContentLoaded", () => {
-		const saveBtn = document.getElementById("save-btn") as HTMLButtonElement | null;
-		const container = document.getElementById("editor-container");
+	document.addEventListener("DOMContentLoaded", function() {
+		console.log("[slug.astro] DOMContentLoaded");
+		var saveBtn = document.getElementById("save-btn");
+		var container = document.getElementById("editor-container");
+		console.log("[slug.astro] saveBtn:", !!saveBtn, "container:", !!container);
 		if (!saveBtn || !container) return;
 
-		const uuid = container.dataset.uuid;
+		var uuid = container.dataset.uuid;
+		console.log("[slug.astro] uuid:", uuid);
 		if (!uuid) return;
 
-		// PostEditor will call window.postEditorReady when form is ready
-		(window as any).postEditorReady = (getFormData: () => PostFormData) => {
+		postEditorState.saveBtn = saveBtn;
+		postEditorState.uuid = uuid;
+
+		// If PostEditor already called postEditorReady, enable button now
+		console.log("[slug.astro] getFormData already set?", !!postEditorState.getFormData);
+		if (postEditorState.getFormData) {
+			console.log("[slug.astro] Enabling save button (from DOMContentLoaded)");
 			saveBtn.disabled = false;
+		}
 
-			saveBtn.addEventListener("click", async () => {
-				const data = getFormData();
-				if (!data.title.trim()) {
-					alert("Title is required");
-					return;
-				}
-				if (!data.slug.trim()) {
-					alert("Slug is required");
-					return;
-				}
+		saveBtn.addEventListener("click", function() {
+			if (!postEditorState.getFormData) return;
 
-				saveBtn.disabled = true;
-				saveBtn.textContent = "Saving...";
+			var data = postEditorState.getFormData();
+			if (!data.title.trim()) {
+				alert("Title is required");
+				return;
+			}
+			if (!data.slug.trim()) {
+				alert("Slug is required");
+				return;
+			}
 
-				try {
-					await handleSave(uuid, data);
+			saveBtn.disabled = true;
+			saveBtn.textContent = "Saving...";
+
+			handleSave(uuid, data)
+				.then(function() {
 					saveBtn.textContent = "Update";
-				} catch (e) {
-					alert(e instanceof Error ? e.message : "Failed to save");
-					saveBtn.textContent = "Update";
-				} finally {
 					saveBtn.disabled = false;
-				}
-			});
-		};
+				})
+				.catch(function(e) {
+					alert(e.message || "Failed to save");
+					saveBtn.textContent = "Update";
+					saveBtn.disabled = false;
+				});
+		});
 	});
 </script>

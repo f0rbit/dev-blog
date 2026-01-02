@@ -39,9 +39,17 @@ type PostFormData = {
 	publish_at: Date | null;
 };
 
+type Project = {
+	id: string;
+	name: string;
+	project_id: string;
+	description: string | null;
+};
+
 type PostEditorProps = {
 	post?: Post;
 	categories: Category[];
+	projects?: Project[];
 	onSave?: (data: PostFormData) => Promise<void>;
 	onFormReady?: (getFormData: () => PostFormData) => void;
 };
@@ -77,8 +85,35 @@ const PostEditor: Component<PostEditorProps> = props => {
 	const form = createFormState();
 	const [activeTab, setActiveTab] = createSignal<"write" | "preview">("write");
 
-	// Fetch categories on mount if not provided
+	// Expose form data getter for external save button
+	const getFormData = (): PostFormData => ({
+		slug: slug(),
+		title: title(),
+		content: content(),
+		description: description() || undefined,
+		format: format(),
+		category: category(),
+		tags: tags(),
+		project_ids: projectIds(),
+		publish_at: publishAt(),
+	});
+
+	// Fetch categories on mount if not provided, and notify parent that form is ready
 	onMount(async () => {
+		console.log("[PostEditor] onMount called");
+		// Notify parent that form is ready (for external save button)
+		if (props.onFormReady) {
+			console.log("[PostEditor] Calling props.onFormReady");
+			props.onFormReady(getFormData);
+		}
+		const win = window as Window & { postEditorReady?: (fn: typeof getFormData) => void };
+		console.log("[PostEditor] window.postEditorReady defined?", !!win.postEditorReady);
+		if (win.postEditorReady) {
+			console.log("[PostEditor] Calling window.postEditorReady");
+			win.postEditorReady(getFormData);
+		}
+
+		// Fetch categories if not provided
 		if (props.categories && props.categories.length > 0) return;
 		try {
 			const response = await api.fetch("/api/blog/categories");
@@ -93,30 +128,6 @@ const PostEditor: Component<PostEditorProps> = props => {
 	});
 
 	const isEditing = () => !!props.post;
-
-	// Expose form data getter for external save button
-	const getFormData = (): PostFormData => ({
-		slug: slug(),
-		title: title(),
-		content: content(),
-		description: description() || undefined,
-		format: format(),
-		category: category(),
-		tags: tags(),
-		project_ids: projectIds(),
-		publish_at: publishAt(),
-	});
-
-	// Call onFormReady or window.postEditorReady so parent can wire up save button
-	if (props.onFormReady) {
-		props.onFormReady(getFormData);
-	}
-	if (typeof window !== "undefined") {
-		const win = window as Window & { postEditorReady?: (fn: typeof getFormData) => void };
-		if (win.postEditorReady) {
-			win.postEditorReady(getFormData);
-		}
-	}
 
 	const handleTitleChange = (newTitle: string) => {
 		setTitle(newTitle);
@@ -230,7 +241,7 @@ const PostEditor: Component<PostEditorProps> = props => {
 
 					<div class="post-editor__field post-editor__field--wide">
 						<label>Projects</label>
-						<ProjectSelector selectedIds={projectIds()} onChange={setProjectIds} />
+						<ProjectSelector selectedIds={projectIds()} onChange={setProjectIds} initialProjects={props.projects} />
 					</div>
 				</div>
 
