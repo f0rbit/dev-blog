@@ -4,10 +4,10 @@ import { For, Show, createResource, createSignal } from "solid-js";
 type Project = {
 	id: string;
 	name: string;
-	slug: string;
-	description: string | null;
-	color: string | null;
-	icon: string | null;
+	slug?: string | null;
+	description?: string | null;
+	color?: string | null;
+	icon?: string | null;
 };
 
 type ProjectSelectorProps = {

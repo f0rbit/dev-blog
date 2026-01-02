@@ -26,11 +26,14 @@ export { PostContentSchema, type PostContent } from "./corpus";
 export const ProjectSchema = z.object({
 	id: z.string(),
 	name: z.string(),
-	slug: z.string(),
-	description: z.string().nullable(),
-	color: z.string().nullable(),
-	icon: z.string().nullable(),
-	url: z.string().nullable(),
+	slug: z
+		.string()
+		.nullish()
+		.transform(v => v ?? ""),
+	description: z.string().nullish(),
+	color: z.string().nullish(),
+	icon: z.string().nullish(),
+	url: z.string().nullish(),
 });
 
 export type Project = z.infer<typeof ProjectSchema>;
