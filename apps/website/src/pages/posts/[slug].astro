@@ -36,7 +36,7 @@ let error: string | null = null;
 const runtime = Astro.locals.runtime;
 
 try {
-	const [postRes, catRes] = await Promise.all([api.ssr(`/api/blog/post/${slug}`, Astro.request, {}, runtime), api.ssr("/api/blog/categories", Astro.request, {}, runtime)]);
+	const [postRes, catRes] = await Promise.all([api.ssr(`/api/blog/posts/${slug}`, Astro.request, {}, runtime), api.ssr("/api/blog/categories", Astro.request, {}, runtime)]);
 
 	if (postRes.ok) {
 		post = await postRes.json();
@@ -104,7 +104,7 @@ try {
 	};
 
 	const handleSave = async (uuid: string, data: PostFormData) => {
-		const response = await fetch(`${API_URL}/post/${uuid}`, {
+		const response = await fetch(`${API_URL}/posts/${uuid}`, {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({

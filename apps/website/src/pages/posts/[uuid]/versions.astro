@@ -45,7 +45,7 @@ let error: string | null = null;
 const runtime = Astro.locals.runtime;
 
 try {
-	const versionsRes = await api.ssr(`/api/blog/post/${uuid}/versions`, Astro.request, {}, runtime);
+	const versionsRes = await api.ssr(`/api/blog/posts/${uuid}/versions`, Astro.request, {}, runtime);
 
 	if (versionsRes.ok) {
 		const data = await versionsRes.json();
@@ -188,7 +188,7 @@ const backUrl = postInfo ? `/posts/${postInfo.slug}` : "/posts";
 			previewHash.textContent = "";
 
 			try {
-				const res = await fetch(`${API_URL}/post/${uuid}/version/${hash}`);
+				const res = await fetch(`${API_URL}/posts/${uuid}/version/${hash}`);
 				if (!res.ok) throw new Error("Failed to load version");
 
 				const data = await res.json();
@@ -231,7 +231,7 @@ const backUrl = postInfo ? `/posts/${postInfo.slug}` : "/posts";
 			restoreBtn.textContent = "Restoring...";
 
 			try {
-				const res = await fetch(`${API_URL}/post/${uuid}/restore/${selectedHash}`, {
+				const res = await fetch(`${API_URL}/posts/${uuid}/restore/${selectedHash}`, {
 					method: "POST",
 				});
 

@@ -54,7 +54,8 @@ All blog API routes are under `/api/blog/`:
 /health                    # Health check (shared)
 /auth/*                    # Authentication (shared)
 /api/blog/posts            # List/create posts
-/api/blog/post/:id         # Get/update/delete post
+/api/blog/posts/:slug      # Get post by slug
+/api/blog/posts/:uuid      # Update/delete post by UUID
 /api/blog/categories       # List/create categories
 /api/blog/tags             # Tag operations
 /api/blog/tokens           # API token management
