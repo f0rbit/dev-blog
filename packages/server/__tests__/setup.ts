@@ -225,20 +225,51 @@ export type { DevpadProvider } from "../src/providers/devpad";
 
 export const generateId = (): string => crypto.randomUUID();
 
-type AuthenticatedVariables = {
+export type TestAppOptions = {
+	userId?: number;
+	jwtToken?: string;
+};
+
+type TestAppVariables = {
 	user: { id: number };
+	appContext: AppContext;
+	jwtToken?: string;
+};
+
+export const createTestApp = (ctx: TestContext, router: Hono<{ Variables: TestAppVariables }>, routePath: string, options: TestAppOptions = {}) => {
+	const { userId = 1, jwtToken } = options;
+
+	const app = new Hono<{ Variables: TestAppVariables }>();
+
+	app.use("*", async (c, next) => {
+		c.set("appContext", ctx.ctx);
+		c.set("user", { id: userId });
+		if (jwtToken) {
+			c.set("jwtToken", jwtToken);
+		}
+		await next();
+	});
+
+	app.route(routePath, router);
+	return app;
+};
+
+export const createAuthenticatedTestApp = (ctx: TestContext, router: Hono<{ Variables: TestAppVariables }>, basePath: string, userId: number) => createTestApp(ctx, router, basePath, { userId });
+
+type UnauthenticatedVariables = {
+	user?: { id: number };
 	appContext: AppContext;
 };
 
-export const createAuthenticatedTestApp = (ctx: TestContext, router: Hono<{ Variables: AuthenticatedVariables }>, basePath: string, userId: number) => {
-	const app = new Hono<{ Variables: AuthenticatedVariables }>();
+// biome-ignore lint/suspicious/noExplicitAny: Router types vary and we need flexibility for unauthenticated testing
+export const createUnauthenticatedTestApp = (ctx: TestContext, router: Hono<any>, routePath: string) => {
+	const app = new Hono<{ Variables: UnauthenticatedVariables }>();
 
 	app.use("*", async (c, next) => {
-		c.set("user", { id: userId });
 		c.set("appContext", ctx.ctx);
-		return next();
+		await next();
 	});
 
-	app.route(basePath, router);
+	app.route(routePath, router);
 	return app;
 };

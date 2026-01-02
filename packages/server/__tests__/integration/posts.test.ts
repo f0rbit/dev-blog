@@ -1,10 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { type AppContext, type PostCreate, type PostUpdate, tags } from "@blog/schema";
+import { type PostCreate, type PostUpdate, tags } from "@blog/schema";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import { Hono } from "hono";
 import { postsRouter } from "../../src/routes/posts";
 import { type PostService, createPostService } from "../../src/services/posts";
-import { type TestContext, createTestCategory, createTestContext, createTestUser } from "../setup";
+import { type TestContext, createTestApp as createSharedTestApp, createTestCategory, createTestContext, createTestUser, createUnauthenticatedTestApp } from "../setup";
 
 /** Helper to build PostCreate with defaults for required fields */
 const post = (overrides: Partial<PostCreate> & Pick<PostCreate, "slug" | "title" | "content">): PostCreate => ({
@@ -1077,42 +1076,9 @@ type PostListResponse = {
 
 type ErrorResponse = { code: string; message: string };
 
-const createTestApp = (ctx: TestContext, userId: number) => {
-	const app = new Hono<{ Variables: { user: { id: number }; appContext: AppContext } }>();
+const createTestApp = (ctx: TestContext, userId: number) => createSharedTestApp(ctx, postsRouter, "/api/blog/posts", { userId });
 
-	app.use("*", async (c, next) => {
-		c.set("appContext", {
-			db: ctx.db,
-			corpus: ctx.corpus,
-			devpadApi: "https://devpad.test",
-			environment: "test",
-		});
-		c.set("user", { id: userId });
-		await next();
-	});
-
-	app.route("/api/blog/posts", postsRouter);
-
-	return app;
-};
-
-const createUnauthenticatedApp = (ctx: TestContext) => {
-	const app = new Hono<{ Variables: { user?: { id: number }; appContext: AppContext } }>();
-
-	app.use("*", async (c, next) => {
-		c.set("appContext", {
-			db: ctx.db,
-			corpus: ctx.corpus,
-			devpadApi: "https://devpad.test",
-			environment: "test",
-		});
-		await next();
-	});
-
-	app.route("/api/blog/posts", postsRouter);
-
-	return app;
-};
+const createUnauthenticatedApp = (ctx: TestContext) => createUnauthenticatedTestApp(ctx, postsRouter, "/api/blog/posts");
 
 describe("Posts Routes (HTTP)", () => {
 	let ctx: TestContext;
