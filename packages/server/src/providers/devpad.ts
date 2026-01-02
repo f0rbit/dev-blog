@@ -16,7 +16,6 @@ const extractProjectsArray = (data: unknown): unknown => (Array.isArray(data) ? 
 export const createDevpadProvider = (config: DevpadProviderConfig): DevpadProvider => {
 	const fetchProjects = async (token: string): Promise<Result<Project[], string>> => {
 		const url = `${config.apiUrl}/api/v0/projects`;
-		console.log("[devpad] fetchProjects:", { url, tokenLength: token?.length });
 
 		const fetchResult = await try_catch_async(
 			async () => {
@@ -27,37 +26,24 @@ export const createDevpadProvider = (config: DevpadProviderConfig): DevpadProvid
 					},
 				});
 
-				console.log("[devpad] fetchProjects response:", { status: response.status, ok: response.ok });
-
 				if (!response.ok) {
-					const body = await response.text().catch(() => "");
-					console.log("[devpad] fetchProjects error body:", body.slice(0, 500));
 					if (response.status === 401) throw new Error("Invalid or expired DevPad token");
 					throw new Error(`DevPad API error: ${response.status} ${response.statusText}`);
 				}
 
 				return response.json();
 			},
-			e => {
-				console.log("[devpad] fetchProjects exception:", format_error(e));
-				return format_error(e);
-			}
+			e => format_error(e)
 		);
-
-		console.log("[devpad] fetchResult:", { ok: fetchResult.ok });
 
 		return pipe(fetchResult)
 			.map(extractProjectsArray)
-			.flat_map((data: unknown) => {
-				console.log("[devpad] parsing projects data:", { isArray: Array.isArray(data), length: Array.isArray(data) ? data.length : "n/a" });
-				return try_catch(
+			.flat_map((data: unknown) =>
+				try_catch(
 					() => ProjectsResponseSchema.parse(data),
-					e => {
-						console.log("[devpad] parse error:", format_error(e));
-						return `Invalid response format: ${format_error(e)}`;
-					}
-				);
-			})
+					e => `Invalid response format: ${format_error(e)}`
+				)
+			)
 			.result();
 	};
 
