@@ -121,6 +121,7 @@ const createDevApp = (appContext: AppContext) => {
 	);
 
 	app.get("/auth/user", c => c.json({ user: DEV_USER }));
+	app.get("/auth/status", c => c.json({ authenticated: true, user: DEV_USER }));
 	app.get("/auth/login", c => c.redirect("/"));
 	app.get("/auth/logout", c => c.json({ success: true, message: "Logged out" }));
 
@@ -137,7 +138,14 @@ const createDevApp = (appContext: AppContext) => {
 		return c.json({ projects: MOCK_DEVPAD_PROJECTS });
 	});
 
-	// Mount API routes
+	// Mount API routes (with /api/blog prefix to match production)
+	app.route("/api/blog/posts", postsRouter);
+	app.route("/api/blog/tags", tagsRouter);
+	app.route("/api/blog/categories", categoriesRouter);
+	app.route("/api/blog/tokens", tokensRouter);
+	app.route("/api/blog/projects", projectsRouter);
+
+	// Also mount without prefix for backwards compatibility
 	app.route("/posts", postsRouter);
 	app.route("/tags", tagsRouter);
 	app.route("/categories", categoriesRouter);

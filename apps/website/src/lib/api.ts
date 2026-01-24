@@ -118,12 +118,12 @@ export const api = {
 	 * Otherwise falls back to HTTP fetch.
 	 */
 	async ssr(path: string, request: Request, options: RequestInit = {}, runtime?: { env?: RuntimeEnv }): Promise<Response> {
-		const url = new URL(path, request.url);
 		const cookie = request.headers.get("cookie") ?? "";
 
 		// If we have access to the internal API handler, use it directly
 		const apiHandler = runtime?.env?.API_HANDLER;
 		if (apiHandler) {
+			const url = new URL(path, request.url);
 			const internalRequest = new Request(url.toString(), {
 				...options,
 				headers: {
@@ -135,6 +135,9 @@ export const api = {
 		}
 
 		// Fallback to HTTP fetch (for local dev or non-unified deployments)
+		// In dev mode, API server runs on port 8080
+		const baseUrl = import.meta.env.DEV ? "http://localhost:8080" : request.url;
+		const url = new URL(path, baseUrl);
 		return fetch(url.toString(), {
 			...options,
 			headers: {
