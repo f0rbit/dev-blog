@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import { existsSync } from "node:fs";
-import { create_corpus, create_file_backend, define_store, json_codec } from "@f0rbit/corpus";
+import { create_corpus, define_store, json_codec } from "@f0rbit/corpus";
+import { create_file_backend } from "@f0rbit/corpus/file";
 import { serve } from "bun";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { Hono } from "hono";
@@ -8,7 +9,6 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import type { DrizzleDB } from "../packages/schema/src/database";
 import { type AppContext, PostContentSchema, type User } from "../packages/schema/src/types";
-import { assetsRouter } from "../packages/server/src/routes/assets";
 import { categoriesRouter } from "../packages/server/src/routes/categories";
 import { postsRouter } from "../packages/server/src/routes/posts";
 import { projectsRouter } from "../packages/server/src/routes/projects";
@@ -142,7 +142,6 @@ const createDevApp = (appContext: AppContext) => {
 	app.route("/tags", tagsRouter);
 	app.route("/categories", categoriesRouter);
 	app.route("/tokens", tokensRouter);
-	app.route("/assets", assetsRouter);
 	app.route("/projects", projectsRouter);
 
 	app.notFound(c => c.json({ code: "NOT_FOUND", message: "Resource not found" }, 404));
