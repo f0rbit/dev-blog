@@ -1,5 +1,6 @@
 import { api } from "@/lib/api";
-import { For, Show, createResource, createSignal } from "solid-js";
+import { Button, MultiSelect, type MultiSelectOption } from "@f0rbit/ui";
+import { createResource, createSignal } from "solid-js";
 
 type Project = {
 	id: string;
@@ -16,7 +17,6 @@ type ProjectSelectorProps = {
 };
 
 const fetchProjects = async (): Promise<Project[]> => {
-	// Only fetch on client side - SSR should use initialProjects
 	if (typeof window === "undefined") return [];
 	const response = await api.fetch("/api/blog/projects");
 	if (!response.ok) return [];
@@ -25,16 +25,13 @@ const fetchProjects = async (): Promise<Project[]> => {
 };
 
 export const ProjectSelector = (props: ProjectSelectorProps) => {
-	// Use a trigger signal to control when to fetch
-	// Start at 0, only fetch when trigger > 0 OR when we don't have initial data
 	const [fetchTrigger, setFetchTrigger] = createSignal(0);
 
-	const [projects, { refetch }] = createResource(
+	const [projects] = createResource(
 		() => {
 			const trigger = fetchTrigger();
-			// Skip initial fetch if we have SSR data
 			if (trigger === 0 && props.initialProjects && props.initialProjects.length > 0) {
-				return null; // Returning null skips the fetch
+				return null;
 			}
 			return trigger;
 		},
@@ -42,25 +39,14 @@ export const ProjectSelector = (props: ProjectSelectorProps) => {
 		{ initialValue: props.initialProjects ?? [] }
 	);
 
-	const [isOpen, setIsOpen] = createSignal(false);
 	const [refreshing, setRefreshing] = createSignal(false);
 
-	const selectedProjects = () => (projects() ?? []).filter(p => props.selectedIds.includes(p.id));
-
-	const availableProjects = () => (projects() ?? []).filter(p => !props.selectedIds.includes(p.id));
-
-	const toggleProject = (projectId: string) => {
-		const current = props.selectedIds;
-		if (current.includes(projectId)) {
-			props.onChange(current.filter(id => id !== projectId));
-		} else {
-			props.onChange([...current, projectId]);
-		}
-	};
-
-	const removeProject = (projectId: string) => {
-		props.onChange(props.selectedIds.filter(id => id !== projectId));
-	};
+	const options = (): MultiSelectOption<string>[] =>
+		(projects() ?? []).map(p => ({
+			value: p.id,
+			label: p.name,
+			description: p.description ?? undefined,
+		}));
 
 	const handleRefresh = async () => {
 		setRefreshing(true);
@@ -68,7 +54,6 @@ export const ProjectSelector = (props: ProjectSelectorProps) => {
 			await api.fetch("/api/blog/projects/refresh", {
 				method: "POST",
 			});
-			// Increment trigger to force a refetch
 			setFetchTrigger(n => n + 1);
 		} finally {
 			setRefreshing(false);
@@ -76,53 +61,11 @@ export const ProjectSelector = (props: ProjectSelectorProps) => {
 	};
 
 	return (
-		<div class="project-selector">
-			<div class="project-selector__selected">
-				<For each={selectedProjects()}>
-					{project => (
-						<span class="project-badge">
-							{project.name}
-							<button type="button" class="project-badge__remove" onClick={() => removeProject(project.id)} aria-label={`Remove ${project.name}`}>
-								×
-							</button>
-						</span>
-					)}
-				</For>
-
-				<Show when={selectedProjects().length === 0}>
-					<span class="project-selector__placeholder">No projects linked</span>
-				</Show>
-			</div>
-
-			<div class="project-selector__controls">
-				<button type="button" class="project-selector__toggle" onClick={() => setIsOpen(!isOpen())}>
-					{isOpen() ? "Done" : "Add Project"}
-				</button>
-
-				<button type="button" class="project-selector__refresh" onClick={handleRefresh} disabled={refreshing()} title="Refresh projects from DevPad">
-					{refreshing() ? "..." : "↻"}
-				</button>
-			</div>
-
-			<Show when={isOpen()}>
-				<div class="project-selector__dropdown">
-					<Show when={availableProjects().length === 0}>
-						<p class="project-selector__empty">No more projects to add</p>
-					</Show>
-
-					<For each={availableProjects()}>
-						{project => (
-							<button type="button" class="project-selector__option" onClick={() => toggleProject(project.id)}>
-								<span class="project-selector__color" />
-								<span class="project-selector__name">{project.name}</span>
-								<Show when={project.description}>
-									<span class="project-selector__desc">{project.description}</span>
-								</Show>
-							</button>
-						)}
-					</For>
-				</div>
-			</Show>
+		<div class="row">
+			<MultiSelect options={options()} value={props.selectedIds} onChange={props.onChange} placeholder="No projects linked" addLabel="Add Project" doneLabel="Done" emptyMessage="No more projects to add" />
+			<Button variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing()} label="Refresh projects from DevPad">
+				{refreshing() ? "..." : "↻"}
+			</Button>
 		</div>
 	);
 };

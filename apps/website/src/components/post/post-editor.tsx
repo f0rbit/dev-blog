@@ -1,4 +1,4 @@
-import { Button } from "@f0rbit/ui";
+import { Button, ChipInput } from "@f0rbit/ui";
 import type { Component } from "solid-js";
 import { For, Show, createSignal, onMount } from "solid-js";
 import { api } from "../../lib/api";
@@ -6,7 +6,6 @@ import { relativeTime } from "../../lib/date-utils";
 import { createFormState } from "../../lib/form-utils";
 import { PostPreview } from "./post-preview";
 import { ProjectSelector } from "./project-selector";
-import TagEditor from "./tag-editor";
 
 type Post = {
 	id: number;
@@ -237,7 +236,7 @@ const PostEditor: Component<PostEditorProps> = props => {
 
 					<div class="post-editor__field post-editor__field--wide">
 						<label>Tags</label>
-						<TagEditor tags={tags()} onChange={setTags} />
+						<ChipInput value={tags()} onChange={setTags} transform={s => s.trim().toLowerCase()} placeholder="Add tag..." layout="below" />
 					</div>
 
 					<div class="post-editor__field post-editor__field--wide">

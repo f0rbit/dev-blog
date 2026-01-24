@@ -1,9 +1,8 @@
 import { api } from "@/lib/api";
 import type { Category as SchemaCategory } from "@blog/schema";
-import { Spinner } from "@f0rbit/ui";
-import { type Component, Show, createResource, createSignal } from "solid-js";
+import { Button, Spinner, Tree, buildTree } from "@f0rbit/ui";
+import { type Component, Show, createMemo, createResource, createSignal } from "solid-js";
 import CategoryForm from "./category-form";
-import CategoryTree from "./category-tree";
 
 type Category = Pick<SchemaCategory, "id" | "name" | "parent">;
 
@@ -27,8 +26,20 @@ const fetchCategories = async (): Promise<Category[]> => {
 	return flattenTree(data.categories ?? []);
 };
 
+const IconPlus = () => (
+	<svg xmlns="http://www.w3.org/2000/svg" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+		<path d="M5 12h14" />
+		<path d="M12 5v14" />
+	</svg>
+);
+
+const IconMinus = () => (
+	<svg xmlns="http://www.w3.org/2000/svg" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+		<path d="M5 12h14" />
+	</svg>
+);
+
 const CategoriesPage: Component<Props> = props => {
-	// Use a signal to force refetch - increment to trigger new fetch
 	const [fetchTrigger, setFetchTrigger] = createSignal(0);
 	const [categories, { refetch }] = createResource(
 		() => {
@@ -49,6 +60,7 @@ const CategoriesPage: Component<Props> = props => {
 	const refreshCategories = () => setFetchTrigger(n => n + 1);
 
 	const handleDelete = async (name: string) => {
+		if (!confirm(`Delete category "${name}"? This cannot be undone.`)) return;
 		setError(null);
 		try {
 			await api.delete(`/api/blog/categories/${encodeURIComponent(name)}`);
@@ -57,6 +69,17 @@ const CategoriesPage: Component<Props> = props => {
 			setError("Failed to delete category");
 		}
 	};
+
+	const treeNodes = createMemo(() => {
+		const cats = categories();
+		if (!cats) return [];
+		const items = cats.map(c => ({
+			id: c.name,
+			label: c.name,
+			parentId: c.parent === "root" ? null : c.parent,
+		}));
+		return buildTree(items);
+	});
 
 	const handleCreate = async (data: { name: string; parent: string }) => {
 		setError(null);
@@ -99,7 +122,24 @@ const CategoriesPage: Component<Props> = props => {
 							<h2 class="text-sm text-muted" style={{ "margin-bottom": "8px" }}>
 								Category Hierarchy
 							</h2>
-							<CategoryTree categories={cats} onDelete={handleDelete} onAddChild={selectParentForAdd} />
+							<Tree
+								nodes={treeNodes()}
+								showGuides
+								defaultExpanded
+								renderActions={node => (
+									<>
+										<Button variant="ghost" icon size="sm" onClick={() => selectParentForAdd(node.id)} label={`Add child to ${node.label}`}>
+											<IconPlus />
+										</Button>
+										{node.id !== "root" && (
+											<Button variant="ghost" icon size="sm" onClick={() => handleDelete(node.id)} label={`Delete ${node.label}`}>
+												<IconMinus />
+											</Button>
+										)}
+									</>
+								)}
+								emptyMessage="No categories found."
+							/>
 						</section>
 
 						<CategoryForm categories={cats} onSubmit={handleCreate} defaultParent={defaultParent()} highlighted={formHighlighted()} />
