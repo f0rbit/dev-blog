@@ -1,4 +1,5 @@
 ---
+import { Button } from "@f0rbit/ui";
 import PostEditor from "@/components/post/post-editor";
 import AppLayout from "@/layouts/app-layout.astro";
 import { api } from "@/lib/api";
@@ -71,15 +72,15 @@ try {
 ---
 
 <AppLayout title="Edit Post">
-	<section class="flex-col">
+	<section class="stack">
 		<header>
-			<h1 class="page-title flex-row">
+			<h1 class="page-title row">
 				<a href="/posts" title="Back to posts" class="back-arrow">
 					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
 				</a>
 				Edit Post
 			</h1>
-			{post && <button type="button" id="save-btn" class="btn-primary" disabled>Update</button>}
+			{post && <Button type="button" id="save-btn" variant="primary" disabled>Update</Button>}
 		</header>
 
 		{error ? (

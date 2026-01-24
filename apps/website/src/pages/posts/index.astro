@@ -1,4 +1,5 @@
 ---
+import { Button } from "@f0rbit/ui";
 import AppLayout from "@/layouts/app-layout.astro";
 import { api } from "@/lib/api";
 import { relativeTime } from "@/lib/date-utils";
@@ -37,10 +38,12 @@ const projectName = (id: string): string => projectMap[id] ?? id;
 ---
 
 <AppLayout title="Posts">
-  <section class="flex-col">
+  <section class="stack">
     <header>
       <h1 class="page-title">Posts</h1>
-      <a href="/posts/new" class="btn-primary">New Post</a>
+      <a href="/posts/new" style="text-decoration: none;">
+        <Button variant="primary">New Post</Button>
+      </a>
     </header>
 
     <div id="posts-container">
@@ -49,7 +52,9 @@ const projectName = (id: string): string => projectMap[id] ?? id;
       ) : posts.length === 0 ? (
         <div class="empty-state">
           <p>No posts yet.</p>
-          <a href="/posts/new" class="btn-primary">Create your first post</a>
+          <a href="/posts/new" style="text-decoration: none;">
+            <Button variant="primary">Create your first post</Button>
+          </a>
         </div>
       ) : (
         <div class="posts-grid">

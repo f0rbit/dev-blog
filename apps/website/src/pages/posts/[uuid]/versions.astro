@@ -1,4 +1,5 @@
 ---
+import { Button } from "@f0rbit/ui";
 import AppLayout from "@/layouts/app-layout.astro";
 import { api } from "@/lib/api";
 
@@ -80,9 +81,9 @@ const backUrl = postInfo ? `/posts/${postInfo.slug}` : "/posts";
 ---
 
 <AppLayout title="Version History">
-	<section class="flex-col">
+	<section class="stack">
 		<header>
-			<h1 class="page-title flex-row">
+			<h1 class="page-title row">
 				<a href={backUrl} title="Back to post" class="back-arrow">
 					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
 				</a>
@@ -113,7 +114,7 @@ const backUrl = postInfo ? `/posts/${postInfo.slug}` : "/posts";
 										</span>
 										<span class="version-info">
 											<span class="version-number">v{versionNumber}{isCurrent ? " (current)" : ""}</span>
-											<span class="version-time muted text-xs">{formatRelativeTime(version.created_at)}</span>
+											<span class="version-time text-muted text-xs">{formatRelativeTime(version.created_at)}</span>
 										</span>
 									</button>
 								</li>
@@ -124,7 +125,7 @@ const backUrl = postInfo ? `/posts/${postInfo.slug}` : "/posts";
 				<main class="preview-pane">
 					<div class="preview-header">
 						<h6 class="preview-title">Preview</h6>
-						<div class="preview-meta text-xs muted">
+						<div class="preview-meta text-xs text-muted">
 							<span id="preview-size"></span>
 							<span id="preview-hash"></span>
 						</div>
@@ -137,16 +138,18 @@ const backUrl = postInfo ? `/posts/${postInfo.slug}` : "/posts";
 						<pre id="preview-text" class="preview-text"></pre>
 					</div>
 					<div class="preview-actions">
-						<button type="button" id="restore-btn" class="btn-primary" disabled>
+						<Button type="button" id="restore-btn" variant="primary" disabled>
 							Restore this version
-						</button>
+						</Button>
 					</div>
 				</main>
 			</div>
 		) : (
 			<div class="empty-state">
-				<p class="muted">No version history available for this post.</p>
-				<a href={backUrl} class="btn-secondary">Back</a>
+				<p class="text-muted">No version history available for this post.</p>
+				<a href={backUrl} style="text-decoration: none;">
+					<Button variant="secondary">Back</Button>
+				</a>
 			</div>
 		)}
 	</section>
