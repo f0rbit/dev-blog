@@ -1,5 +1,5 @@
 import type { Category as SchemaCategory } from "@blog/schema";
-import { Button, Input, Select } from "@f0rbit/ui";
+import { Button, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Input } from "@f0rbit/ui";
 import { type Component, For, createEffect, createSignal } from "solid-js";
 import { createFormState } from "../../lib/form-utils";
 
@@ -42,11 +42,6 @@ const CategoryForm: Component<CategoryFormProps> = props => {
 		});
 	};
 
-	const parentCategory = () => {
-		const p = props.categories.find(c => c.name === parent());
-		return p?.name ?? "root";
-	};
-
 	return (
 		<section ref={formRef} class="category-form-section" classList={{ "category-form-section--highlighted": props.highlighted }}>
 			<h3 class="category-form-title">New Category</h3>
@@ -60,18 +55,29 @@ const CategoryForm: Component<CategoryFormProps> = props => {
 							nameInputRef = el;
 						}}
 						value={name()}
-						onInput={setName}
+						onInput={e => setName(e.currentTarget.value)}
 						placeholder="Category name"
 						disabled={form.submitting()}
 					/>
 				</div>
 				<div class="form-row">
-					<label for="category-parent" class="text-xs text-subtle">
-						Parent
-					</label>
-					<Select value={parent()} onChange={e => setParent(e.currentTarget.value)} disabled={form.submitting()}>
-						<For each={props.categories}>{cat => <option value={cat.name}>{cat.name}</option>}</For>
-					</Select>
+					<label class="text-xs text-subtle">Parent</label>
+					<Dropdown>
+						<DropdownTrigger>
+							<Button variant="secondary" disabled={form.submitting()}>
+								{parent()}
+							</Button>
+						</DropdownTrigger>
+						<DropdownMenu>
+							<For each={props.categories}>
+								{cat => (
+									<DropdownItem onClick={() => setParent(cat.name)} active={parent() === cat.name}>
+										{cat.name}
+									</DropdownItem>
+								)}
+							</For>
+						</DropdownMenu>
+					</Dropdown>
 				</div>
 				<div class="category-form-actions">
 					<Button type="submit" variant="primary" disabled={form.submitting() || !name().trim()}>
