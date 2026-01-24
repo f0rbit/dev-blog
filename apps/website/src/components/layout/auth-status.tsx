@@ -8,7 +8,6 @@ type User = {
 
 interface Props {
 	initialUser?: User | null;
-	initialAuthenticated?: boolean;
 }
 
 const AuthStatus = (props: Props) => {
@@ -26,7 +25,7 @@ const AuthStatus = (props: Props) => {
 			>
 				{u => (
 					<>
-						<span class="username">{u().username}</span>
+						<span class="user-name">{u().username}</span>
 						<a href="/auth/logout" class="auth-btn logout-btn">
 							Logout
 						</a>

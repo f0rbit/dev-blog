@@ -132,7 +132,6 @@ h6 {
 }
 
 a,
-.label-modal,
 button {
 	text-decoration: none;
 	color: var(--text-link);
@@ -141,21 +140,14 @@ button {
 }
 
 a.active,
-input:checked + .label-modal,
 button.active {
 	color: var(--fg);
 	text-decoration: underline;
 }
 
 a:hover,
-.label-modal:hover,
 button:hover {
 	filter: var(--hover-filter);
-}
-
-a.underlined:hover,
-button.underlined:hover {
-	text-decoration: underline;
 }
 
 h1 {
@@ -395,38 +387,16 @@ form section label {
 	gap: 4px;
 }
 
+.modal-form {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
 .form-row input[type="text"],
 .form-row input[type="password"] {
 	padding: 8px;
 	width: 100%;
-}
-
-/* ==========================================================================
-   BUTTONS
-   ========================================================================== */
-
-.button-reset {
-	background: none;
-	border: none;
-	padding: 0;
-	cursor: pointer;
-	outline: inherit;
-}
-
-button.icon-btn {
-	background: none;
-	border: none;
-	padding: 4px;
-	cursor: pointer;
-	color: var(--text-link);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-button.icon-btn:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
 }
 
 /* ==========================================================================
@@ -438,18 +408,6 @@ button.icon-btn:disabled {
 	border-radius: 4px;
 	padding: 7px;
 	box-shadow: 0 7px 12px 0px rgba(0, 0, 0, 0.2);
-}
-
-.card:hover .hover-reveal {
-	opacity: 1;
-}
-
-.card-inactive {
-	opacity: 0.6;
-}
-
-.card-setup {
-	border-style: dashed;
 }
 
 /* ==========================================================================
@@ -517,78 +475,6 @@ footer {
 	justify-content: left;
 	align-items: center;
 	gap: 10px;
-}
-
-/* ==========================================================================
-   POST LIST
-   ========================================================================== */
-
-.post-list {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.post-item {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	padding: 12px;
-	border: 1px solid var(--border);
-	border-radius: 4px;
-	transition: border-color 0.15s;
-}
-
-.post-item:hover {
-	border-color: var(--fg-faint);
-}
-
-.post-item__header {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: 12px;
-}
-
-.post-item__title {
-	font-size: 1rem;
-	font-weight: 500;
-	color: var(--fg);
-	flex: 1;
-	min-width: 0;
-}
-
-.post-item__title a {
-	color: inherit;
-}
-
-.post-item__title a:hover {
-	color: var(--text-link);
-	text-decoration: none;
-}
-
-.post-item__meta {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	font-size: 0.75rem;
-	color: var(--fg-faint);
-}
-
-.post-item__category {
-	color: var(--fg-subtle);
-}
-
-.post-item__tags {
-	display: flex;
-	gap: 4px;
-	flex-wrap: wrap;
-}
-
-.post-item__description {
-	font-size: 0.875rem;
-	color: var(--fg-subtle);
-	line-height: 1.4;
 }
 
 /* ==========================================================================
@@ -1267,62 +1153,4 @@ footer {
 	display: flex;
 	flex-direction: column;
 	gap: 1rem;
-}
-
-.devpad-connection__error {
-	color: var(--error-fg);
-	font-size: 0.875rem;
-	padding: 0.5rem;
-	background: var(--item-red);
-	border-radius: 4px;
-}
-
-.devpad-connection__info {
-	color: var(--fg-faint);
-	font-size: 0.875rem;
-	margin-bottom: 0.5rem;
-}
-
-.devpad-connection__form {
-	display: flex;
-	flex-direction: column;
-	gap: 0.75rem;
-}
-
-.devpad-connection__input-row {
-	display: flex;
-	gap: 0.5rem;
-}
-
-.devpad-connection__input-row .input {
-	flex: 1;
-}
-
-.devpad-connection__connected {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 1rem;
-}
-
-.devpad-connection__status {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	color: var(--fg-muted);
-}
-
-.status-dot {
-	width: 0.5rem;
-	height: 0.5rem;
-	border-radius: 50%;
-	background: var(--fg-faint);
-}
-
-.status-dot--success {
-	background: oklch(from var(--item-green) 0.6 0.2 h);
-}
-
-.status-dot--error {
-	background: var(--error-fg);
 }
