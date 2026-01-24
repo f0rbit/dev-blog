@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import { type CategoryNode, buildCategoryTree } from "../../src/services/categories";
+import { type CategoryNode, category } from "../../src/services/categories";
 
-describe("buildCategoryTree", () => {
+describe("category.tree", () => {
 	it("builds tree from flat categories", () => {
 		const categories = [
 			{ name: "tech", parent: "root" },
@@ -9,7 +9,7 @@ describe("buildCategoryTree", () => {
 			{ name: "react", parent: "javascript" },
 		];
 
-		const tree = buildCategoryTree(categories);
+		const tree = category.tree(categories);
 
 		expect(tree).toHaveLength(1);
 
@@ -35,7 +35,7 @@ describe("buildCategoryTree", () => {
 			{ name: "health", parent: "root" },
 		];
 
-		const tree = buildCategoryTree(categories);
+		const tree = category.tree(categories);
 
 		expect(tree).toHaveLength(3);
 		const names = tree.map(n => n.name).sort();
@@ -43,7 +43,7 @@ describe("buildCategoryTree", () => {
 	});
 
 	it("handles empty input", () => {
-		expect(buildCategoryTree([])).toEqual([]);
+		expect(category.tree([])).toEqual([]);
 	});
 
 	it("treats null parent as root", () => {
@@ -52,7 +52,7 @@ describe("buildCategoryTree", () => {
 			{ name: "child", parent: "orphan" },
 		];
 
-		const tree = buildCategoryTree(categories);
+		const tree = category.tree(categories);
 
 		expect(tree).toHaveLength(1);
 
@@ -72,7 +72,7 @@ describe("buildCategoryTree", () => {
 			{ name: "another", parent: "also-missing" },
 		];
 
-		const tree = buildCategoryTree(categories);
+		const tree = category.tree(categories);
 
 		expect(tree).toHaveLength(2);
 		const names = tree.map(n => n.name).sort();
@@ -92,7 +92,7 @@ describe("buildCategoryTree", () => {
 			{ name: "travel", parent: "lifestyle" },
 		];
 
-		const tree = buildCategoryTree(categories);
+		const tree = category.tree(categories);
 
 		expect(tree).toHaveLength(2);
 
@@ -126,7 +126,7 @@ describe("buildCategoryTree", () => {
 			{ name: "child", parent: "parent" },
 		];
 
-		const tree = buildCategoryTree(categories);
+		const tree = category.tree(categories);
 
 		const parentNode = tree[0];
 		if (!parentNode) throw new Error("expected parent");
@@ -143,7 +143,7 @@ describe("buildCategoryTree", () => {
 			{ name: "js", parent: "tech", owner_id: 1, id: 2 },
 		];
 
-		const tree = buildCategoryTree(categories);
+		const tree = category.tree(categories);
 
 		expect(tree).toHaveLength(1);
 
@@ -159,7 +159,7 @@ describe("buildCategoryTree", () => {
 	it("handles single category", () => {
 		const categories = [{ name: "only", parent: "root" }];
 
-		const tree = buildCategoryTree(categories);
+		const tree = category.tree(categories);
 
 		expect(tree).toHaveLength(1);
 
@@ -178,7 +178,7 @@ describe("buildCategoryTree", () => {
 			{ name: "level5", parent: "level4" },
 		];
 
-		const tree = buildCategoryTree(categories);
+		const tree = category.tree(categories);
 
 		expect(tree).toHaveLength(1);
 		let current: CategoryNode | undefined = tree[0];

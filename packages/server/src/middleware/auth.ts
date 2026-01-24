@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { getCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
-import { hashToken } from "../utils/crypto";
+import { hashing } from "../utils/crypto";
 
 const EXEMPT_PATHS = ["/health", "/auth/login", "/auth/logout", "/auth/callback"];
 const OPTIONAL_AUTH_PATHS = ["/auth/status"];
@@ -45,7 +45,7 @@ export const rowToUser = (row: UserRow): User => ({
 });
 
 const validateApiToken = async (db: DrizzleDB, token: string): Promise<Result<User, string>> => {
-	const tokenHash = await hashToken(token);
+	const tokenHash = await hashing.hash(token);
 
 	const [keyRow] = await db
 		.select()

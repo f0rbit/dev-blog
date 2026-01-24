@@ -1,6 +1,6 @@
 import { type Category, type CategoryCreate, type DrizzleDB, type Result, categories, err, ok, posts, try_catch_async } from "@blog/schema";
 import { and, eq } from "drizzle-orm";
-import { createDbError, createNotFound, firstRowOr } from "../utils/service-helpers";
+import { errors, rows } from "../utils/service-helpers";
 
 type CategoryServiceError =
 	| { type: "not_found"; resource: string }
@@ -24,20 +24,20 @@ type Deps = {
 	db: DrizzleDB;
 };
 
-const toDbError = (e: unknown): CategoryServiceError => createDbError(e);
+const toDbError = (e: unknown): CategoryServiceError => errors.db(e);
 
-const notFound = (resource: string): CategoryServiceError => createNotFound(resource);
+const notFound = (resource: string): CategoryServiceError => errors.missing(resource);
 
 const conflict = (message: string): CategoryServiceError => ({
 	type: "conflict",
 	message,
 });
 
-const firstRow = <T>(rows: T[], resource: string): Result<T, CategoryServiceError> => firstRowOr(rows, () => notFound(resource));
+const firstRow = <T>(r: T[], resource: string): Result<T, CategoryServiceError> => rows.firstOr(r, () => notFound(resource));
 
 type CategoryLike = { name: string; parent: string | null };
 
-export const buildCategoryTree = <T extends CategoryLike>(items: T[]): CategoryNode[] => {
+const buildTree = <T extends CategoryLike>(items: T[]): CategoryNode[] => {
 	const nodeMap = new Map<string, CategoryNode>();
 
 	for (const cat of items) {
@@ -63,13 +63,17 @@ export const buildCategoryTree = <T extends CategoryLike>(items: T[]): CategoryN
 	return roots;
 };
 
+export const category = {
+	tree: buildTree,
+};
+
 export const createCategoryService = ({ db }: Deps) => {
 	const list = async (userId: number): Promise<Result<Category[], CategoryServiceError>> => try_catch_async(async () => db.select().from(categories).where(eq(categories.owner_id, userId)), toDbError);
 
 	const getTree = async (userId: number): Promise<Result<CategoryNode[], CategoryServiceError>> => {
 		const result = await list(userId);
 		if (!result.ok) return result;
-		return ok(buildCategoryTree(result.value));
+		return ok(category.tree(result.value));
 	};
 
 	const find = async (userId: number, name: string): Promise<Result<Category, CategoryServiceError>> => {

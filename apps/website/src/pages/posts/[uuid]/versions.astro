@@ -2,7 +2,7 @@
 import { Button } from "@f0rbit/ui";
 import AppLayout from "@/layouts/app-layout.astro";
 import { api } from "@/lib/api";
-import { relativeTime } from "@/lib/date-utils";
+import { date } from "@/lib/date-utils";
 
 const { uuid } = Astro.params;
 
@@ -98,7 +98,7 @@ const backUrl = postInfo ? `/posts/${postInfo.slug}` : "/posts";
 										</span>
 										<span class="version-info">
 											<span class="version-number">v{versionNumber}{isCurrent ? " (current)" : ""}</span>
-											<span class="version-time text-muted text-xs">{relativeTime(version.created_at)}</span>
+											<span class="version-time text-muted text-xs">{date.relative(version.created_at)}</span>
 										</span>
 									</button>
 								</li>

@@ -13,7 +13,7 @@ const ProjectsResponseSchema = z.array(ProjectSchema);
 
 const extractProjectsArray = (data: unknown): unknown => (Array.isArray(data) ? data : (data as { projects?: unknown })?.projects);
 
-export const createDevpadProvider = (config: DevpadProviderConfig): DevpadProvider => {
+const createProvider = (config: DevpadProviderConfig): DevpadProvider => {
 	const fetchProjects = async (token: string): Promise<Result<Project[], string>> => {
 		const url = `${config.apiUrl}/api/v0/projects`;
 
@@ -50,7 +50,7 @@ export const createDevpadProvider = (config: DevpadProviderConfig): DevpadProvid
 	return { fetchProjects };
 };
 
-export const createMockDevpadProvider = (): DevpadProvider & {
+const createMockProvider = (): DevpadProvider & {
 	setProjects: (p: Project[]) => void;
 	setError: (e: string | null) => void;
 } => {
@@ -69,4 +69,9 @@ export const createMockDevpadProvider = (): DevpadProvider & {
 			return ok(projects);
 		},
 	};
+};
+
+export const devpad = {
+	create: createProvider,
+	mock: createMockProvider,
 };

@@ -6,21 +6,23 @@ export type ServiceError = {
 	resource?: string;
 };
 
-export const createDbError = (e: unknown) => ({
-	type: "db_error" as const,
-	message: format_error(e),
-});
+export const errors = {
+	db: (e: unknown) => ({
+		type: "db_error" as const,
+		message: format_error(e),
+	}),
+	missing: (resource: string) => ({
+		type: "not_found" as const,
+		resource,
+	}),
+};
 
-export const createNotFound = (resource: string) => ({
-	type: "not_found" as const,
-	resource,
-});
-
-export const firstRowOr = <T, E>(rows: T[], errorFn: () => E): Result<T, E> =>
-	match(
-		first(rows),
-		(v: T) => ok(v) as Result<T, E>,
-		() => err(errorFn())
-	);
-
-export const firstRowOrNull = <T>(rows: T[]): T | null => to_nullable(first(rows));
+export const rows = {
+	firstOr: <T, E>(rows: T[], errorFn: () => E): Result<T, E> =>
+		match(
+			first(rows),
+			(v: T) => ok(v) as Result<T, E>,
+			() => err(errorFn())
+		),
+	first: <T>(rows: T[]): T | null => to_nullable(first(rows)),
+};

@@ -1,34 +1,34 @@
 import { describe, expect, it } from "bun:test";
-import { generateToken, sanitizeToken } from "../../src/services/tokens";
+import { token } from "../../src/services/tokens";
 
-describe("generateToken", () => {
+describe("token.generate", () => {
 	it("generates a 64-character token", () => {
-		const token = generateToken();
-		expect(token.length).toBe(64);
+		const generated = token.generate();
+		expect(generated.length).toBe(64);
 	});
 
 	it("generates tokens without hyphens", () => {
-		const token = generateToken();
-		expect(token).not.toContain("-");
+		const generated = token.generate();
+		expect(generated).not.toContain("-");
 	});
 
 	it("generates unique tokens", () => {
 		const tokens = new Set<string>();
 		for (let i = 0; i < 100; i++) {
-			tokens.add(generateToken());
+			tokens.add(token.generate());
 		}
 		expect(tokens.size).toBe(100);
 	});
 
 	it("generates hex-like characters", () => {
-		const token = generateToken();
-		expect(token).toMatch(/^[0-9a-f]{64}$/);
+		const generated = token.generate();
+		expect(generated).toMatch(/^[0-9a-f]{64}$/);
 	});
 });
 
-describe("sanitizeToken", () => {
+describe("token.sanitize", () => {
 	it("removes key_hash from token", () => {
-		const token = {
+		const accessKey = {
 			id: 1,
 			user_id: 42,
 			key_hash: "secret-hash-should-be-removed",
@@ -38,7 +38,7 @@ describe("sanitizeToken", () => {
 			created_at: new Date("2024-01-15T10:00:00Z"),
 		};
 
-		const sanitized = sanitizeToken(token);
+		const sanitized = token.sanitize(accessKey);
 
 		expect(sanitized).not.toHaveProperty("key_hash");
 		expect(sanitized).not.toHaveProperty("user_id");
@@ -46,7 +46,7 @@ describe("sanitizeToken", () => {
 
 	it("preserves public fields", () => {
 		const now = new Date("2024-01-15T10:00:00Z");
-		const token = {
+		const accessKey = {
 			id: 1,
 			user_id: 42,
 			key_hash: "secret-hash",
@@ -56,7 +56,7 @@ describe("sanitizeToken", () => {
 			created_at: now,
 		};
 
-		const sanitized = sanitizeToken(token);
+		const sanitized = token.sanitize(accessKey);
 
 		expect(sanitized).toEqual({
 			id: 1,
@@ -68,7 +68,7 @@ describe("sanitizeToken", () => {
 	});
 
 	it("handles null note", () => {
-		const token = {
+		const accessKey = {
 			id: 2,
 			user_id: 1,
 			key_hash: "hash",
@@ -78,13 +78,13 @@ describe("sanitizeToken", () => {
 			created_at: new Date(),
 		};
 
-		const sanitized = sanitizeToken(token);
+		const sanitized = token.sanitize(accessKey);
 
 		expect(sanitized.note).toBeNull();
 	});
 
 	it("handles disabled token", () => {
-		const token = {
+		const accessKey = {
 			id: 3,
 			user_id: 1,
 			key_hash: "hash",
@@ -94,13 +94,13 @@ describe("sanitizeToken", () => {
 			created_at: new Date(),
 		};
 
-		const sanitized = sanitizeToken(token);
+		const sanitized = token.sanitize(accessKey);
 
 		expect(sanitized.enabled).toBe(false);
 	});
 
 	it("returns a new object (immutable)", () => {
-		const token = {
+		const accessKey = {
 			id: 1,
 			user_id: 1,
 			key_hash: "hash",
@@ -110,8 +110,8 @@ describe("sanitizeToken", () => {
 			created_at: new Date(),
 		};
 
-		const sanitized = sanitizeToken(token);
+		const sanitized = token.sanitize(accessKey);
 
-		expect(sanitized).not.toBe(token);
+		expect(sanitized).not.toBe(accessKey);
 	});
 });

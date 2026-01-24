@@ -2,7 +2,7 @@
 import { Button } from "@f0rbit/ui";
 import AppLayout from "@/layouts/app-layout.astro";
 import { api } from "@/lib/api";
-import { relativeTime } from "@/lib/date-utils";
+import { date } from "@/lib/date-utils";
 import type { Post } from "@blog/schema";
 
 type Project = {
@@ -77,7 +77,7 @@ const projectName = (id: string): string => projectMap[id] ?? id;
                 <div class="post-card__footer">
                   <span class="post-card__meta">
                     <span class="post-card__category">{post.category}</span>
-                    <span class="post-card__date">{relativeTime(dateStr)}</span>
+                    <span class="post-card__date">{date.relative(dateStr)}</span>
                   </span>
                   <a href={`/posts/${post.uuid}/versions`} class="post-card__history">History</a>
                 </div>

@@ -1,9 +1,9 @@
 import type { AppContext } from "@blog/schema";
 import { Hono } from "hono";
 import { withAuth } from "../middleware/require-auth";
-import { createDevpadProvider } from "../providers/devpad";
+import { devpad } from "../providers/devpad";
 import { createProjectService } from "../services/projects";
-import { type Variables, handleResultWith } from "../utils/route-helpers";
+import { type Variables, response } from "../utils/route-helpers";
 
 type ProjectVariables = Variables & {
 	jwtToken?: string;
@@ -12,7 +12,7 @@ type ProjectVariables = Variables & {
 export const projectsRouter = new Hono<{ Variables: ProjectVariables }>();
 
 const getService = (ctx: AppContext) => {
-	const devpadProvider = createDevpadProvider({
+	const devpadProvider = devpad.create({
 		apiUrl: ctx.devpadApi,
 	});
 	return createProjectService({
@@ -26,7 +26,7 @@ projectsRouter.get(
 	withAuth(async (c, user, ctx) => {
 		const service = getService(ctx);
 		const result = await service.list(user.id);
-		return handleResultWith(c, result, projects => ({ projects }));
+		return response.with(c, result, projects => ({ projects }));
 	})
 );
 
@@ -41,6 +41,6 @@ projectsRouter.post(
 
 		const service = getService(ctx);
 		const result = await service.refresh(user.id, jwtToken);
-		return handleResultWith(c, result, projects => ({ projects }));
+		return response.with(c, result, projects => ({ projects }));
 	})
 );

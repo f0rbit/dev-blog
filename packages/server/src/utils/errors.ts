@@ -32,21 +32,23 @@ const buildMessage = (error: BaseServiceError, defaultMessage: string): string =
 	return defaultMessage;
 };
 
-export const mapServiceErrorToResponse = (error: BaseServiceError): ErrorResponse => {
-	const mapping = ERROR_MAPPINGS[error.type];
+export const errorMap = {
+	response: (error: BaseServiceError): ErrorResponse => {
+		const mapping = ERROR_MAPPINGS[error.type];
 
-	if (!mapping) {
+		if (!mapping) {
+			return {
+				status: 500,
+				body: { code: "UNKNOWN_ERROR", message: error.message ?? "An unexpected error occurred" },
+			};
+		}
+
 		return {
-			status: 500,
-			body: { code: "UNKNOWN_ERROR", message: error.message ?? "An unexpected error occurred" },
+			status: mapping.status,
+			body: {
+				code: mapping.code,
+				message: buildMessage(error, mapping.defaultMessage),
+			},
 		};
-	}
-
-	return {
-		status: mapping.status,
-		body: {
-			code: mapping.code,
-			message: buildMessage(error, mapping.defaultMessage),
-		},
-	};
+	},
 };

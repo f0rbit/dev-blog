@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
 import { createPostService } from "../services/posts";
-import { type Variables, handleResult, handleResultWith, valid } from "../utils/route-helpers";
+import { type Variables, response, valid } from "../utils/route-helpers";
 
 export const postsRouter = new Hono<{ Variables: Variables }>();
 
@@ -29,7 +29,7 @@ postsRouter.get(
 		const params = valid<z.infer<typeof PostListParamsSchema>>(c, "query");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 		const result = await service.list(user.id, params);
-		return handleResult(c, result);
+		return response.result(c, result);
 	})
 );
 
@@ -40,7 +40,7 @@ postsRouter.get(
 		const { slug } = valid<z.infer<typeof SlugParamSchema>>(c, "param");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 		const result = await service.getBySlug(user.id, slug);
-		return handleResult(c, result);
+		return response.result(c, result);
 	})
 );
 
@@ -51,7 +51,7 @@ postsRouter.post(
 		const input = valid<z.infer<typeof PostCreateSchema>>(c, "json");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 		const result = await service.create(user.id, input);
-		return handleResult(c, result, 201);
+		return response.result(c, result, 201);
 	})
 );
 
@@ -64,7 +64,7 @@ postsRouter.put(
 		const input = valid<z.infer<typeof PostUpdateSchema>>(c, "json");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 		const result = await service.update(user.id, uuid, input);
-		return handleResult(c, result);
+		return response.result(c, result);
 	})
 );
 
@@ -75,7 +75,7 @@ postsRouter.delete(
 		const { uuid } = valid<z.infer<typeof UuidParamSchema>>(c, "param");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 		const result = await service.delete(user.id, uuid);
-		return handleResultWith(c, result, () => ({ success: true }));
+		return response.with(c, result, () => ({ success: true }));
 	})
 );
 
@@ -86,7 +86,7 @@ postsRouter.get(
 		const { uuid } = valid<z.infer<typeof UuidParamSchema>>(c, "param");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 		const result = await service.listVersions(user.id, uuid);
-		return handleResultWith(c, result, versions => ({ versions }));
+		return response.with(c, result, versions => ({ versions }));
 	})
 );
 
@@ -97,7 +97,7 @@ postsRouter.get(
 		const { uuid, hash } = valid<z.infer<typeof UuidHashParamSchema>>(c, "param");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 		const result = await service.getVersion(user.id, uuid, hash);
-		return handleResult(c, result);
+		return response.result(c, result);
 	})
 );
 
@@ -108,6 +108,6 @@ postsRouter.post(
 		const { uuid, hash } = valid<z.infer<typeof UuidHashParamSchema>>(c, "param");
 		const service = createPostService({ db: ctx.db, corpus: ctx.corpus });
 		const result = await service.restoreVersion(user.id, uuid, hash);
-		return handleResult(c, result);
+		return response.result(c, result);
 	})
 );

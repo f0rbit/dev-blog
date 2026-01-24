@@ -5,8 +5,10 @@ import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 
-export const renderMarkdown = async (content: string): Promise<string> => {
-	const result = await unified().use(remarkParse).use(remarkGfm).use(remarkRehype).use(rehypeHighlight).use(rehypeStringify).process(content);
+export const markdown = {
+	async render(content: string): Promise<string> {
+		const result = await unified().use(remarkParse).use(remarkGfm).use(remarkRehype).use(rehypeHighlight).use(rehypeStringify).process(content);
 
-	return String(result);
+		return String(result);
+	},
 };

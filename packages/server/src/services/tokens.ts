@@ -1,7 +1,7 @@
 import { type AccessKeyCreate, type AccessKeyRow, type AccessKeyUpdate, type DrizzleDB, type Result, accessKeys, ok, try_catch_async } from "@blog/schema";
 import { and, eq } from "drizzle-orm";
-import { hashToken } from "../utils/crypto";
-import { createDbError, createNotFound, firstRowOr } from "../utils/service-helpers";
+import { hashing } from "../utils/crypto";
+import { errors, rows } from "../utils/service-helpers";
 
 type TokenServiceError = { type: "not_found"; resource: string } | { type: "db_error"; message: string };
 
@@ -21,28 +21,33 @@ type Deps = {
 	db: DrizzleDB;
 };
 
-const toDbError = (e: unknown): TokenServiceError => createDbError(e);
+const toDbError = (e: unknown): TokenServiceError => errors.db(e);
 
-const notFound = (resource: string): TokenServiceError => createNotFound(resource);
+const notFound = (resource: string): TokenServiceError => errors.missing(resource);
 
-const firstRow = <T>(rows: T[], resource: string): Result<T, TokenServiceError> => firstRowOr(rows, () => notFound(resource));
+const firstRow = <T>(r: T[], resource: string): Result<T, TokenServiceError> => rows.firstOr(r, () => notFound(resource));
 
-export const sanitizeToken = (token: AccessKeyRow): SanitizedToken => ({
-	id: token.id,
-	name: token.name,
-	note: token.note,
-	enabled: token.enabled,
-	created_at: token.created_at,
+const sanitize = (t: AccessKeyRow): SanitizedToken => ({
+	id: t.id,
+	name: t.name,
+	note: t.note,
+	enabled: t.enabled,
+	created_at: t.created_at,
 });
 
-export const generateToken = (): string => crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+const generate = (): string => globalThis.crypto.randomUUID().replace(/-/g, "") + globalThis.crypto.randomUUID().replace(/-/g, "");
+
+export const token = {
+	sanitize,
+	generate,
+};
 
 export const createTokenService = ({ db }: Deps) => {
 	const list = async (userId: number): Promise<Result<SanitizedToken[], TokenServiceError>> =>
 		try_catch_async(async () => {
 			const tokens = await db.select().from(accessKeys).where(eq(accessKeys.user_id, userId));
 
-			return tokens.map(sanitizeToken);
+			return tokens.map(token.sanitize);
 		}, toDbError);
 
 	const find = async (userId: number, tokenId: number): Promise<Result<AccessKeyRow, TokenServiceError>> => {
@@ -57,8 +62,8 @@ export const createTokenService = ({ db }: Deps) => {
 
 	const create = async (userId: number, input: AccessKeyCreate): Promise<Result<CreatedToken, TokenServiceError>> =>
 		try_catch_async(async () => {
-			const plainToken = generateToken();
-			const keyHash = await hashToken(plainToken);
+			const plainToken = token.generate();
+			const keyHash = await hashing.hash(plainToken);
 
 			const [created] = await db
 				.insert(accessKeys)
@@ -74,7 +79,7 @@ export const createTokenService = ({ db }: Deps) => {
 			if (!created) throw new Error("Insert returned no rows");
 
 			return {
-				...sanitizeToken(created),
+				...token.sanitize(created),
 				token: plainToken,
 			};
 		}, toDbError);
@@ -95,7 +100,7 @@ export const createTokenService = ({ db }: Deps) => {
 		if (input.enabled !== undefined) updates.enabled = input.enabled;
 
 		if (Object.keys(updates).length === 0) {
-			return ok(sanitizeToken(existingResult.value));
+			return ok(token.sanitize(existingResult.value));
 		}
 
 		return try_catch_async(async () => {
@@ -106,7 +111,7 @@ export const createTokenService = ({ db }: Deps) => {
 				.returning();
 
 			if (!updated) throw new Error("Update returned no rows");
-			return sanitizeToken(updated);
+			return token.sanitize(updated);
 		}, toDbError);
 	};
 

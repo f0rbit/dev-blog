@@ -10,42 +10,44 @@ export type FormState = {
 	handleSubmitResult: <T, E>(fn: () => Promise<Result<T, E>>, formatError?: (e: E) => string) => Promise<T | undefined>;
 };
 
-export const createFormState = (): FormState => {
-	const [submitting, setSubmitting] = createSignal(false);
-	const [error, setError] = createSignal<string | null>(null);
+export const form = {
+	create(): FormState {
+		const [submitting, setSubmitting] = createSignal(false);
+		const [error, setError] = createSignal<string | null>(null);
 
-	const handleSubmit = async <T>(fn: () => Promise<T>): Promise<T | undefined> => {
-		setSubmitting(true);
-		setError(null);
-		try {
-			const result = await fn();
-			return result;
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Operation failed");
-			return undefined;
-		} finally {
-			setSubmitting(false);
-		}
-	};
-
-	const handleSubmitResult = async <T, E>(fn: () => Promise<Result<T, E>>, formatError?: (e: E) => string): Promise<T | undefined> => {
-		setSubmitting(true);
-		setError(null);
-		try {
-			const result = await fn();
-			if (!result.ok) {
-				const errorMsg = formatError ? formatError(result.error) : typeof result.error === "object" && result.error !== null && "message" in result.error ? (result.error as { message: string }).message : String(result.error);
-				setError(errorMsg);
+		const handleSubmit = async <T>(fn: () => Promise<T>): Promise<T | undefined> => {
+			setSubmitting(true);
+			setError(null);
+			try {
+				const result = await fn();
+				return result;
+			} catch (err) {
+				setError(err instanceof Error ? err.message : "Operation failed");
 				return undefined;
+			} finally {
+				setSubmitting(false);
 			}
-			return result.value;
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Operation failed");
-			return undefined;
-		} finally {
-			setSubmitting(false);
-		}
-	};
+		};
 
-	return { submitting, error, setError, handleSubmit, handleSubmitResult };
+		const handleSubmitResult = async <T, E>(fn: () => Promise<Result<T, E>>, formatError?: (e: E) => string): Promise<T | undefined> => {
+			setSubmitting(true);
+			setError(null);
+			try {
+				const result = await fn();
+				if (!result.ok) {
+					const errorMsg = formatError ? formatError(result.error) : typeof result.error === "object" && result.error !== null && "message" in result.error ? (result.error as { message: string }).message : String(result.error);
+					setError(errorMsg);
+					return undefined;
+				}
+				return result.value;
+			} catch (err) {
+				setError(err instanceof Error ? err.message : "Operation failed");
+				return undefined;
+			} finally {
+				setSubmitting(false);
+			}
+		};
+
+		return { submitting, error, setError, handleSubmit, handleSubmitResult };
+	},
 };

@@ -3,8 +3,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
 import { type TagWithCount, createTagService } from "../services/tags";
-import { mapServiceErrorToResponse } from "../utils/errors";
-import { type Variables, handleResultNoContent, handleResultWith, valid } from "../utils/route-helpers";
+import { errorMap } from "../utils/errors";
+import { type Variables, response, valid } from "../utils/route-helpers";
 
 export type { TagWithCount };
 
@@ -28,7 +28,7 @@ tagsRouter.get(
 	withAuth(async (c, user, ctx) => {
 		const service = createTagService({ db: ctx.db });
 		const result = await service.list(user.id);
-		return handleResultWith(c, result, tags => ({ tags }));
+		return response.with(c, result, tags => ({ tags }));
 	})
 );
 
@@ -41,12 +41,12 @@ tagsRouter.get(
 
 		const postResult = await service.findPost(user.id, uuid);
 		if (!postResult.ok) {
-			const { status, body } = mapServiceErrorToResponse(postResult.error);
+			const { status, body } = errorMap.response(postResult.error);
 			return c.json(body, status);
 		}
 
 		const tagsResult = await service.getPostTags(postResult.value.id);
-		return handleResultWith(c, tagsResult, tags => ({ tags }));
+		return response.with(c, tagsResult, tags => ({ tags }));
 	})
 );
 
@@ -61,12 +61,12 @@ tagsRouter.put(
 
 		const postResult = await service.findPost(user.id, uuid);
 		if (!postResult.ok) {
-			const { status, body } = mapServiceErrorToResponse(postResult.error);
+			const { status, body } = errorMap.response(postResult.error);
 			return c.json(body, status);
 		}
 
 		const result = await service.setPostTags(postResult.value.id, newTags);
-		return handleResultWith(c, result, tags => ({ tags }));
+		return response.with(c, result, tags => ({ tags }));
 	})
 );
 
@@ -81,12 +81,12 @@ tagsRouter.post(
 
 		const postResult = await service.findPost(user.id, uuid);
 		if (!postResult.ok) {
-			const { status, body } = mapServiceErrorToResponse(postResult.error);
+			const { status, body } = errorMap.response(postResult.error);
 			return c.json(body, status);
 		}
 
 		const result = await service.addPostTags(postResult.value.id, tagsToAdd);
-		return handleResultWith(c, result, tags => ({ tags }), 201);
+		return response.with(c, result, tags => ({ tags }), 201);
 	})
 );
 
@@ -99,11 +99,11 @@ tagsRouter.delete(
 
 		const postResult = await service.findPost(user.id, uuid);
 		if (!postResult.ok) {
-			const { status, body } = mapServiceErrorToResponse(postResult.error);
+			const { status, body } = errorMap.response(postResult.error);
 			return c.json(body, status);
 		}
 
 		const result = await service.removePostTag(postResult.value.id, tag);
-		return handleResultNoContent(c, result);
+		return response.empty(c, result);
 	})
 );

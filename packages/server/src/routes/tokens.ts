@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
 import { type CreatedToken, type SanitizedToken, createTokenService } from "../services/tokens";
-import { type Variables, handleResult, handleResultNoContent, handleResultWith, valid } from "../utils/route-helpers";
+import { type Variables, response, valid } from "../utils/route-helpers";
 
 export type { CreatedToken, SanitizedToken };
 
@@ -19,7 +19,7 @@ tokensRouter.get(
 	withAuth(async (c, user, ctx) => {
 		const service = createTokenService({ db: ctx.db });
 		const result = await service.list(user.id);
-		return handleResultWith(c, result, tokens => ({ tokens }));
+		return response.with(c, result, tokens => ({ tokens }));
 	})
 );
 
@@ -30,7 +30,7 @@ tokensRouter.post(
 		const data = valid<z.infer<typeof AccessKeyCreateSchema>>(c, "json");
 		const service = createTokenService({ db: ctx.db });
 		const result = await service.create(user.id, data);
-		return handleResult(c, result, 201);
+		return response.result(c, result, 201);
 	})
 );
 
@@ -43,7 +43,7 @@ tokensRouter.put(
 		const data = valid<z.infer<typeof AccessKeyUpdateSchema>>(c, "json");
 		const service = createTokenService({ db: ctx.db });
 		const result = await service.update(user.id, id, data);
-		return handleResult(c, result);
+		return response.result(c, result);
 	})
 );
 
@@ -54,6 +54,6 @@ tokensRouter.delete(
 		const { id } = valid<z.infer<typeof TokenIdSchema>>(c, "param");
 		const service = createTokenService({ db: ctx.db });
 		const result = await service.delete(user.id, id);
-		return handleResultNoContent(c, result);
+		return response.empty(c, result);
 	})
 );

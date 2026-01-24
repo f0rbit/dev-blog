@@ -2,8 +2,8 @@ import { Button, ChipInput } from "@f0rbit/ui";
 import type { Component } from "solid-js";
 import { For, Show, createSignal, onMount } from "solid-js";
 import { api } from "../../lib/api";
-import { relativeTime } from "../../lib/date-utils";
-import { createFormState } from "../../lib/form-utils";
+import { date } from "../../lib/date-utils";
+import { form } from "../../lib/form-utils";
 import PostPreview from "./post-preview";
 import ProjectSelector from "./project-selector";
 
@@ -82,7 +82,7 @@ const PostEditor: Component<PostEditorProps> = props => {
 	const [publishAt, setPublishAt] = createSignal<Date | null>(props.post?.publish_at ? new Date(props.post.publish_at) : null);
 	const [categories, setCategories] = createSignal<Category[]>(props.categories ?? []);
 
-	const form = createFormState();
+	const formState = form.create();
 	const [activeTab, setActiveTab] = createSignal<"write" | "preview">("write");
 
 	// Expose form data getter for external save button
@@ -167,17 +167,17 @@ const PostEditor: Component<PostEditorProps> = props => {
 	};
 
 	const handleSave = async () => {
-		form.setError(null);
+		formState.setError(null);
 		if (!title().trim()) {
-			form.setError("Title is required");
+			formState.setError("Title is required");
 			return;
 		}
 		if (!slug().trim()) {
-			form.setError("Slug is required");
+			formState.setError("Slug is required");
 			return;
 		}
 
-		await form.handleSubmit(async () => {
+		await formState.handleSubmit(async () => {
 			const data = getFormData();
 			if (props.onSave) {
 				await props.onSave(data);
@@ -189,8 +189,8 @@ const PostEditor: Component<PostEditorProps> = props => {
 
 	return (
 		<div class="post-editor">
-			<Show when={form.error()}>
-				<div class="form-error">{form.error()}</div>
+			<Show when={formState.error()}>
+				<div class="form-error">{formState.error()}</div>
 			</Show>
 
 			{/* Title + Metadata section with border */}
@@ -245,7 +245,7 @@ const PostEditor: Component<PostEditorProps> = props => {
 				<Show when={isEditing() && props.post?.updated_at} keyed>
 					{updatedAt => (
 						<div class="post-editor__version-info">
-							<span class="post-editor__last-saved">Last saved {relativeTime(updatedAt)}</span>
+							<span class="post-editor__last-saved">Last saved {date.relative(updatedAt)}</span>
 							<a href={`/posts/${props.post?.uuid}/versions`} class="post-editor__history-link">
 								View History →
 							</a>
@@ -256,7 +256,7 @@ const PostEditor: Component<PostEditorProps> = props => {
 				{/* Actions - show for new posts or when onSave is provided */}
 				<Show when={props.onSave || !props.post}>
 					<div class="post-editor__actions">
-						<Button variant="primary" onClick={handleSave} disabled={form.submitting()} loading={form.submitting()}>
+						<Button variant="primary" onClick={handleSave} disabled={formState.submitting()} loading={formState.submitting()}>
 							{isEditing() ? "Update" : "Create"}
 						</Button>
 					</div>

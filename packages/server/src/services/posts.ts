@@ -22,8 +22,8 @@ import {
 	try_catch_async,
 } from "@blog/schema";
 import { and, desc, eq, gt, inArray, isNull, lte, sql } from "drizzle-orm";
-import { listVersions as corpusListVersions, deleteContent, getContent, putContent } from "../corpus/posts";
-import { createDbError, createNotFound, firstRowOr } from "../utils/service-helpers";
+import { corpus as postsCorpus } from "../corpus/posts";
+import { errors, rows } from "../utils/service-helpers";
 
 type PostServiceError = { type: "not_found"; resource: string } | { type: "slug_conflict"; slug: string } | { type: "corpus_error"; inner: PostCorpusError } | { type: "db_error"; message: string };
 
@@ -37,9 +37,9 @@ const toCorpusError = (e: PostCorpusError): PostServiceError => ({
 	inner: e,
 });
 
-const toDbError = (e: unknown): PostServiceError => createDbError(e);
+const toDbError = (e: unknown): PostServiceError => errors.db(e);
 
-const notFound = (resource: string): PostServiceError => createNotFound(resource);
+const notFound = (resource: string): PostServiceError => errors.missing(resource);
 
 const slugConflict = (slug: string): PostServiceError => ({
 	type: "slug_conflict",
@@ -114,7 +114,7 @@ const assemblePost = (row: PostRow, content: PostContent, tagList: string[], pro
 	corpus_version: row.corpus_version,
 });
 
-const firstRow = <T>(rows: T[], resource: string): Result<T, PostServiceError> => firstRowOr(rows, () => notFound(resource));
+const firstRow = <T>(r: T[], resource: string): Result<T, PostServiceError> => rows.firstOr(r, () => notFound(resource));
 
 export const createPostService = ({ db, corpus }: Deps) => {
 	const checkSlugUnique = async (userId: number, slug: string, excludeId?: number): Promise<Result<void, PostServiceError>> => {
@@ -143,7 +143,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 			format: input.format ?? "md",
 		};
 
-		return pipe(putContent(corpus, path, content))
+		return pipe(postsCorpus.put(corpus, path, content))
 			.map_err(toCorpusError)
 			.flat_map(({ hash }) =>
 				pipe(
@@ -203,7 +203,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 			return err(notFound(`post:${uuid}:content`));
 		}
 
-		const contentResult = await getContent(corpus, path, currentVersion);
+		const contentResult = await postsCorpus.get(corpus, path, currentVersion);
 		if (!contentResult.ok) return err(toCorpusError(contentResult.error));
 		const currentContent = contentResult.value;
 
@@ -221,7 +221,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 				format: input.format ?? currentContent.format,
 			};
 
-			return pipe(putContent(corpus, path, updatedContent, currentVersion))
+			return pipe(postsCorpus.put(corpus, path, updatedContent, currentVersion))
 				.map_err(toCorpusError)
 				.map(({ hash }) => ({ content: updatedContent, version: hash }))
 				.result();
@@ -280,7 +280,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 
 		const path = corpusPath(userId, row.uuid);
 
-		return pipe(getContent(corpus, path, row.corpus_version))
+		return pipe(postsCorpus.get(corpus, path, row.corpus_version))
 			.map_err(toCorpusError)
 			.map_async(async content => {
 				const tagsMap = await fetchTagsForPosts(db, [row.id]);
@@ -393,7 +393,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 		const contentResults = await Promise.all(
 			rowsWithVersion.map(async ({ row, version }) => {
 				const path = corpusPath(userId, row.uuid);
-				const contentResult = await getContent(corpus, path, version);
+				const contentResult = await postsCorpus.get(corpus, path, version);
 				return { row, contentResult };
 			})
 		);
@@ -430,7 +430,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 
 		const path = corpusPath(userId, uuid);
 
-		return pipe(deleteContent(corpus, path))
+		return pipe(postsCorpus.delete(corpus, path))
 			.map_err(toCorpusError)
 			.flat_map(() =>
 				try_catch_async(async () => {
@@ -454,7 +454,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 
 		const path = corpusPath(userId, uuid);
 
-		return pipe(corpusListVersions(corpus, path)).map_err(toCorpusError).result();
+		return pipe(postsCorpus.versions(corpus, path)).map_err(toCorpusError).result();
 	};
 
 	const getVersion = async (userId: number, uuid: string, hash: string): Promise<Result<PostContent, PostServiceError>> => {
@@ -470,7 +470,7 @@ export const createPostService = ({ db, corpus }: Deps) => {
 
 		const path = corpusPath(userId, uuid);
 
-		return pipe(getContent(corpus, path, hash))
+		return pipe(postsCorpus.get(corpus, path, hash))
 			.map_err(toCorpusError)
 			.result();
 	};
@@ -489,10 +489,10 @@ export const createPostService = ({ db, corpus }: Deps) => {
 		const path = corpusPath(userId, uuid);
 		const currentVersion = row.corpus_version;
 
-		return pipe(getContent(corpus, path, hash))
+		return pipe(postsCorpus.get(corpus, path, hash))
 			.map_err(toCorpusError)
 			.flat_map(restoredContent =>
-				pipe(putContent(corpus, path, restoredContent, currentVersion ?? undefined))
+				pipe(postsCorpus.put(corpus, path, restoredContent, currentVersion ?? undefined))
 					.map_err(toCorpusError)
 					.flat_map(({ hash: newHash }) =>
 						pipe(

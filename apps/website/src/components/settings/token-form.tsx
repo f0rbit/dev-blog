@@ -1,6 +1,6 @@
 import { Button, Input, Modal, ModalBody, ModalFooter, ModalHeader, ModalTitle, Textarea } from "@f0rbit/ui";
 import { type Component, Show, createSignal } from "solid-js";
-import { createFormState } from "../../lib/form-utils";
+import { form } from "../../lib/form-utils";
 
 interface TokenFormProps {
 	isOpen: boolean;
@@ -12,13 +12,13 @@ const TokenForm: Component<TokenFormProps> = props => {
 	const [name, setName] = createSignal("");
 	const [note, setNote] = createSignal("");
 	const [generatedKey, setGeneratedKey] = createSignal<string | null>(null);
-	const form = createFormState();
+	const formState = form.create();
 
 	const reset = () => {
 		setName("");
 		setNote("");
 		setGeneratedKey(null);
-		form.setError(null);
+		formState.setError(null);
 	};
 
 	const handleClose = () => {
@@ -31,7 +31,7 @@ const TokenForm: Component<TokenFormProps> = props => {
 		const trimmedName = name().trim();
 		if (!trimmedName) return;
 
-		const result = await form.handleSubmit(() =>
+		const result = await formState.handleSubmit(() =>
 			props.onSubmit({
 				name: trimmedName,
 				note: note().trim() || undefined,
@@ -83,29 +83,29 @@ const TokenForm: Component<TokenFormProps> = props => {
 			>
 				<ModalBody>
 					<form onSubmit={handleSubmit} class="modal-form">
-						<Show when={form.error()}>
+						<Show when={formState.error()}>
 							<div class="form-error">
-								<p class="text-sm">{form.error()}</p>
+								<p class="text-sm">{formState.error()}</p>
 							</div>
 						</Show>
 						<div class="form-row">
 							<label for="token-name">
 								Name <span class="required">*</span>
 							</label>
-							<Input value={name()} onInput={setName} placeholder="Token name" disabled={form.submitting()} />
+							<Input value={name()} onInput={setName} placeholder="Token name" disabled={formState.submitting()} />
 						</div>
 						<div class="form-row">
 							<label for="token-note">Note (optional)</label>
-							<Textarea value={note()} onInput={setNote} placeholder="What is this token for?" rows={3} disabled={form.submitting()} />
+							<Textarea value={note()} onInput={setNote} placeholder="What is this token for?" rows={3} disabled={formState.submitting()} />
 						</div>
 					</form>
 				</ModalBody>
 				<ModalFooter>
-					<Button variant="secondary" onClick={handleClose} disabled={form.submitting()}>
+					<Button variant="secondary" onClick={handleClose} disabled={formState.submitting()}>
 						Cancel
 					</Button>
-					<Button type="submit" variant="primary" disabled={form.submitting() || !name().trim()}>
-						{form.submitting() ? "Creating..." : "Create Token"}
+					<Button type="submit" variant="primary" disabled={formState.submitting() || !name().trim()}>
+						{formState.submitting() ? "Creating..." : "Create Token"}
 					</Button>
 				</ModalFooter>
 			</Show>

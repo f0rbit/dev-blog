@@ -3,7 +3,7 @@ import type { AppContext } from "@blog/schema";
 import { Hono } from "hono";
 import { authMiddleware } from "../../src/middleware/auth";
 import { tokensRouter } from "../../src/routes/tokens";
-import { hashToken } from "../../src/utils/crypto";
+import { hashing } from "../../src/utils/crypto";
 import { type TestContext, createAuthenticatedTestApp, createTestContext, createTestToken, createTestUser } from "../setup";
 
 type SanitizedToken = {
@@ -57,8 +57,8 @@ describe("Tokens Route Integration", () => {
 	describe("GET /api/blog/tokens", () => {
 		it("lists users tokens (sanitized, no key_hash)", async () => {
 			const user = await createTestUser(ctx);
-			await createTestToken(ctx, user.id, "token-1", await hashToken("key1"));
-			await createTestToken(ctx, user.id, "token-2", await hashToken("key2"));
+			await createTestToken(ctx, user.id, "token-1", await hashing.hash("key1"));
+			await createTestToken(ctx, user.id, "token-2", await hashing.hash("key2"));
 
 			const app = createTestApp(ctx, user.id);
 			const res = await app.request("/api/blog/tokens");
@@ -92,8 +92,8 @@ describe("Tokens Route Integration", () => {
 			const userA = await createTestUser(ctx, { github_id: 100001 });
 			const userB = await createTestUser(ctx, { github_id: 100002 });
 
-			await createTestToken(ctx, userA.id, "A-token", await hashToken("keyA"));
-			await createTestToken(ctx, userB.id, "B-token", await hashToken("keyB"));
+			await createTestToken(ctx, userA.id, "A-token", await hashing.hash("keyA"));
+			await createTestToken(ctx, userB.id, "B-token", await hashing.hash("keyB"));
 
 			const appA = createTestApp(ctx, userA.id);
 			const resA = await appA.request("/api/blog/tokens");
@@ -189,7 +189,7 @@ describe("Tokens Route Integration", () => {
 	describe("PUT /api/blog/tokens/:id", () => {
 		it("updates token name", async () => {
 			const user = await createTestUser(ctx);
-			const token = await createTestToken(ctx, user.id, "Original Name", await hashToken("key"));
+			const token = await createTestToken(ctx, user.id, "Original Name", await hashing.hash("key"));
 
 			const app = createTestApp(ctx, user.id);
 			const res = await app.request(`/api/blog/tokens/${token.id}`, {
@@ -205,7 +205,7 @@ describe("Tokens Route Integration", () => {
 
 		it("updates token note", async () => {
 			const user = await createTestUser(ctx);
-			const token = await createTestToken(ctx, user.id, "Token", await hashToken("key"));
+			const token = await createTestToken(ctx, user.id, "Token", await hashing.hash("key"));
 
 			const app = createTestApp(ctx, user.id);
 			const res = await app.request(`/api/blog/tokens/${token.id}`, {
@@ -221,7 +221,7 @@ describe("Tokens Route Integration", () => {
 
 		it("disables token", async () => {
 			const user = await createTestUser(ctx);
-			const token = await createTestToken(ctx, user.id, "Active Token", await hashToken("key"));
+			const token = await createTestToken(ctx, user.id, "Active Token", await hashing.hash("key"));
 
 			const app = createTestApp(ctx, user.id);
 			const res = await app.request(`/api/blog/tokens/${token.id}`, {
@@ -237,7 +237,7 @@ describe("Tokens Route Integration", () => {
 
 		it("re-enables disabled token", async () => {
 			const user = await createTestUser(ctx);
-			const token = await createTestToken(ctx, user.id, "Disabled Token", await hashToken("key"), false);
+			const token = await createTestToken(ctx, user.id, "Disabled Token", await hashing.hash("key"), false);
 
 			const app = createTestApp(ctx, user.id);
 			const res = await app.request(`/api/blog/tokens/${token.id}`, {
@@ -267,7 +267,7 @@ describe("Tokens Route Integration", () => {
 		it("cannot update another users token", async () => {
 			const userA = await createTestUser(ctx, { github_id: 200001 });
 			const userB = await createTestUser(ctx, { github_id: 200002 });
-			const tokenA = await createTestToken(ctx, userA.id, "A Token", await hashToken("keyA"));
+			const tokenA = await createTestToken(ctx, userA.id, "A Token", await hashing.hash("keyA"));
 
 			const appB = createTestApp(ctx, userB.id);
 			const res = await appB.request(`/api/blog/tokens/${tokenA.id}`, {
@@ -283,7 +283,7 @@ describe("Tokens Route Integration", () => {
 	describe("DELETE /api/blog/tokens/:id", () => {
 		it("deletes token", async () => {
 			const user = await createTestUser(ctx);
-			const token = await createTestToken(ctx, user.id, "To Delete", await hashToken("key"));
+			const token = await createTestToken(ctx, user.id, "To Delete", await hashing.hash("key"));
 
 			const app = createTestApp(ctx, user.id);
 			const res = await app.request(`/api/blog/tokens/${token.id}`, {
@@ -311,7 +311,7 @@ describe("Tokens Route Integration", () => {
 		it("cannot delete another users token", async () => {
 			const userA = await createTestUser(ctx, { github_id: 300001 });
 			const userB = await createTestUser(ctx, { github_id: 300002 });
-			const tokenA = await createTestToken(ctx, userA.id, "A Token", await hashToken("keyA"));
+			const tokenA = await createTestToken(ctx, userA.id, "A Token", await hashing.hash("keyA"));
 
 			const appB = createTestApp(ctx, userB.id);
 			const res = await appB.request(`/api/blog/tokens/${tokenA.id}`, {
@@ -329,7 +329,7 @@ describe("Tokens Route Integration", () => {
 		it("deleted token can no longer be used for auth", async () => {
 			const user = await createTestUser(ctx);
 			const plainToken = "deletable-token-key";
-			const token = await createTestToken(ctx, user.id, "Deletable", await hashToken(plainToken));
+			const token = await createTestToken(ctx, user.id, "Deletable", await hashing.hash(plainToken));
 
 			const authApp = createAuthTestApp(ctx);
 			const authRes1 = await authApp.request("/api/protected", {

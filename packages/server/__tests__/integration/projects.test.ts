@@ -2,10 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import type { AppContext, Project, User } from "@blog/schema";
 import { Hono } from "hono";
 import { authMiddleware } from "../../src/middleware/auth";
-import { createMockDevpadProvider } from "../../src/providers/devpad";
+import type { devpad } from "../../src/providers/devpad";
 import { projectsRouter } from "../../src/routes/projects";
 import { createProjectService } from "../../src/services/projects";
-import { hashToken } from "../../src/utils/crypto";
+import { hashing } from "../../src/utils/crypto";
 import { type TestContext, createMockDevpadVerifyFetch, createTestContext, createTestToken, createTestUser } from "../setup";
 
 type ProjectsResponse = { projects: Project[] };
@@ -36,7 +36,7 @@ const createAuthenticatedTestApp = (ctx: TestContext, devpadApi: string) => {
 	return app;
 };
 
-const createTestApp = (ctx: TestContext, user: User, mockProvider: ReturnType<typeof createMockDevpadProvider>, jwtToken?: string) => {
+const createTestApp = (ctx: TestContext, user: User, mockProvider: ReturnType<typeof devpad.mock>, jwtToken?: string) => {
 	const app = new Hono<{ Variables: { user: User; appContext: AppContext; jwtToken?: string } }>();
 
 	app.use("*", async (c, next) => {
@@ -155,7 +155,7 @@ describe("Projects Route Integration", () => {
 	describe("GET /api/blog/projects", () => {
 		it("returns empty list when cache is empty", async () => {
 			const user = await createTestUser(ctx);
-			const mockProvider = createMockDevpadProvider();
+			const mockProvider = devpad.mock();
 
 			const app = createTestApp(ctx, user as User, mockProvider);
 			const res = await app.request("/api/blog/projects");
@@ -167,7 +167,7 @@ describe("Projects Route Integration", () => {
 
 		it("returns cached projects after refresh", async () => {
 			const user = await createTestUser(ctx);
-			const mockProvider = createMockDevpadProvider();
+			const mockProvider = devpad.mock();
 			mockProvider.setProjects(mockProjects);
 
 			const app = createTestApp(ctx, user as User, mockProvider, "valid-jwt");
@@ -186,7 +186,7 @@ describe("Projects Route Integration", () => {
 	describe("POST /api/blog/projects/refresh", () => {
 		it("requires JWT auth", async () => {
 			const user = await createTestUser(ctx);
-			const mockProvider = createMockDevpadProvider();
+			const mockProvider = devpad.mock();
 
 			const app = createTestApp(ctx, user as User, mockProvider);
 			const res = await app.request("/api/blog/projects/refresh", { method: "POST" });
@@ -199,7 +199,7 @@ describe("Projects Route Integration", () => {
 
 		it("fetches and caches projects from DevPad", async () => {
 			const user = await createTestUser(ctx);
-			const mockProvider = createMockDevpadProvider();
+			const mockProvider = devpad.mock();
 			mockProvider.setProjects(mockProjects);
 
 			const app = createTestApp(ctx, user as User, mockProvider, "valid-jwt-token");
@@ -214,7 +214,7 @@ describe("Projects Route Integration", () => {
 
 		it("caches projects for subsequent GET requests", async () => {
 			const user = await createTestUser(ctx);
-			const mockProvider = createMockDevpadProvider();
+			const mockProvider = devpad.mock();
 			mockProvider.setProjects(mockProjects);
 
 			const app = createTestApp(ctx, user as User, mockProvider, "jwt");
@@ -233,7 +233,7 @@ describe("Projects Route Integration", () => {
 
 		it("returns error when DevPad fails", async () => {
 			const user = await createTestUser(ctx);
-			const mockProvider = createMockDevpadProvider();
+			const mockProvider = devpad.mock();
 			mockProvider.setError("DevPad API unavailable");
 
 			const app = createTestApp(ctx, user as User, mockProvider, "jwt");
@@ -250,8 +250,8 @@ describe("Projects Route Integration", () => {
 			const userA = await createTestUser(ctx, { github_id: 100001 });
 			const userB = await createTestUser(ctx, { github_id: 100002 });
 
-			const mockProviderA = createMockDevpadProvider();
-			const mockProviderB = createMockDevpadProvider();
+			const mockProviderA = devpad.mock();
+			const mockProviderB = devpad.mock();
 
 			const projectsA: Project[] = [createMockProject({ id: "proj-a", name: "User A Project" })];
 
@@ -306,7 +306,7 @@ describe("Projects Routes (HTTP)", () => {
 		it("returns projects with valid Auth-Token", async () => {
 			const user = await createTestUser(ctx);
 			const plainToken = "projects-test-token";
-			await createTestToken(ctx, user.id, "test-token", await hashToken(plainToken));
+			await createTestToken(ctx, user.id, "test-token", await hashing.hash(plainToken));
 
 			const app = createAuthenticatedTestApp(ctx, devpadApi);
 			const res = await app.request("/api/blog/projects", {
@@ -352,7 +352,7 @@ describe("Projects Routes (HTTP)", () => {
 		it("requires JWT token (rejects Auth-Token only)", async () => {
 			const user = await createTestUser(ctx);
 			const plainToken = "refresh-test-token";
-			await createTestToken(ctx, user.id, "test-token", await hashToken(plainToken));
+			await createTestToken(ctx, user.id, "test-token", await hashing.hash(plainToken));
 
 			const app = createAuthenticatedTestApp(ctx, devpadApi);
 			const res = await app.request("/api/blog/projects/refresh", {

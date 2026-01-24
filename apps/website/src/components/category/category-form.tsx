@@ -1,7 +1,7 @@
 import type { Category as SchemaCategory } from "@blog/schema";
 import { Button, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Input } from "@f0rbit/ui";
 import { type Component, For, createEffect, createSignal } from "solid-js";
-import { createFormState } from "../../lib/form-utils";
+import { form } from "../../lib/form-utils";
 
 type Category = Pick<SchemaCategory, "id" | "name" | "parent">;
 
@@ -23,7 +23,7 @@ const scrollToFormAndFocus = () => {
 const CategoryForm: Component<CategoryFormProps> = props => {
 	const [name, setName] = createSignal("");
 	const [parent, setParent] = createSignal(props.defaultParent);
-	const form = createFormState();
+	const formState = form.create();
 
 	createEffect(() => {
 		setParent(props.defaultParent);
@@ -35,7 +35,7 @@ const CategoryForm: Component<CategoryFormProps> = props => {
 		const trimmedName = name().trim();
 		if (!trimmedName) return;
 
-		await form.handleSubmit(async () => {
+		await formState.handleSubmit(async () => {
 			await props.onSubmit({ name: trimmedName, parent: parent() });
 			setName("");
 			setParent("root");
@@ -57,14 +57,14 @@ const CategoryForm: Component<CategoryFormProps> = props => {
 						value={name()}
 						onInput={e => setName(e.currentTarget.value)}
 						placeholder="Category name"
-						disabled={form.submitting()}
+						disabled={formState.submitting()}
 					/>
 				</div>
 				<div class="form-row">
 					<label class="text-xs text-subtle">Parent</label>
 					<Dropdown>
 						<DropdownTrigger>
-							<Button variant="secondary" disabled={form.submitting()}>
+							<Button variant="secondary" disabled={formState.submitting()}>
 								{parent()}
 							</Button>
 						</DropdownTrigger>
@@ -80,8 +80,8 @@ const CategoryForm: Component<CategoryFormProps> = props => {
 					</Dropdown>
 				</div>
 				<div class="category-form-actions">
-					<Button type="submit" variant="primary" disabled={form.submitting() || !name().trim()}>
-						{form.submitting() ? "Creating..." : "+ Create"}
+					<Button type="submit" variant="primary" disabled={formState.submitting() || !name().trim()}>
+						{formState.submitting() ? "Creating..." : "+ Create"}
 					</Button>
 				</div>
 			</form>

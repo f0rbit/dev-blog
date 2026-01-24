@@ -2,7 +2,7 @@ import { api } from "@/lib/api";
 import type { AccessKey, User as SchemaUser } from "@blog/schema";
 import { Button } from "@f0rbit/ui";
 import { type Component, For, Show, createSignal } from "solid-js";
-import { formatDate } from "../../lib/date-utils";
+import { date } from "../../lib/date-utils";
 import DevpadConnection from "./devpad-connection";
 import TokenForm from "./token-form";
 import TokenList from "./token-list";
@@ -117,7 +117,7 @@ const SettingsPage: Component<SettingsPageProps> = props => {
 								</div>
 								<div class="profile-row">
 									<span class="profile-row__label">Created</span>
-									<span class="profile-row__value">{formatDate(userData.created_at)}</span>
+									<span class="profile-row__value">{date.format(userData.created_at)}</span>
 								</div>
 								<div class="profile-note">
 									<p class="text-sm text-muted">Profile is managed by DevPad.</p>

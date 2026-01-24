@@ -220,7 +220,7 @@ export const createMockDevpadVerifyFetch = (config: MockDevpadVerifyConfig) => {
 	};
 };
 
-export { createMockDevpadProvider } from "../src/providers/devpad";
+export { devpad } from "../src/providers/devpad";
 export type { DevpadProvider } from "../src/providers/devpad";
 
 export const generateId = (): string => crypto.randomUUID();

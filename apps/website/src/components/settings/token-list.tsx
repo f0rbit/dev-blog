@@ -1,7 +1,7 @@
 import type { AccessKey } from "@blog/schema";
 import { Button, Empty } from "@f0rbit/ui";
 import { type Component, For, Show } from "solid-js";
-import { formatDate } from "../../lib/date-utils";
+import { date } from "../../lib/date-utils";
 
 type Token = {
 	id: AccessKey["id"];
@@ -33,7 +33,7 @@ const TokenList: Component<TokenListProps> = props => {
 									<span>{token.note}</span>
 									<span> · </span>
 								</Show>
-								<span>Created {formatDate(token.created_at)}</span>
+								<span>Created {date.format(token.created_at)}</span>
 								<span> · </span>
 								<span>{token.enabled ? "Enabled" : "Disabled"}</span>
 							</div>

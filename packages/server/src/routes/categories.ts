@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { withAuth } from "../middleware/require-auth";
 import { type CategoryUpdate, createCategoryService } from "../services/categories";
-import { type Variables, handleResult, handleResultNoContent, handleResultWith, valid } from "../utils/route-helpers";
+import { type Variables, response, valid } from "../utils/route-helpers";
 
 const CategoryNameSchema = z.object({
 	name: z.string().min(1),
@@ -21,7 +21,7 @@ categoriesRouter.get(
 	withAuth(async (c, user, ctx) => {
 		const service = createCategoryService({ db: ctx.db });
 		const result = await service.getTree(user.id);
-		return handleResultWith(c, result, categories => ({ categories }));
+		return response.with(c, result, categories => ({ categories }));
 	})
 );
 
@@ -32,7 +32,7 @@ categoriesRouter.post(
 		const data = valid<z.infer<typeof CategoryCreateSchema>>(c, "json");
 		const service = createCategoryService({ db: ctx.db });
 		const result = await service.create(user.id, data);
-		return handleResult(c, result, 201);
+		return response.result(c, result, 201);
 	})
 );
 
@@ -45,7 +45,7 @@ categoriesRouter.put(
 		const data = valid<z.infer<typeof CategoryUpdateSchema>>(c, "json") as CategoryUpdate;
 		const service = createCategoryService({ db: ctx.db });
 		const result = await service.update(user.id, name, data);
-		return handleResult(c, result);
+		return response.result(c, result);
 	})
 );
 
@@ -56,6 +56,6 @@ categoriesRouter.delete(
 		const { name } = valid<z.infer<typeof CategoryNameSchema>>(c, "param");
 		const service = createCategoryService({ db: ctx.db });
 		const result = await service.delete(user.id, name);
-		return handleResultNoContent(c, result);
+		return response.empty(c, result);
 	})
 );

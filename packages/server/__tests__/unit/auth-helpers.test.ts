@@ -1,31 +1,31 @@
 import { describe, expect, it } from "bun:test";
 import { extractJWTFromHeader, isExemptPath, isOptionalAuthPath, rowToUser } from "../../src/middleware/auth";
-import { hashToken, hexEncode } from "../../src/utils/crypto";
+import { hashing } from "../../src/utils/crypto";
 
-describe("hexEncode", () => {
+describe("hashing.hex", () => {
 	it("encodes empty buffer to empty string", () => {
 		const buffer = new ArrayBuffer(0);
-		expect(hexEncode(buffer)).toBe("");
+		expect(hashing.hex(buffer)).toBe("");
 	});
 
 	it("encodes single byte correctly", () => {
 		const buffer = new Uint8Array([0xff]).buffer;
-		expect(hexEncode(buffer)).toBe("ff");
+		expect(hashing.hex(buffer)).toBe("ff");
 	});
 
 	it("encodes multiple bytes correctly", () => {
 		const buffer = new Uint8Array([0x00, 0x0f, 0xf0, 0xff]).buffer;
-		expect(hexEncode(buffer)).toBe("000ff0ff");
+		expect(hashing.hex(buffer)).toBe("000ff0ff");
 	});
 
 	it("pads single digit hex values with zero", () => {
 		const buffer = new Uint8Array([0x01, 0x02, 0x0a]).buffer;
-		expect(hexEncode(buffer)).toBe("01020a");
+		expect(hashing.hex(buffer)).toBe("01020a");
 	});
 
 	it("encodes known SHA-256 hash input correctly", () => {
 		const bytes = new Uint8Array([0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f, 0xb9, 0x24, 0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c, 0xa4, 0x95, 0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55]);
-		expect(hexEncode(bytes.buffer)).toBe("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+		expect(hashing.hex(bytes.buffer)).toBe("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
 	});
 });
 
@@ -192,35 +192,35 @@ describe("extractJWTFromHeader", () => {
 	});
 });
 
-describe("hashToken", () => {
+describe("hashing.hash", () => {
 	it("produces consistent hash for same input", async () => {
-		const hash1 = await hashToken("test-token");
-		const hash2 = await hashToken("test-token");
+		const hash1 = await hashing.hash("test-token");
+		const hash2 = await hashing.hash("test-token");
 
 		expect(hash1).toBe(hash2);
 	});
 
 	it("produces different hashes for different inputs", async () => {
-		const hash1 = await hashToken("token-a");
-		const hash2 = await hashToken("token-b");
+		const hash1 = await hashing.hash("token-a");
+		const hash2 = await hashing.hash("token-b");
 
 		expect(hash1).not.toBe(hash2);
 	});
 
 	it("produces 64 character hex string (SHA-256)", async () => {
-		const hash = await hashToken("any-token");
+		const hash = await hashing.hash("any-token");
 
 		expect(hash.length).toBe(64);
 		expect(hash).toMatch(/^[0-9a-f]{64}$/);
 	});
 
 	it("hashes empty string correctly", async () => {
-		const hash = await hashToken("");
+		const hash = await hashing.hash("");
 		expect(hash).toBe("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
 	});
 
 	it("hashes known value correctly", async () => {
-		const hash = await hashToken("hello");
+		const hash = await hashing.hash("hello");
 		expect(hash).toBe("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
 	});
 });

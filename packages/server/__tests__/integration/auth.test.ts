@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import type { AppContext } from "@blog/schema";
 import { Hono } from "hono";
 import { authMiddleware } from "../../src/middleware/auth";
-import { hashToken } from "../../src/utils/crypto";
+import { hashing } from "../../src/utils/crypto";
 import { type TestContext, createMockDevpadVerifyFetch, createTestContext, createTestToken, createTestUser } from "../setup";
 
 type AuthResponse = {
@@ -127,7 +127,7 @@ describe("Auth Middleware Integration", () => {
 		it("returns user for /auth/status with valid token auth", async () => {
 			const user = await createTestUser(ctx);
 			const plainToken = "test-api-token-123";
-			const keyHash = await hashToken(plainToken);
+			const keyHash = await hashing.hash(plainToken);
 			await createTestToken(ctx, user.id, "test-token", keyHash);
 
 			const app = createTestApp(ctx, devpadApi);
@@ -146,7 +146,7 @@ describe("Auth Middleware Integration", () => {
 		it("authenticates with valid enabled token", async () => {
 			const user = await createTestUser(ctx);
 			const plainToken = "valid-token-abc123";
-			const keyHash = await hashToken(plainToken);
+			const keyHash = await hashing.hash(plainToken);
 			await createTestToken(ctx, user.id, "my-token", keyHash);
 
 			const app = createTestApp(ctx, devpadApi);
@@ -171,7 +171,7 @@ describe("Auth Middleware Integration", () => {
 		it("rejects disabled token", async () => {
 			const user = await createTestUser(ctx);
 			const plainToken = "disabled-token-123";
-			const keyHash = await hashToken(plainToken);
+			const keyHash = await hashing.hash(plainToken);
 			await createTestToken(ctx, user.id, "disabled-token", keyHash, false);
 
 			const app = createTestApp(ctx, devpadApi);
@@ -353,8 +353,8 @@ describe("Auth Middleware Integration", () => {
 
 			const tokenA = "token-for-user-a";
 			const tokenB = "token-for-user-b";
-			await createTestToken(ctx, userA.id, "A-token", await hashToken(tokenA));
-			await createTestToken(ctx, userB.id, "B-token", await hashToken(tokenB));
+			await createTestToken(ctx, userA.id, "A-token", await hashing.hash(tokenA));
+			await createTestToken(ctx, userB.id, "B-token", await hashing.hash(tokenB));
 
 			const app = createTestApp(ctx, devpadApi);
 
@@ -376,7 +376,7 @@ describe("Auth Middleware Integration", () => {
 		it("tokens are user-specific", async () => {
 			const userA = await createTestUser(ctx, { github_id: 555555 });
 			const tokenForA = "user-a-secret-token";
-			await createTestToken(ctx, userA.id, "A-secret", await hashToken(tokenForA));
+			await createTestToken(ctx, userA.id, "A-secret", await hashing.hash(tokenForA));
 
 			const app = createTestApp(ctx, devpadApi);
 			const res = await app.request("/api/protected", {
