@@ -33,6 +33,14 @@
 }
 
 /* ==========================================================================
+   @f0rbit/ui OVERRIDES
+   ========================================================================== */
+
+.tree-node {
+	height: 24px;
+}
+
+/* ==========================================================================
    RESET & BASE
    ========================================================================== */
 
@@ -194,7 +202,6 @@ p.description {
 .secondary {
 	color: var(--fg-muted);
 }
-/* .tertiary and .muted removed - use .text-subtle and .text-muted from @f0rbit/ui */
 
 .text-xs {
 	font-size: 0.75rem;
@@ -235,8 +242,6 @@ p.description {
 /* ==========================================================================
    LAYOUT UTILITIES
    ========================================================================== */
-
-/* .flex-col and .flex-row removed - use .stack and .row from @f0rbit/ui */
 
 .inline-flex {
 	display: inline-flex;
@@ -281,8 +286,6 @@ p.description {
 	width: 1.1rem;
 	height: 1.1rem;
 }
-
-/* .spinner and @keyframes spin removed - use Spinner component from @f0rbit/ui */
 
 .success-icon {
 	color: oklch(from var(--item-green) 0.8 0.15 h);
@@ -1068,13 +1071,6 @@ footer {
 .filter-group input[type="text"] {
 	padding: 6px 8px;
 }
-
-/* ==========================================================================
-   MODAL
-   ========================================================================== */
-
-/* .modal-overlay, .modal-card, .modal-header, .modal-close, .modal-form, .modal-actions removed
-   - use Modal component from @f0rbit/ui */
 
 /* ==========================================================================
    TOKENS PAGE
