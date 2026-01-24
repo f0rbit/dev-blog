@@ -16,6 +16,8 @@ type ProjectSelectorProps = {
 };
 
 const fetchProjects = async (): Promise<Project[]> => {
+	// Only fetch on client side - SSR should use initialProjects
+	if (typeof window === "undefined") return [];
 	const response = await api.fetch("/api/blog/projects");
 	if (!response.ok) return [];
 	const data: { projects?: Project[] } = await response.json();
