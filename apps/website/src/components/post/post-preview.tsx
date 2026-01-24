@@ -1,3 +1,4 @@
+import { Spinner } from "@f0rbit/ui";
 import { Show, createEffect, createSignal } from "solid-js";
 import { renderMarkdown } from "../../lib/markdown";
 
@@ -23,7 +24,7 @@ export const PostPreview = (props: Props) => {
 
 	return (
 		<div class="post-preview">
-			<Show when={!loading()} fallback={<p class="post-preview__loading">Rendering...</p>}>
+			<Show when={!loading()} fallback={<Spinner size="sm" />}>
 				<div class="prose" innerHTML={html()} />
 			</Show>
 		</div>

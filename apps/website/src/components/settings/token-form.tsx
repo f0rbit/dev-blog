@@ -1,9 +1,6 @@
+import { Button, Input, Modal, ModalBody, ModalFooter, ModalHeader, ModalTitle, Textarea } from "@f0rbit/ui";
 import { type Component, Show, createSignal } from "solid-js";
 import { createFormState } from "../../lib/form-utils";
-import Button from "../ui/button";
-import Input from "../ui/input";
-import Modal from "../ui/modal";
-import Textarea from "../ui/textarea";
 
 interface TokenFormProps {
 	isOpen: boolean;
@@ -51,57 +48,66 @@ const TokenForm: Component<TokenFormProps> = props => {
 	};
 
 	return (
-		<Modal isOpen={props.isOpen} onClose={handleClose} title="New API Token">
+		<Modal open={props.isOpen} onClose={handleClose}>
+			<ModalHeader>
+				<ModalTitle>New API Token</ModalTitle>
+			</ModalHeader>
 			<Show
 				when={!generatedKey()}
 				fallback={
-					<div class="modal-form">
-						<div class="form-success">
-							<p class="text-sm font-medium">Token created successfully!</p>
-						</div>
-						<div class="form-row">
-							<label>API Key (copy now - shown only once)</label>
-							<div class="flex-row" style={{ gap: "8px" }}>
-								<input type="text" value={generatedKey() ?? ""} readonly class="mono flex-1" />
-								<Button variant="secondary" onClick={copyToClipboard}>
-									Copy
-								</Button>
+					<>
+						<ModalBody>
+							<div class="modal-form">
+								<div class="form-success">
+									<p class="text-sm font-medium">Token created successfully!</p>
+								</div>
+								<div class="form-row">
+									<label>API Key (copy now - shown only once)</label>
+									<div class="row" style={{ gap: "8px" }}>
+										<input type="text" value={generatedKey() ?? ""} readonly class="mono flex-1" />
+										<Button variant="secondary" onClick={copyToClipboard}>
+											Copy
+										</Button>
+									</div>
+								</div>
+								<p class="text-xs text-muted">This key will not be shown again. Please copy it now and store it securely.</p>
 							</div>
-						</div>
-						<p class="text-xs muted">This key will not be shown again. Please copy it now and store it securely.</p>
-						<div class="modal-actions">
+						</ModalBody>
+						<ModalFooter>
 							<Button variant="primary" onClick={handleClose}>
 								Done
 							</Button>
-						</div>
-					</div>
+						</ModalFooter>
+					</>
 				}
 			>
-				<form onSubmit={handleSubmit} class="modal-form">
-					<Show when={form.error()}>
-						<div class="form-error">
-							<p class="text-sm">{form.error()}</p>
+				<ModalBody>
+					<form onSubmit={handleSubmit} class="modal-form">
+						<Show when={form.error()}>
+							<div class="form-error">
+								<p class="text-sm">{form.error()}</p>
+							</div>
+						</Show>
+						<div class="form-row">
+							<label for="token-name">
+								Name <span class="required">*</span>
+							</label>
+							<Input value={name()} onInput={setName} placeholder="Token name" disabled={form.submitting()} />
 						</div>
-					</Show>
-					<div class="form-row">
-						<label for="token-name">
-							Name <span class="required">*</span>
-						</label>
-						<Input value={name()} onInput={setName} placeholder="Token name" disabled={form.submitting()} />
-					</div>
-					<div class="form-row">
-						<label for="token-note">Note (optional)</label>
-						<Textarea value={note()} onInput={setNote} placeholder="What is this token for?" rows={3} disabled={form.submitting()} />
-					</div>
-					<div class="modal-actions">
-						<Button variant="secondary" onClick={handleClose} disabled={form.submitting()}>
-							Cancel
-						</Button>
-						<Button type="submit" variant="primary" disabled={form.submitting() || !name().trim()}>
-							{form.submitting() ? "Creating..." : "Create Token"}
-						</Button>
-					</div>
-				</form>
+						<div class="form-row">
+							<label for="token-note">Note (optional)</label>
+							<Textarea value={note()} onInput={setNote} placeholder="What is this token for?" rows={3} disabled={form.submitting()} />
+						</div>
+					</form>
+				</ModalBody>
+				<ModalFooter>
+					<Button variant="secondary" onClick={handleClose} disabled={form.submitting()}>
+						Cancel
+					</Button>
+					<Button type="submit" variant="primary" disabled={form.submitting() || !name().trim()}>
+						{form.submitting() ? "Creating..." : "Create Token"}
+					</Button>
+				</ModalFooter>
 			</Show>
 		</Modal>
 	);

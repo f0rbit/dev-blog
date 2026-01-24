@@ -107,7 +107,7 @@ const CategoryTree: Component<CategoryTreeProps> = props => {
 	return (
 		<div class="category-tree">
 			<Show when={tree().length === 0}>
-				<p class="muted text-sm">No categories found.</p>
+				<p class="text-muted text-sm">No categories found.</p>
 			</Show>
 			<For each={tree()}>{node => <TreeNodeItem node={node} onDelete={props.onDelete} onAddChild={props.onAddChild} ancestorIsLast={[]} />}</For>
 		</div>

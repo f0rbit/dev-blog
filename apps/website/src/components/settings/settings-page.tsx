@@ -1,8 +1,8 @@
 import { api } from "@/lib/api";
 import type { AccessKey, User as SchemaUser } from "@blog/schema";
+import { Button } from "@f0rbit/ui";
 import { type Component, For, Show, createSignal } from "solid-js";
 import { formatDate } from "../../lib/date-utils";
-import Button from "../ui/button";
 import { DevpadConnection } from "./devpad-connection";
 import TokenForm from "./token-form";
 import TokenList from "./token-list";
@@ -96,11 +96,11 @@ const SettingsPage: Component<SettingsPageProps> = props => {
 	};
 
 	return (
-		<div class="flex-col" style={{ gap: "24px" }}>
+		<div class="stack" style={{ gap: "24px" }}>
 			<section class="settings-section">
 				<h3 class="settings-section__title">Profile</h3>
 				<div class="settings-section__content">
-					<Show when={user()} keyed fallback={<p class="muted text-sm">Not signed in</p>}>
+					<Show when={user()} keyed fallback={<p class="text-muted text-sm">Not signed in</p>}>
 						{userData => (
 							<>
 								<div class="profile-row">
@@ -120,7 +120,7 @@ const SettingsPage: Component<SettingsPageProps> = props => {
 									<span class="profile-row__value">{formatDate(userData.created_at)}</span>
 								</div>
 								<div class="profile-note">
-									<p class="text-sm muted">Profile is managed by DevPad.</p>
+									<p class="text-sm text-muted">Profile is managed by DevPad.</p>
 									<a href="https://devpad.tools/settings" target="_blank" rel="noopener noreferrer" class="text-sm">
 										Go to DevPad Settings →
 									</a>
@@ -142,7 +142,7 @@ const SettingsPage: Component<SettingsPageProps> = props => {
 									when={integration.connected}
 									fallback={
 										<>
-											<span class="integration-row__status muted">Not connected</span>
+											<span class="integration-row__status text-muted">Not connected</span>
 											<Button variant="secondary" onClick={() => handleIntegrationClick(integration)}>
 												Connect
 											</Button>
@@ -179,7 +179,7 @@ const SettingsPage: Component<SettingsPageProps> = props => {
 					</Show>
 
 					<Show when={tokensLoading()}>
-						<p class="muted text-sm">Loading tokens...</p>
+						<p class="text-muted text-sm">Loading tokens...</p>
 					</Show>
 
 					<Show when={tokens()} keyed>

@@ -1,8 +1,7 @@
 import type { Category as SchemaCategory } from "@blog/schema";
+import { Button, Input, Select } from "@f0rbit/ui";
 import { type Component, For, createEffect, createSignal } from "solid-js";
 import { createFormState } from "../../lib/form-utils";
-import Button from "../ui/button";
-import Input from "../ui/input";
 
 type Category = Pick<SchemaCategory, "id" | "name" | "parent">;
 
@@ -53,7 +52,7 @@ const CategoryForm: Component<CategoryFormProps> = props => {
 			<h3 class="category-form-title">New Category</h3>
 			<form onSubmit={handleSubmit} class="category-form">
 				<div class="form-row">
-					<label for="category-name" class="text-xs tertiary">
+					<label for="category-name" class="text-xs text-subtle">
 						Name
 					</label>
 					<Input
@@ -67,12 +66,12 @@ const CategoryForm: Component<CategoryFormProps> = props => {
 					/>
 				</div>
 				<div class="form-row">
-					<label for="category-parent" class="text-xs tertiary">
+					<label for="category-parent" class="text-xs text-subtle">
 						Parent
 					</label>
-					<select value={parent()} onChange={e => setParent(e.currentTarget.value)} disabled={form.submitting()}>
+					<Select value={parent()} onChange={e => setParent(e.currentTarget.value)} disabled={form.submitting()}>
 						<For each={props.categories}>{cat => <option value={cat.name}>{cat.name}</option>}</For>
-					</select>
+					</Select>
 				</div>
 				<div class="category-form-actions">
 					<Button type="submit" variant="primary" disabled={form.submitting() || !name().trim()}>

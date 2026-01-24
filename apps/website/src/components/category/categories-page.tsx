@@ -1,5 +1,6 @@
 import { api } from "@/lib/api";
 import type { Category as SchemaCategory } from "@blog/schema";
+import { Spinner } from "@f0rbit/ui";
 import { type Component, Show, createResource, createSignal } from "solid-js";
 import CategoryForm from "./category-form";
 import CategoryTree from "./category-tree";
@@ -74,7 +75,7 @@ const CategoriesPage: Component<Props> = props => {
 	};
 
 	return (
-		<div class="flex-col" style={{ gap: "24px" }}>
+		<div class="stack" style={{ gap: "24px" }}>
 			<Show when={error()}>
 				<div class="form-error">
 					<p class="text-sm">{error()}</p>
@@ -82,7 +83,7 @@ const CategoriesPage: Component<Props> = props => {
 			</Show>
 
 			<Show when={categories.loading}>
-				<p class="muted text-sm">Loading categories...</p>
+				<Spinner size="sm" />
 			</Show>
 
 			<Show when={categories.error}>
@@ -95,7 +96,7 @@ const CategoriesPage: Component<Props> = props => {
 				{cats => (
 					<>
 						<section>
-							<h2 class="text-sm muted" style={{ "margin-bottom": "8px" }}>
+							<h2 class="text-sm text-muted" style={{ "margin-bottom": "8px" }}>
 								Category Hierarchy
 							</h2>
 							<CategoryTree categories={cats} onDelete={handleDelete} onAddChild={selectParentForAdd} />

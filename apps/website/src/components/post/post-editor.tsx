@@ -1,3 +1,4 @@
+import { Button } from "@f0rbit/ui";
 import type { Component } from "solid-js";
 import { For, Show, createSignal, onMount } from "solid-js";
 import { api } from "../../lib/api";
@@ -260,14 +261,15 @@ const PostEditor: Component<PostEditorProps> = props => {
 				{/* Actions - show for new posts or when onSave is provided */}
 				<Show when={props.onSave || !props.post}>
 					<div class="post-editor__actions">
-						<button type="button" class="btn-primary" onClick={handleSave} disabled={form.submitting()}>
-							{form.submitting() ? "Saving..." : isEditing() ? "Update" : "Create"}
-						</button>
+						<Button variant="primary" onClick={handleSave} disabled={form.submitting()} loading={form.submitting()}>
+							{isEditing() ? "Update" : "Create"}
+						</Button>
 					</div>
 				</Show>
 			</div>
 
-			{/* Content editor with tabs */}
+			{/* Content editor with tabs - could migrate to @f0rbit/ui Tabs, but keeping custom implementation
+			   to preserve SolidJS Show-based conditional rendering and ensure textarea state is maintained */}
 			<div class="editor-tabs">
 				<button type="button" class={`tab ${activeTab() === "write" ? "active" : ""}`} onClick={() => setActiveTab("write")}>
 					Write

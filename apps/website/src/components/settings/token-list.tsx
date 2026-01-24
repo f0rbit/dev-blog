@@ -1,7 +1,7 @@
 import type { AccessKey } from "@blog/schema";
+import { Button, Empty } from "@f0rbit/ui";
 import { type Component, For, Show } from "solid-js";
 import { formatDate } from "../../lib/date-utils";
-import Button from "../ui/button";
 
 type Token = {
 	id: AccessKey["id"];
@@ -21,9 +21,7 @@ const TokenList: Component<TokenListProps> = props => {
 	return (
 		<div class="token-list">
 			<Show when={props.tokens.length === 0}>
-				<div class="empty-state">
-					<p>No API tokens yet.</p>
-				</div>
+				<Empty title="No API tokens yet" description="Create a token to get started" />
 			</Show>
 			<For each={props.tokens}>
 				{token => (

@@ -30,7 +30,7 @@ const TagEditor: Component<TagEditorProps> = props => {
 
 	return (
 		<div class="tag-editor">
-			<div class="flex-row flex-wrap" style={{ gap: "4px" }}>
+			<div class="row flex-wrap" style={{ gap: "4px" }}>
 				<For each={props.tags}>
 					{tag => (
 						<span class="tag-badge">

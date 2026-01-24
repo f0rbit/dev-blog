@@ -6,7 +6,7 @@ export const DevpadConnection: Component = () => {
 			<p class="text-sm">
 				<span style={{ color: "var(--color-success, #22c55e)" }}>●</span> Connected via DevPad login
 			</p>
-			<p class="text-sm muted" style={{ "margin-top": "8px" }}>
+			<p class="text-sm text-muted" style={{ "margin-top": "8px" }}>
 				Your DevPad projects are available in the post editor.
 			</p>
 		</div>
