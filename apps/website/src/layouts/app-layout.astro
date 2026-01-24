@@ -38,11 +38,11 @@ try {
 ---
 
 <BaseLayout title={title}>
-	<div id="container" class="flex-col">
+	<div id="container" class="stack">
 		<header>
 			<nav>
 				<a href="/" class:list={{ active: isActive("/") }}>blog</a>
-				<span class="muted">|</span>
+				<span class="text-muted">|</span>
 				{navLinks.map((link) => (
 					<a href={link.href} class:list={{ active: isActive(link.href) }}>
 						{link.label}
@@ -58,6 +58,6 @@ try {
 	</div>
 
 	<footer>
-		<span class="text-sm muted">blog.devpad.tools</span>
+		<span class="text-sm text-muted">blog.devpad.tools</span>
 	</footer>
 </BaseLayout>
