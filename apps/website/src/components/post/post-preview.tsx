@@ -7,7 +7,7 @@ type Props = {
 	format: "md" | "adoc";
 };
 
-export const PostPreview = (props: Props) => {
+const PostPreview = (props: Props) => {
 	const [html, setHtml] = createSignal("");
 	const [loading, setLoading] = createSignal(true);
 
@@ -32,3 +32,5 @@ export const PostPreview = (props: Props) => {
 };
 
 const escapeHtml = (text: string): string => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+
+export default PostPreview;

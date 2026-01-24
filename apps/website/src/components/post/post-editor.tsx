@@ -4,8 +4,8 @@ import { For, Show, createSignal, onMount } from "solid-js";
 import { api } from "../../lib/api";
 import { relativeTime } from "../../lib/date-utils";
 import { createFormState } from "../../lib/form-utils";
-import { PostPreview } from "./post-preview";
-import { ProjectSelector } from "./project-selector";
+import PostPreview from "./post-preview";
+import ProjectSelector from "./project-selector";
 
 type Post = {
 	id: number;
@@ -100,16 +100,12 @@ const PostEditor: Component<PostEditorProps> = props => {
 
 	// Fetch categories on mount if not provided, and notify parent that form is ready
 	onMount(async () => {
-		console.log("[PostEditor] onMount called");
 		// Notify parent that form is ready (for external save button)
 		if (props.onFormReady) {
-			console.log("[PostEditor] Calling props.onFormReady");
 			props.onFormReady(getFormData);
 		}
 		const win = window as Window & { postEditorReady?: (fn: typeof getFormData) => void };
-		console.log("[PostEditor] window.postEditorReady defined?", !!win.postEditorReady);
 		if (win.postEditorReady) {
-			console.log("[PostEditor] Calling window.postEditorReady");
 			win.postEditorReady(getFormData);
 		}
 

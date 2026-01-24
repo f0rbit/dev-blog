@@ -3,7 +3,7 @@ import type { AccessKey, User as SchemaUser } from "@blog/schema";
 import { Button } from "@f0rbit/ui";
 import { type Component, For, Show, createSignal } from "solid-js";
 import { formatDate } from "../../lib/date-utils";
-import { DevpadConnection } from "./devpad-connection";
+import DevpadConnection from "./devpad-connection";
 import TokenForm from "./token-form";
 import TokenList from "./token-list";
 

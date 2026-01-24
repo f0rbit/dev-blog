@@ -107,8 +107,6 @@ try {
 </style>
 
 <script is:inline define:vars={{ API_BASE: api.blog("") }}>
-	console.log("[slug.astro] Script loaded, API_BASE:", API_BASE);
-
 	// Define postEditorReady BEFORE DOMContentLoaded to avoid race condition
 	// PostEditor will call this when it's ready
 	var postEditorState = {
@@ -118,11 +116,9 @@ try {
 	};
 
 	window.postEditorReady = function(getFormData) {
-		console.log("[slug.astro] postEditorReady called");
 		postEditorState.getFormData = getFormData;
 		// If DOM is already ready, enable button immediately
 		if (postEditorState.saveBtn) {
-			console.log("[slug.astro] Enabling save button");
 			postEditorState.saveBtn.disabled = false;
 		}
 	};
@@ -157,23 +153,18 @@ try {
 	};
 
 	document.addEventListener("DOMContentLoaded", function() {
-		console.log("[slug.astro] DOMContentLoaded");
 		var saveBtn = document.getElementById("save-btn");
 		var container = document.getElementById("editor-container");
-		console.log("[slug.astro] saveBtn:", !!saveBtn, "container:", !!container);
 		if (!saveBtn || !container) return;
 
 		var uuid = container.dataset.uuid;
-		console.log("[slug.astro] uuid:", uuid);
 		if (!uuid) return;
 
 		postEditorState.saveBtn = saveBtn;
 		postEditorState.uuid = uuid;
 
 		// If PostEditor already called postEditorReady, enable button now
-		console.log("[slug.astro] getFormData already set?", !!postEditorState.getFormData);
 		if (postEditorState.getFormData) {
-			console.log("[slug.astro] Enabling save button (from DOMContentLoaded)");
 			saveBtn.disabled = false;
 		}
 

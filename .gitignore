@@ -14,3 +14,6 @@ coverage/
 
 # Drizzle
 # Note: migrations/ is tracked in git for schema versioning
+
+# Planning docs
+.plans/

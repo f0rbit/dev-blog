@@ -24,7 +24,7 @@ const fetchProjects = async (): Promise<Project[]> => {
 	return data.projects ?? [];
 };
 
-export const ProjectSelector = (props: ProjectSelectorProps) => {
+const ProjectSelector = (props: ProjectSelectorProps) => {
 	const [fetchTrigger, setFetchTrigger] = createSignal(0);
 
 	const [projects] = createResource(
@@ -69,3 +69,5 @@ export const ProjectSelector = (props: ProjectSelectorProps) => {
 		</div>
 	);
 };
+
+export default ProjectSelector;

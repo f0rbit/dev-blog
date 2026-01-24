@@ -1,8 +1,8 @@
 import type { Component } from "solid-js";
 
-export const DevpadConnection: Component = () => {
+const DevpadConnection: Component = () => {
 	return (
-		<div class="devpad-status">
+		<div class="devpad-connection">
 			<p class="text-sm">
 				<span style={{ color: "var(--color-success, #22c55e)" }}>●</span> Connected via DevPad login
 			</p>
